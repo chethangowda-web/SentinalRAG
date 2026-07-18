@@ -10,9 +10,9 @@ try:
     from PIL import Image
 
     TESSERACT_AVAILABLE = True
-except ImportError:
+except Exception:
     TESSERACT_AVAILABLE = False
-    logger.warning("pytesseract or Pillow not installed — OCR unavailable")
+    logger.warning("pytesseract or Pillow not available — OCR unavailable")
 
 
 try:
