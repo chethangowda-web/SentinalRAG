@@ -1,32 +1,50 @@
 import logging
 import re
+import uuid
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+_SECTION_HEADER_RE = re.compile(
+    r"^(#{1,3}\s+|(?:[A-Z][A-Za-z\s]{2,50}):\s*$|(?:Chapter|Section|Part|Appendix)\s+\d+|^\d+\.\s+[A-Z])",
+)
+
 
 class TextChunk:
     def __init__(
         self,
+        chunk_id: str,
         text: str,
         chunk_index: int,
         char_start: int,
         char_end: int,
         word_count: int,
         page_number: int | None = None,
+        section: str | None = None,
     ):
+        self.chunk_id = chunk_id
         self.text = text
         self.chunk_index = chunk_index
         self.char_start = char_start
         self.char_end = char_end
         self.word_count = word_count
         self.page_number = page_number
+        self.section = section
 
 
 def split_into_paragraphs(text: str) -> list[str]:
     raw = re.split(r"\n\s*\n", text)
     return [p.strip() for p in raw if p.strip()]
+
+
+def _detect_section(para: str) -> str | None:
+    m = _SECTION_HEADER_RE.match(para.strip())
+    if m:
+        return para.strip()[:120]
+    if len(para.split()) <= 8 and para.strip().endswith(":") and len(para.strip()) > 3:
+        return para.strip()[:120]
+    return None
 
 
 def _split_long_paragraph(para: str, chunk_size: int) -> list[str]:
@@ -45,6 +63,7 @@ def _finalize_chunk(
     char_start: int,
     chunk_index: int,
     chunks: list[TextChunk],
+    section: str | None = None,
 ) -> tuple[list[str], int, int]:
     chunk_text_str = "\n\n".join(parts)
     chunk_char_start = char_start
@@ -52,11 +71,13 @@ def _finalize_chunk(
     word_count = len(chunk_text_str.split())
 
     chunks.append(TextChunk(
+        chunk_id=str(uuid.uuid4()),
         text=chunk_text_str,
         chunk_index=chunk_index,
         char_start=chunk_char_start,
         char_end=chunk_char_end,
         word_count=word_count,
+        section=section,
     ))
 
     return [], 0, chunk_char_end
@@ -67,6 +88,7 @@ def _finalize_with_overlap(
     char_start: int,
     chunk_index: int,
     chunks: list[TextChunk],
+    section: str | None = None,
 ) -> tuple[list[str], int, int]:
     chunk_text_str = "\n\n".join(parts)
     chunk_char_start = char_start
@@ -74,11 +96,13 @@ def _finalize_with_overlap(
     word_count = len(chunk_text_str.split())
 
     chunks.append(TextChunk(
+        chunk_id=str(uuid.uuid4()),
         text=chunk_text_str,
         chunk_index=chunk_index,
         char_start=chunk_char_start,
         char_end=chunk_char_end,
         word_count=word_count,
+        section=section,
     ))
 
     overlap_text = _build_overlap(parts, settings.CHUNK_OVERLAP)
@@ -94,8 +118,13 @@ def chunk_text(text: str) -> list[TextChunk]:
     current_words = 0
     current_char_start = 0
     chunk_index = 0
+    current_section: str | None = None
 
     for para in paragraphs:
+        detected = _detect_section(para)
+        if detected:
+            current_section = detected
+
         para_words = len(para.split())
 
         if current_words + para_words <= settings.CHUNK_SIZE:
@@ -106,6 +135,7 @@ def chunk_text(text: str) -> list[TextChunk]:
         if current_parts:
             current_parts, current_words, current_char_start = _finalize_with_overlap(
                 current_parts, current_char_start, chunk_index, chunks,
+                section=current_section,
             )
             chunk_index += 1
 
@@ -119,17 +149,21 @@ def chunk_text(text: str) -> list[TextChunk]:
                 if current_parts:
                     current_parts, current_words, current_char_start = _finalize_chunk(
                         current_parts, current_char_start, chunk_index, chunks,
+                        section=current_section,
                     )
                     chunk_index += 1
                 current_parts.append(sub)
                 current_words += sub_words
 
     if current_parts:
-        _finalize_chunk(current_parts, current_char_start, chunk_index, chunks)
+        _finalize_chunk(current_parts, current_char_start, chunk_index, chunks, section=current_section)
 
     logger.info("Chunking complete: %d chunks from %d chars", len(chunks), len(text))
     for c in chunks:
-        logger.debug("  Chunk %d: %d words, chars [%d:%d]", c.chunk_index, c.word_count, c.char_start, c.char_end)
+        logger.debug(
+            "  Chunk %d: %d words, chars [%d:%d], section=%s",
+            c.chunk_index, c.word_count, c.char_start, c.char_end, c.section,
+        )
 
     return chunks
 

@@ -18,3 +18,4 @@ sentence-transformers==3.4.1
 qdrant-client==1.13.3
 numpy==2.2.1
 torch==2.5.1
+cross-encoder==2.0.3

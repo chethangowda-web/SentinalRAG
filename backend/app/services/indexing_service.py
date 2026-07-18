@@ -53,8 +53,10 @@ async def embed_document(document_id: str, db: AsyncSession) -> EmbedResponse:
             logger.info("Skipping existing chunk %d for document %s", tc.chunk_index, document_id)
             continue
 
+        token_count = int(tc.word_count * 1.3)
         chunk_records.append(
             Chunk(
+                id=tc.chunk_id,
                 document_id=document_id,
                 chunk_index=tc.chunk_index,
                 chunk_text=tc.text,
@@ -68,11 +70,14 @@ async def embed_document(document_id: str, db: AsyncSession) -> EmbedResponse:
         texts_for_embedding.append(tc.text)
         payloads.append({
             "document_id": document_id,
+            "chunk_id": tc.chunk_id,
             "chunk_index": tc.chunk_index,
             "filename": document.filename,
             "page_number": tc.page_number,
+            "section": tc.section,
             "word_count": tc.word_count,
-            "text": tc.text[:1000],
+            "token_count": token_count,
+            "text": tc.text,
         })
         chunk_refs.append(tc)
 

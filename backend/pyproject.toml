@@ -20,6 +20,7 @@ dependencies = [
     "qdrant-client>=1.13.0",
     "numpy>=2.2.0",
     "torch>=2.5.0",
+    "cross-encoder>=2.0.0",
 ]
 
 [tool.pytest.ini_options]
