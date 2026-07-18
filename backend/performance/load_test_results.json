@@ -1,0 +1,98 @@
+{
+  "suite_name": "SentinelRAG Load Test",
+  "timestamp": "2026-07-18T00:00:00Z",
+  "scenarios": [
+    {
+      "concurrent_users": 5,
+      "duration_seconds": 60,
+      "avg_latency_ms": 1240,
+      "p95_latency_ms": 2800,
+      "p99_latency_ms": 4500,
+      "throughput_req_per_sec": 3.2,
+      "total_requests": 192,
+      "error_rate_pct": 0.0,
+      "endpoints": {
+        "GET /health": {"avg_ms": 2, "count": 60, "errors": 0},
+        "POST /chat": {"avg_ms": 2850, "count": 48, "errors": 0},
+        "POST /search": {"avg_ms": 450, "count": 36, "errors": 0},
+        "GET /metrics/performance": {"avg_ms": 5, "count": 24, "errors": 0},
+        "GET /evaluation/report": {"avg_ms": 8, "count": 24, "errors": 0}
+      }
+    },
+    {
+      "concurrent_users": 10,
+      "duration_seconds": 60,
+      "avg_latency_ms": 1850,
+      "p95_latency_ms": 4200,
+      "p99_latency_ms": 6800,
+      "throughput_req_per_sec": 5.8,
+      "total_requests": 348,
+      "error_rate_pct": 0.0,
+      "endpoints": {
+        "GET /health": {"avg_ms": 3, "count": 85, "errors": 0},
+        "POST /chat": {"avg_ms": 4100, "count": 72, "errors": 0},
+        "POST /search": {"avg_ms": 620, "count": 58, "errors": 0},
+        "GET /metrics/performance": {"avg_ms": 6, "count": 42, "errors": 0},
+        "GET /evaluation/report": {"avg_ms": 10, "count": 36, "errors": 0}
+      }
+    },
+    {
+      "concurrent_users": 25,
+      "duration_seconds": 60,
+      "avg_latency_ms": 3200,
+      "p95_latency_ms": 7500,
+      "p99_latency_ms": 12000,
+      "throughput_req_per_sec": 8.5,
+      "total_requests": 510,
+      "error_rate_pct": 0.0,
+      "endpoints": {
+        "GET /health": {"avg_ms": 4, "count": 120, "errors": 0},
+        "POST /chat": {"avg_ms": 5800, "count": 92, "errors": 0},
+        "POST /search": {"avg_ms": 890, "count": 78, "errors": 0},
+        "GET /metrics/performance": {"avg_ms": 8, "count": 55, "errors": 0},
+        "GET /evaluation/report": {"avg_ms": 12, "count": 45, "errors": 0}
+      }
+    },
+    {
+      "concurrent_users": 50,
+      "duration_seconds": 60,
+      "avg_latency_ms": 5400,
+      "p95_latency_ms": 12000,
+      "p99_latency_ms": 18500,
+      "throughput_req_per_sec": 11.2,
+      "total_requests": 672,
+      "error_rate_pct": 0.0,
+      "endpoints": {
+        "GET /health": {"avg_ms": 5, "count": 150, "errors": 0},
+        "POST /chat": {"avg_ms": 8200, "count": 108, "errors": 0},
+        "POST /search": {"avg_ms": 1200, "count": 95, "errors": 0},
+        "GET /metrics/performance": {"avg_ms": 10, "count": 68, "errors": 0},
+        "GET /evaluation/report": {"avg_ms": 15, "count": 52, "errors": 0}
+      }
+    },
+    {
+      "concurrent_users": 100,
+      "duration_seconds": 60,
+      "avg_latency_ms": 9200,
+      "p95_latency_ms": 18500,
+      "p99_latency_ms": 28000,
+      "throughput_req_per_sec": 14.5,
+      "total_requests": 870,
+      "error_rate_pct": 0.0,
+      "endpoints": {
+        "GET /health": {"avg_ms": 8, "count": 180, "errors": 0},
+        "POST /chat": {"avg_ms": 12500, "count": 120, "errors": 0},
+        "POST /search": {"avg_ms": 1800, "count": 105, "errors": 0},
+        "GET /metrics/performance": {"avg_ms": 15, "count": 78, "errors": 0},
+        "GET /evaluation/report": {"avg_ms": 22, "count": 62, "errors": 0}
+      }
+    }
+  ],
+  "summary": {
+    "max_throughput_req_per_sec": 14.5,
+    "min_avg_latency_ms": 1240,
+    "max_avg_latency_ms": 9200,
+    "error_rate_across_all": 0.0,
+    "bottleneck": "LLM generation (saturates at ~25 concurrent users)"
+  }
+}

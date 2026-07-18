@@ -21,6 +21,11 @@ dependencies = [
     "numpy>=2.2.0",
     "torch>=2.5.0",
     "cross-encoder>=2.0.0",
+    "langgraph>=0.4.0",
+    "langchain-openai>=0.3.0",
+    "matplotlib>=3.8.0",
+    "pandas>=2.1.0",
+    "seaborn>=0.13.0",
 ]
 
 [tool.pytest.ini_options]

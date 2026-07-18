@@ -25,6 +25,10 @@ def _load_model():
     return _model
 
 
+def is_model_loaded() -> bool:
+    return _model is not None
+
+
 def normalize_embedding(vector: list[float]) -> list[float]:
     arr = np.array(vector, dtype=np.float32)
     norm = np.linalg.norm(arr)
@@ -40,6 +44,7 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
     model = _load_model()
     batch_size = settings.EMBEDDING_BATCH_SIZE
     all_embeddings: list[list[float]] = []
+    total_start = time.perf_counter()
 
     for i in range(0, len(texts), batch_size):
         batch = texts[i : i + batch_size]
@@ -59,6 +64,6 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
         )
         all_embeddings.extend(normalized)
 
-    total_elapsed = round(time.perf_counter() - batch_start if len(texts) <= batch_size else 0, 2)
-    logger.info("Embedding complete: %d vectors generated", len(all_embeddings))
+    total_elapsed = round(time.perf_counter() - total_start, 2)
+    logger.info("Embedding complete: %d vectors in %.2fs", len(all_embeddings), total_elapsed)
     return all_embeddings

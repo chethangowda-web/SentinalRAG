@@ -51,13 +51,13 @@ async def search_bm25(
             c.document_id,
             c.chunk_text,
             c.page_number,
-            c.word_count,
+            ts_rank_cd(to_tsvector('english', c.chunk_text), plainto_tsquery('english', :query)) AS bm25_score,
             d.filename
         FROM chunks c
         JOIN documents d ON d.id = c.document_id
         WHERE c.embedding_status = 'embedded'
           AND to_tsvector('english', c.chunk_text) @@ plainto_tsquery('english', :query)
-        ORDER BY ts_rank_cd(to_tsvector('english', c.chunk_text), plainto_tsquery('english', :query)) DESC
+        ORDER BY bm25_score DESC
         LIMIT :limit
     """)
 
@@ -76,7 +76,7 @@ async def search_bm25(
             chunk_id=str(row.chunk_id),
             document_id=str(row.document_id),
             text=row.chunk_text,
-            score=row.word_count or 0.0,
+            score=float(row.bm25_score) if row.bm25_score is not None else 0.0,
             page_number=row.page_number,
             section=None,
             filename=row.filename,

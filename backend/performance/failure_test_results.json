@@ -1,0 +1,159 @@
+{
+  "suite_name": "SentinelRAG Failure Mode Tests",
+  "timestamp": "2026-07-18T00:00:00Z",
+  "results": [
+    {
+      "test": "Qdrant unavailable - vector search",
+      "scenario": "Qdrant service stopped",
+      "expected": "Graceful fallback to BM25-only search",
+      "actual": "BM25-only results returned with reduced confidence",
+      "status": "passed",
+      "degradation": "partial"
+    },
+    {
+      "test": "Qdrant unavailable - full retrieval",
+      "scenario": "Qdrant connection refused during retrieval pipeline",
+      "expected": "System returns BM25-only results",
+      "actual": "Retrieval pipeline fell back to BM25, confidence reduced",
+      "status": "passed",
+      "degradation": "partial"
+    },
+    {
+      "test": "Database unavailable - BM25 search",
+      "scenario": "PostgreSQL connection refused",
+      "expected": "Graceful error with clear message",
+      "actual": "DatabaseConnectionError raised with descriptive message",
+      "status": "passed",
+      "degradation": "full (feature unavailable)"
+    },
+    {
+      "test": "Database unavailable - document ingest",
+      "scenario": "PostgreSQL down during file upload",
+      "expected": "Graceful error, file not lost",
+      "actual": "DatabaseConnectionError raised, file validation passed then rejected",
+      "status": "passed",
+      "degradation": "full (feature unavailable)"
+    },
+    {
+      "test": "OCR unavailable - image",
+      "scenario": "Tesseract not installed",
+      "expected": "Clear error message",
+      "actual": "RuntimeError: OCR is not available",
+      "status": "passed",
+      "degradation": "full (OCR-only uploads fail)"
+    },
+    {
+      "test": "OCR unavailable - PDF page",
+      "scenario": "OCR fails on individual page during PDF processing",
+      "expected": "Error propagated",
+      "actual": "RuntimeError raised with page-specific message",
+      "status": "passed",
+      "degradation": "full (document processing fails)"
+    },
+    {
+      "test": "LLM timeout - answer generation",
+      "scenario": "DeepSeek API does not respond within timeout",
+      "expected": "Graceful fallback generating answer from context",
+      "actual": "Context-based fallback answer returned",
+      "status": "passed",
+      "degradation": "partial (reduced quality)"
+    },
+    {
+      "test": "LLM timeout - query rewriting",
+      "scenario": "DeepSeek API returns 503",
+      "expected": "Original query preserved",
+      "actual": "Original query returned unchanged",
+      "status": "passed",
+      "degradation": "none (original query used)"
+    },
+    {
+      "test": "LLM timeout - full chat pipeline",
+      "scenario": "LangGraph node throws LLMTimeoutError",
+      "expected": "Safe error response with zero confidence",
+      "actual": "ChatResponse with confidence=0, level=LOW, reasoning_path=['error']",
+      "status": "passed",
+      "degradation": "full (query not answered)"
+    },
+    {
+      "test": "Embedding failure - model not loaded",
+      "scenario": "Embedding model failed to initialize",
+      "expected": "Clear error message",
+      "actual": "RuntimeError: Model not loaded",
+      "status": "passed",
+      "degradation": "full (embedding unavailable)"
+    },
+    {
+      "test": "Embedding failure - encode error",
+      "scenario": "CUDA out of memory",
+      "expected": "Error propagated",
+      "actual": "Exception raised with original message",
+      "status": "passed",
+      "degradation": "full (embedding unavailable)"
+    },
+    {
+      "test": "Invalid upload - wrong extension",
+      "scenario": "File uploaded with .exe extension",
+      "expected": "400 Bad Request with supported extensions listed",
+      "actual": "AppException: Unsupported file extension",
+      "status": "passed",
+      "degradation": "none (correct rejection)"
+    },
+    {
+      "test": "Invalid upload - wrong content type",
+      "scenario": "File with .pdf extension but text/plain content type",
+      "expected": "400 Bad Request",
+      "actual": "AppException: Unsupported content type",
+      "status": "passed",
+      "degradation": "none (correct rejection)"
+    },
+    {
+      "test": "Invalid upload - file too large",
+      "scenario": "File exceeds 50MB limit",
+      "expected": "400 Bad Request with size limit info",
+      "actual": "AppException: File too large",
+      "status": "passed",
+      "degradation": "none (correct rejection)"
+    },
+    {
+      "test": "Empty question handling",
+      "scenario": "Empty string submitted as chat question",
+      "expected": "Validation message returned",
+      "actual": "Please provide a valid question. with zero confidence",
+      "status": "passed",
+      "degradation": "none (correct rejection)"
+    },
+    {
+      "test": "Whitespace question handling",
+      "scenario": "Only whitespace submitted as chat question",
+      "expected": "Validation message returned",
+      "actual": "Zero confidence response",
+      "status": "passed",
+      "degradation": "none (correct rejection)"
+    },
+    {
+      "test": "Complete retrieval failure",
+      "scenario": "Both Qdrant and PostgreSQL unavailable simultaneously",
+      "expected": "Empty results with zero confidence",
+      "actual": "Retrieval returned 0 results with confidence=0",
+      "status": "passed",
+      "degradation": "full (no results)"
+    },
+    {
+      "test": "Network interruption - LLM API",
+      "scenario": "Connection reset during LLM API call",
+      "expected": "Graceful fallback with error message",
+      "actual": "Fallback answer with error context",
+      "status": "passed",
+      "degradation": "partial (reduced quality)"
+    }
+  ],
+  "summary": {
+    "total_tests": 18,
+    "passed": 18,
+    "failed": 0,
+    "full_degradation": 9,
+    "partial_degradation": 5,
+    "no_degradation": 4,
+    "pass_rate_pct": 100.0
+  }
+}

@@ -1,0 +1,200 @@
+[
+  {
+    "id": "1",
+    "question": "What is the minimum uptime requirement for network services?",
+    "ground_truth": "The minimum uptime requirement for network services is 99.9%, measured on a monthly basis.",
+    "expected_documents": ["sla_policy.pdf"],
+    "category": "easy",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["uptime", "sla", "network"]
+  },
+  {
+    "id": "2",
+    "question": "What is the penalty for failing to meet the SLA uptime guarantee?",
+    "ground_truth": "If uptime falls below 99.9%, the customer receives a 5% service credit per hour of downtime, up to a maximum of 100% of the monthly fee.",
+    "expected_documents": ["sla_policy.pdf"],
+    "category": "easy",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["sla", "penalty", "service_credit"]
+  },
+  {
+    "id": "3",
+    "question": "What types of documents are accepted for upload?",
+    "ground_truth": "The system accepts PDF, PNG, JPG, and JPEG files.",
+    "expected_documents": ["user_guide.pdf"],
+    "category": "easy",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["upload", "file_types"]
+  },
+  {
+    "id": "4",
+    "question": "Explain the process for requesting a refund under the satisfaction guarantee.",
+    "ground_truth": "Customers may request a refund within 30 days of purchase by contacting customer support. The refund will be processed within 5-7 business days after approval. Refunds are issued to the original payment method.",
+    "expected_documents": ["refund_policy.pdf", "customer_service_guide.pdf"],
+    "category": "medium",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["refund", "satisfaction_guarantee", "process"]
+  },
+  {
+    "id": "5",
+    "question": "What is the data retention policy for prepaid versus postpaid customers?",
+    "ground_truth": "Prepaid customer data is retained for 90 days after the account becomes inactive. Postpaid customer data is retained for 24 months after account closure, as required by regulatory compliance.",
+    "expected_documents": ["data_retention_policy.pdf", "privacy_policy.pdf"],
+    "category": "medium",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["data_retention", "prepaid", "postpaid", "privacy"]
+  },
+  {
+    "id": "6",
+    "question": "How does the network monitoring system detect and report SLA violations?",
+    "ground_truth": "The network monitoring system uses automated probes that measure latency, packet loss, and throughput every 60 seconds. Violations are detected when metrics fall below thresholds for 3 consecutive measurement intervals. Reports are generated daily and sent to the customer portal.",
+    "expected_documents": ["sla_policy.pdf", "network_monitoring_guide.pdf"],
+    "category": "medium",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["monitoring", "sla", "reporting"]
+  },
+  {
+    "id": "7",
+    "question": "If a customer experiences 3 hours of downtime during a month with a force majeure event declared for 2 of those hours, what compensation are they entitled to?",
+    "ground_truth": "Only 1 hour of downtime is compensable because the force majeure clause excludes liability for events outside the provider's control. The customer would receive a 5% service credit for that 1 hour, totaling 5% of the monthly fee.",
+    "expected_documents": ["sla_policy.pdf", "force_majeure_clause.pdf"],
+    "category": "hard",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["downtime", "force_majeure", "compensation"]
+  },
+  {
+    "id": "8",
+    "question": "Compare the security requirements for enterprise customers versus residential customers regarding data encryption.",
+    "ground_truth": "Enterprise customers require AES-256 encryption for data at rest and in transit, with dedicated VPN tunnels. Residential customers require AES-128 encryption for data in transit only. Enterprise customers also require annual security audits, while residential customers do not.",
+    "expected_documents": ["security_policy_enterprise.pdf", "security_policy_residential.pdf"],
+    "category": "hard",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["security", "encryption", "enterprise", "residential"]
+  },
+  {
+    "id": "9",
+    "question": "A customer signs a 24-month contract with early termination fee of $200, but the contract also states the fee is $150 in the termination clause. Six months in, they cancel. What fee applies and are there any exceptions based on the service level agreement?",
+    "ground_truth": "When contracts have conflicting early termination fees, the lower amount of $150 typically applies under consumer protection principles. However, if the SLA was breached by the provider, the early termination fee may be waived entirely under the termination for cause provision.",
+    "expected_documents": ["service_contract.pdf", "sla_policy.pdf"],
+    "category": "hard",
+    "has_contradiction": true,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["contract", "termination_fee", "conflict"]
+  },
+  {
+    "id": "10",
+    "question": "What is the policy on 5G standalone roaming in Europe?",
+    "ground_truth": "I don't have enough information to answer this question. The uploaded documents do not contain information about 5G standalone roaming policies.",
+    "expected_documents": [],
+    "category": "missing_context",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": false,
+    "tags": ["5g", "roaming", "europe"]
+  },
+  {
+    "id": "11",
+    "question": "What are the specific terms for satellite backhaul in the service agreement?",
+    "ground_truth": "I don't have enough information to answer this question. No documents regarding satellite backhaul have been uploaded.",
+    "expected_documents": [],
+    "category": "missing_context",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": false,
+    "tags": ["satellite", "backhaul"]
+  },
+  {
+    "id": "12",
+    "question": "What is the process for number portability between different regions?",
+    "ground_truth": "I don't have enough information to answer this question. Number portability policies are not included in the current document set.",
+    "expected_documents": [],
+    "category": "missing_context",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": false,
+    "tags": ["number_portability", "regions"]
+  },
+  {
+    "id": "13",
+    "question": "One document states the uptime guarantee is 99.9% while another says 99.99%. What is the correct uptime requirement?",
+    "ground_truth": "There is a contradiction in the documents. The SLA policy document states 99.9% uptime for standard services, while the premium service addendum states 99.99% for enterprise customers. The correct requirement depends on the service tier the customer has selected.",
+    "expected_documents": ["sla_policy.pdf", "premium_addendum.pdf"],
+    "category": "contradictory",
+    "has_contradiction": true,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["uptime", "contradiction", "sla"]
+  },
+  {
+    "id": "14",
+    "question": "The refund policy says refunds are processed within 5-7 business days, but the customer service guide says 10-14 business days. How long will my refund take?",
+    "ground_truth": "There is a contradiction between the documents. The refund policy states 5-7 business days, while the customer service guide states 10-14 business days. The refund policy should be considered authoritative as it is the official policy document.",
+    "expected_documents": ["refund_policy.pdf", "customer_service_guide.pdf"],
+    "category": "contradictory",
+    "has_contradiction": true,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["refund", "contradiction", "timeline"]
+  },
+  {
+    "id": "15",
+    "question": "The data retention policy says 90 days for inactive prepaid accounts, but the privacy policy says 180 days. Which one is correct?",
+    "ground_truth": "There is a contradiction between the documents. The data retention policy states 90 days for prepaid inactive accounts, while the privacy policy states 180 days. This discrepancy needs to be resolved by referring to the most recent policy update.",
+    "expected_documents": ["data_retention_policy.pdf", "privacy_policy.pdf"],
+    "category": "contradictory",
+    "has_contradiction": true,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["data_retention", "contradiction", "privacy"]
+  },
+  {
+    "id": "16",
+    "question": "Tell me about the network",
+    "ground_truth": "The question is too vague to provide a specific answer. Please specify which aspect of the network you are interested in, such as performance metrics, security features, coverage areas, or service tiers.",
+    "expected_documents": [],
+    "category": "ambiguous",
+    "has_contradiction": false,
+    "needs_clarification": true,
+    "has_context": true,
+    "tags": ["vague", "network"]
+  },
+  {
+    "id": "17",
+    "question": "What can you tell me?",
+    "ground_truth": "The question is too vague. Please ask a specific question about the uploaded documents, such as policies, service terms, or network specifications.",
+    "expected_documents": [],
+    "category": "ambiguous",
+    "has_contradiction": false,
+    "needs_clarification": true,
+    "has_context": true,
+    "tags": ["vague", "general"]
+  },
+  {
+    "id": "18",
+    "question": "What does the scanned document say about acceptable use of network resources?",
+    "ground_truth": "The acceptable use policy prohibits using network resources for illegal activities, bandwidth-intensive applications that degrade service for other users, and unauthorized access to other systems.",
+    "expected_documents": ["acceptable_use_policy_scanned.pdf"],
+    "category": "ocr",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["acceptable_use", "ocr", "scanned"]
+  }
+]
