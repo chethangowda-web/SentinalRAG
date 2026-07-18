@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,6 +22,18 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
     LOG_LEVEL: str = "INFO"
+
+    UPLOAD_DIR: Path = Path("uploads")
+    PROCESSED_DIR: Path = Path("processed")
+    MAX_FILE_SIZE: int = 50 * 1024 * 1024
+    ALLOWED_EXTENSIONS: set[str] = {".pdf", ".png", ".jpg", ".jpeg"}
+    ALLOWED_CONTENT_TYPES: set[str] = {
+        "application/pdf",
+        "image/png",
+        "image/jpeg",
+    }
+    OCR_LANGUAGE: str = "eng"
+    TEXT_MIN_LENGTH_FOR_PDF: int = 50
 
 
 settings = Settings()

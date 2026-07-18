@@ -28,6 +28,11 @@ Thumbs.db
 # Docker
 docker-data/
 
+# Test artifacts
+*.db
+uploads/
+processed/
+
 # Misc
 *.log
 dist/

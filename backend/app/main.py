@@ -1,10 +1,12 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
 from app.api.v1.router import api_v1_router
 from app.core.config import settings
 from app.core.cors import setup_cors
+from app.core.database import init_db
 from app.core.exceptions import AppException, app_exception_handler, global_exception_handler
 from app.core.logging import setup_logging
 
@@ -12,11 +14,20 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    logger.info("Starting SentinelRAG backend...")
+    await init_db()
+    yield
+    logger.info("Shutting down SentinelRAG backend...")
+
+
 def create_app() -> FastAPI:
     application = FastAPI(
         title=settings.APP_NAME,
         version=settings.APP_VERSION,
         debug=settings.DEBUG,
+        lifespan=lifespan,
     )
 
     setup_cors(application)
