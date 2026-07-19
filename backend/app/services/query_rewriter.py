@@ -2,6 +2,7 @@ import logging
 import time
 
 from app.core.config import settings
+from app.services.token_counter import count_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -58,3 +59,13 @@ def rewrite_query(question: str) -> str:
     except Exception as e:
         logger.error("Query rewriting failed: %s", e)
         return question
+
+
+def get_rewrite_usage_tokens(original: str, rewritten: str) -> dict:
+    prompt_tokens = count_tokens(original)
+    completion_tokens = count_tokens(rewritten)
+    return {
+        "rewrite_prompt_tokens": prompt_tokens,
+        "rewrite_completion_tokens": completion_tokens,
+        "rewrite_total_tokens": prompt_tokens + completion_tokens,
+    }

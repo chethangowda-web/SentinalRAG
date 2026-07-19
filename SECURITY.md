@@ -152,7 +152,7 @@ Ambiguous questions are flagged by the clarification engine before they reach th
 |---|---|---|
 | `DEEPSEEK_API_KEY` | Critical | Use secrets manager in production; never commit to version control |
 | `FEATHERLESS_API_KEY` | Critical | Same as above |
-| `SECRET_KEY` | High | Generate a random 32+ character value; rotate periodically |
+| `SECRET_KEY` | High | Generate a random 32+ character value; rotate periodically. **Empty key causes fatal startup error in production.** |
 | `DATABASE_URL` | High | Contains credentials; restrict to internal network |
 | `POSTGRES_PASSWORD` | High | Change from default; use strong password |
 
@@ -160,6 +160,7 @@ Ambiguous questions are flagged by the clarification engine before they reach th
 
 - `.env` is in `.gitignore` (prevents accidental commits)
 - `.env.example` is provided as a template with placeholder values
+- `SECRET_KEY` is validated on startup: **fatal error** if empty in production mode (PostgreSQL), warning in debug/SQLite mode
 - In Docker production, use Docker secrets or your orchestration platform's secret management
 
 ---
@@ -233,27 +234,42 @@ AppException (base)
 └── NetworkError (502)
 ```
 
-### Structured Error Responses
+### Standardized Error Responses
+
+All error responses follow a consistent schema with machine-readable fields:
 
 ```json
-// Example: Invalid upload
+// Example: Invalid upload (400)
 {
   "detail": "File type '.exe' not allowed",
   "error_type": "invalid_upload",
   "status_code": 400
 }
+
+// Example: Internal error (500)
+{
+  "detail": "An internal error occurred",
+  "error_type": "internal_error",
+  "request_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "trace_id": "t-abc123",
+  "status_code": 500
+}
 ```
 
-### Global Exception Handler
+Each error response includes:
+- `request_id` — UUID assigned by middleware for request tracing
+- `trace_id` — Pipeline trace identifier (present if error occurred during graph execution)
+- `error_code` — Machine-readable error type string
+- `message` — Human-readable description
+- `status_code` — HTTP status code
 
-Unhandled exceptions return a safe generic message:
-```python
-async def global_exception_handler(request, exc):
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "An internal error occurred", "error_type": "internal_error"},
-    )
-```
+### Exception Handlers
+
+The application registers three exception handlers:
+
+1. **`AppException` handler** — Returns the structured response from the typed exception (8 types: LLMTimeout, QdrantConnection, DatabaseConnection, OCR, Embedding, InvalidUpload, Network, Internal)
+2. **`HTTPException` handler** — Catches standard FastAPI/Starlette HTTP exceptions and wraps them in the standardized format
+3. **Global handler** — Catches all unhandled exceptions and returns a safe generic 500 response
 
 **Key principle:** Never expose stack traces, internal paths, or configuration details in error responses.
 

@@ -31,6 +31,7 @@ class SearchResultItem:
         filename: str | None = None,
         vector_score: float = 0.0,
         bm25_score: float = 0.0,
+        fusion_score: float = 0.0,
         rerank_score: float = 0.0,
     ):
         self.chunk_id = chunk_id
@@ -41,6 +42,7 @@ class SearchResultItem:
         self.filename = filename
         self.vector_score = vector_score
         self.bm25_score = bm25_score
+        self.fusion_score = fusion_score
         self.rerank_score = rerank_score
 
 
@@ -113,6 +115,7 @@ async def retrieve(
             filename=hr.filename,
             vector_score=hr.vector_score,
             bm25_score=hr.bm25_score,
+            fusion_score=hr.rrf_score,
             rerank_score=rerank_score,
         ))
         vector_scores.append(hr.vector_score)

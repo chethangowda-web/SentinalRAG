@@ -22,6 +22,7 @@ export interface ChatResponse {
   citations: CitationItem[];
   clarification_question: string | null;
   latencies: Record<string, number> | null;
+  trace_id: string | null;
 }
 
 export interface SearchResultItem {
@@ -161,6 +162,77 @@ export interface EmbedResponse {
   total_chunks: number;
   embedded_chunks: number;
   status: string;
+}
+
+export interface GraphExecutionRecord {
+  node_name: string;
+  execution_time_ms: number;
+  input: string | null;
+  output: string | null;
+  decision: string | null;
+  next_node: string | null;
+  retry_count: number;
+}
+
+export interface RetrievalDetail {
+  chunk_id: string;
+  document_id: string;
+  text: string;
+  vector_score: number;
+  bm25_score: number;
+  fusion_score: number;
+  rerank_score: number;
+  final_rank: number;
+  selected: boolean;
+  reason: string;
+}
+
+export interface ConfidenceBreakdown {
+  vector_similarity: number;
+  vector_contribution: number;
+  coverage: number;
+  coverage_contribution: number;
+  cross_encoder_score: number;
+  cross_encoder_contribution: number;
+  citation_count: number;
+  citation_contribution: number;
+  contradiction_status: string;
+  retry_success: boolean;
+  raw_score: number;
+  final_score: number;
+}
+
+export interface Trace {
+  id: string;
+  timestamp: string;
+  original_query: string;
+  rewritten_query: string | null;
+  confidence_before_rewrite: number;
+  confidence_after_rewrite: number | null;
+  retrieval_attempts: number;
+  reason_for_retry: string | null;
+  contradiction_detected: boolean;
+  contradiction_reason: string | null;
+  clarification_needed: boolean;
+  clarification_question: string | null;
+  final_confidence: number;
+  final_confidence_level: string;
+  execution_path: string[];
+  graph_execution: GraphExecutionRecord[];
+  retrieval_details: RetrievalDetail[];
+  confidence_breakdown: ConfidenceBreakdown | null;
+  llm_observability: Record<string, unknown> | null;
+  session_timeline: string | null;
+  answer: string | null;
+  citations: CitationItem[];
+  latencies: Record<string, number>;
+}
+
+export interface TraceListResponse {
+  total: number;
+  skip: number;
+  limit: number;
+  traces: Trace[];
 }
 
 export type ConfidenceLevel = "HIGH" | "MEDIUM" | "LOW";

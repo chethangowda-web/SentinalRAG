@@ -87,6 +87,14 @@ docker compose up -d
 docker compose logs -f
 ```
 
+### Startup Sequence
+
+On first startup, the backend runs the following sequence:
+1. **Dependency health check** — Waits for PostgreSQL and Qdrant with exponential backoff (0.5s base, max 10 retries)
+2. **Alembic migrations** — Runs `alembic upgrade head` to apply pending database schema migrations (creates `documents`, `chunks`, and `traces` tables)
+3. **Fallback table creation** — If Alembic is unavailable, falls back to `init_db()` via `Base.metadata.create_all`
+4. **Model lazy loading** — Sentence Transformer and Cross-Encoder models load on first request, not at startup
+
 **First startup time:** 2–5 minutes (depends on network speed for model downloads):
 - Sentence Transformer model: ~100MB
 - Cross-Encoder model: ~80MB
@@ -186,7 +194,7 @@ open http://localhost
 | `DATABASE_URL` | `postgresql+asyncpg://sentinel:sentinel@postgres:5432/sentinelrag` | PostgreSQL connection string |
 | `REDIS_URL` | `redis://redis:6379/0` | Redis connection string |
 | `QDRANT_URL` | `http://qdrant:6333` | Qdrant connection URL |
-| `SECRET_KEY` | `change-me-in-production` | Secret key for session signing |
+| `SECRET_KEY` | `""` (required) | Secret key for session signing. **Empty key causes fatal startup error.** Generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
 | `LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
 | `BACKEND_CORS_ORIGINS` | `["http://localhost:3000","http://localhost"]` | Allowed CORS origins |
 
@@ -240,6 +248,8 @@ DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgre
 
 ### Generate a Strong SECRET_KEY
 
+The application now **requires** a non-empty `SECRET_KEY`. An empty key causes a fatal startup error in production mode.
+
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 # Example output: a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0
@@ -249,6 +259,8 @@ Set in `.env`:
 ```bash
 SECRET_KEY=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0
 ```
+
+For development with SQLite, a warning is shown instead of a fatal error, but a strong key should still be configured.
 
 ### Enable HTTPS (SSL/TLS)
 

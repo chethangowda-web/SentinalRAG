@@ -1,5 +1,8 @@
 import asyncio
+import os
 from pathlib import Path
+
+os.environ["SECRET_KEY"] = "test-secret-key-not-for-production"
 
 import pytest
 import pytest_asyncio
@@ -13,6 +16,7 @@ import app.core.database as db_module
 from app.core.config import settings
 
 settings.DATABASE_URL = TEST_DATABASE_URL
+settings.SECRET_KEY = "test-secret-key-not-for-production"
 
 db_module._engine = None
 db_module._async_session_maker = None

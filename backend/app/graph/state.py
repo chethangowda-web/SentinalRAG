@@ -18,3 +18,8 @@ class GraphState(TypedDict):
     citations: list[dict]
     reasoning_path: list[str]
     latencies: dict[str, float]
+    trace_id: str
+    graph_execution: list[dict]
+    retrieval_details: list[dict]
+    confidence_breakdown: dict | None
+    llm_observability: dict | None

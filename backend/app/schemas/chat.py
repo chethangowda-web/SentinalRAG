@@ -20,3 +20,4 @@ class ChatResponse(BaseModel):
     citations: list[CitationItem]
     clarification_question: str | None = None
     latencies: dict[str, float] | None = None
+    trace_id: str | None = None

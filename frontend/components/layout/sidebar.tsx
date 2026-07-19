@@ -12,6 +12,7 @@ import {
   BarChart3,
   Settings,
   Shield,
+  GitBranch,
 } from "lucide-react";
 
 const navItems = [
@@ -19,6 +20,7 @@ const navItems = [
   { href: "/dashboard/upload", label: "Upload", icon: Upload },
   { href: "/dashboard/chat", label: "Chat", icon: MessageSquare },
   { href: "/dashboard/documents", label: "Documents", icon: Files },
+  { href: "/dashboard/explainability", label: "Explainability", icon: GitBranch },
   { href: "/dashboard/evaluation", label: "Evaluation", icon: BarChart3 },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];

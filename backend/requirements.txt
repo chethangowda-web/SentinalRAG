@@ -19,10 +19,11 @@ sentence-transformers==3.4.1
 qdrant-client==1.13.3
 numpy==2.2.1
 torch==2.5.1
-cross-encoder==2.0.3
 langgraph==0.4.2
 langchain-openai==0.3.8
 psutil==7.0.0
 ruff==0.8.6
 pytest-benchmark==5.1.0
 locust==2.33.0
+alembic==1.14.1
+tiktoken==0.9.0

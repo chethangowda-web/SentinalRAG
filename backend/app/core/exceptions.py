@@ -49,6 +49,22 @@ class NetworkError(AppException):
         super().__init__(status_code=502, detail=detail, error_type="network_failure")
 
 
+def _standard_error_response(
+    request: Request,
+    status_code: int,
+    message: str,
+    error_type: str,
+) -> dict:
+    return {
+        "error": True,
+        "error_code": error_type,
+        "message": message,
+        "status_code": status_code,
+        "request_id": getattr(request.state, "request_id", None),
+        "trace_id": getattr(request.state, "trace_id", None),
+    }
+
+
 async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
     logger.warning(
         "AppException: %s — %s (type=%s)",
@@ -57,11 +73,12 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
     )
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "detail": exc.detail,
-            "error_type": exc.error_type,
-            "status_code": exc.status_code,
-        },
+        content=_standard_error_response(
+            request=request,
+            status_code=exc.status_code,
+            message=exc.detail,
+            error_type=exc.error_type or "app_error",
+        ),
     )
 
 
@@ -73,9 +90,26 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     )
     return JSONResponse(
         status_code=500,
-        content={
-            "detail": "An unexpected internal error occurred. Our team has been notified.",
-            "error_type": "internal_error",
-            "status_code": 500,
-        },
+        content=_standard_error_response(
+            request=request,
+            status_code=500,
+            message="An unexpected internal error occurred. Our team has been notified.",
+            error_type="internal_error",
+        ),
     )
+
+
+async def http_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    from fastapi.exceptions import HTTPException
+
+    if isinstance(exc, HTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=_standard_error_response(
+                request=request,
+                status_code=exc.status_code,
+                message=exc.detail,
+                error_type=f"http_{exc.status_code}",
+            ),
+        )
+    return await global_exception_handler(request, exc)

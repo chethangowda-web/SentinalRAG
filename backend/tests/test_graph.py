@@ -100,10 +100,10 @@ class TestContradictionNode:
         state["contradiction_detected"] = True
         assert route_after_contradiction(state) == "clarification"
 
-    def test_route_no_contradiction_to_fallback(self):
+    def test_route_no_contradiction_to_generate(self):
         state: GraphState = _make_state()
         state["contradiction_detected"] = False
-        assert route_after_contradiction(state) == "fallback"
+        assert route_after_contradiction(state) == "generate_answer"
 
 
 class TestRetryNode:
@@ -128,6 +128,7 @@ class TestRetryNode:
     def test_route_improved_to_generate(self):
         state: GraphState = _make_state(level="HIGH", score=80.0)
         state["confidence_score"] = 0.5
+        state["confidence_improved"] = True
         assert route_after_retry(state) == "generate_answer"
 
     def test_route_not_improved_to_contradiction(self):
@@ -139,6 +140,7 @@ class TestRetryNode:
         state["retry_count"] = 1
         state["max_retries"] = 2
         state["confidence_score"] = 50.0
+        state["confidence_improved"] = True
         assert route_after_retry(state) == "rewrite_query"
 
 
@@ -259,6 +261,11 @@ class TestGraphExecution:
                             "citations": [],
                             "reasoning_path": [],
                             "latencies": {},
+                            "trace_id": "test-trace-id",
+                            "graph_execution": [],
+                            "retrieval_details": [],
+                            "confidence_breakdown": None,
+                            "llm_observability": None,
                         },
                         {"configurable": {"db": db_session}},
                     )
@@ -283,30 +290,37 @@ class TestGraphExecution:
                 mock_retry.return_value = mock_response
                 with patch("app.graph.nodes.rewrite_node.rewrite_query") as mock_rewrite:
                     mock_rewrite.return_value = "improved query"
+                    with patch("app.graph.nodes.generation_node.generate_answer") as mock_gen:
+                        mock_gen.return_value = "I don't have enough evidence to answer this question reliably."
 
-                    result = await graph.ainvoke(
-                        {
-                            "question": "obscure question",
-                            "rewritten_question": None,
-                            "retrieved_chunks": [],
-                            "confidence_score": 0.0,
-                            "confidence_level": "LOW",
-                            "confidence_reason": None,
-                            "retry_count": 0,
-                            "max_retries": 2,
-                            "contradiction_detected": False,
-                            "contradiction_reason": None,
-                            "clarification_needed": False,
-                            "clarification_question": None,
-                            "answer": None,
-                            "citations": [],
-                            "reasoning_path": [],
-                            "latencies": {},
-                        },
-                        {"configurable": {"db": db_session}},
-                    )
-                    assert "don't have enough evidence" in result["answer"]
-                    assert any("fallback" in s for s in result["reasoning_path"])
+                        result = await graph.ainvoke(
+                            {
+                                "question": "obscure question",
+                                "rewritten_question": None,
+                                "retrieved_chunks": [],
+                                "confidence_score": 0.0,
+                                "confidence_level": "LOW",
+                                "confidence_reason": None,
+                                "retry_count": 0,
+                                "max_retries": 2,
+                                "contradiction_detected": False,
+                                "contradiction_reason": None,
+                                "clarification_needed": False,
+                                "clarification_question": None,
+                                "answer": None,
+                                "citations": [],
+                                "reasoning_path": [],
+                                "latencies": {},
+                                "trace_id": "test-trace-id",
+                                "graph_execution": [],
+                                "retrieval_details": [],
+                                "confidence_breakdown": None,
+                                "llm_observability": None,
+                            },
+                            {"configurable": {"db": db_session}},
+                        )
+                        assert "don't have enough evidence" in result["answer"]
+                        assert any("generate_answer" in s for s in result["reasoning_path"])
 
 
 def _make_high_conf_response():
@@ -437,4 +451,9 @@ def _make_state(
         "citations": [],
         "reasoning_path": [],
         "latencies": {},
+        "trace_id": "test-trace-id",
+        "graph_execution": [],
+        "retrieval_details": [],
+        "confidence_breakdown": None,
+        "llm_observability": None,
     }

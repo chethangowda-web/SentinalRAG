@@ -166,6 +166,9 @@ User Query
 | **Testing** | pytest, pytest-asyncio, pytest-cov, pytest-benchmark | — |
 | **Load Testing** | Locust | 2.33 |
 | **Monitoring** | In-memory metrics, structured JSON logging, health/readiness endpoints | — |
+| **Tokenization** | tiktoken (cl100k_base) with fallback estimator | 0.9 |
+| **Migrations** | Alembic (async SQLAlchemy) | 1.14 |
+| **Tracing** | Decision trace service (save/export CSV, Markdown, JSON) | — |
 
 ---
 
@@ -184,7 +187,8 @@ sentinelrag/
 │   │   │   ├── ingest.py             # POST /ingest (document upload)
 │   │   │   ├── embed.py              # POST /embed, GET /chunks
 │   │   │   ├── metrics.py            # GET /metrics/performance|system|errors
-│   │   │   └── evaluation.py         # POST /evaluate, GET /report|history|dataset
+│   │   │   ├── evaluation.py         # POST /evaluate, GET /report|history|dataset
+│   │   │   └── traces.py             # GET /traces, GET /export, POST /traces
 │   │   ├── core/                     # Core framework
 │   │   │   ├── config.py             # Pydantic Settings (all configuration)
 │   │   │   ├── database.py           # Async SQLAlchemy engine & sessions
@@ -217,7 +221,7 @@ sentinelrag/
 │   │   │   ├── document.py
 │   │   │   ├── chunk.py
 │   │   │   └── metrics.py
-│   │   ├── services/                 # Business logic (18 modules)
+│   │   ├── services/                 # Business logic (20+ modules)
 │   │   │   ├── file_service.py       # File validation & save
 │   │   │   ├── document_service.py   # Ingest pipeline
 │   │   │   ├── ocr_service.py        # Tesseract OCR
@@ -236,9 +240,21 @@ sentinelrag/
 │   │   │   ├── query_rewriter.py     # LLM query rewriting
 │   │   │   ├── contradiction_service.py # Conflict detection
 │   │   │   ├── clarification_service.py # Ambiguity detection
-│   │   │   └── answer_generator.py   # LLM answer generation
+│   │   │   ├── answer_generator.py   # LLM answer generation
+│   │   │   ├── trace_service.py      # Decision trace CRUD + export
+│   │   │   ├── token_counter.py      # tiktoken-based token counting
+│   │   │   └── health_check.py       # Startup dependency waiter
+│   │   ├── models/
+│   │   │   ├── document.py
+│   │   │   ├── chunk.py
+│   │   │   └── trace.py              # Trace ORM model
 │   │   └── utils/
 │   │       └── file_utils.py         # UUID generation, path helpers
+│   ├── migrations/                   # Alembic database migrations
+│   │   ├── env.py                    # Async Alembic environment
+│   │   ├── script.py.mako            # Migration template
+│   │   └── versions/                 # Revision scripts
+│   │       └── 001_initial.py        # Creates documents, chunks, traces tables
 │   ├── evaluation/                   # Benchmark evaluation framework
 │   │   ├── dataset.py                # Dataset loader
 │   │   ├── datasets/benchmark.json   # 18-question benchmark
@@ -373,7 +389,7 @@ npm run dev
 | `DATABASE_URL` | No | `postgresql+asyncpg://sentinel:sentinel@localhost:5432/sentinelrag` | PostgreSQL connection |
 | `REDIS_URL` | No | `redis://localhost:6379/0` | Redis connection |
 | `QDRANT_URL` | No | `http://localhost:6333` | Qdrant connection |
-| `SECRET_KEY` | Yes | `change-me-in-production` | App secret key (change in prod) |
+| `SECRET_KEY` | Yes | `""` | App secret key (empty=crash, set a strong 32+ char value) |
 | `LOG_LEVEL` | No | `INFO` | Logging level |
 | `MAX_FILE_SIZE` | No | `52428800` | Max upload size (50MB) |
 | `RATE_LIMIT_MAX_REQUESTS` | No | `100` | Max requests per window |
@@ -399,6 +415,10 @@ npm run dev
 | `GET` | `/api/v1/evaluation/report` | Latest evaluation report |
 | `GET` | `/api/v1/evaluation/history` | Evaluation run history |
 | `GET` | `/api/v1/evaluation/dataset` | Benchmark dataset summary |
+| `GET` | `/api/v1/traces` | List decision traces with optional session_id filter |
+| `GET` | `/api/v1/traces/{trace_id}` | Get single decision trace |
+| `GET` | `/api/v1/traces/export/csv` | Export traces as CSV file |
+| `GET` | `/api/v1/traces/export/markdown` | Export traces as Markdown report |
 | `GET` | `/metrics/performance` | Performance latency metrics (p50, p95, p99) |
 | `GET` | `/metrics/system` | CPU, memory, disk usage |
 | `GET` | `/metrics/errors` | Error counts by type |
@@ -469,6 +489,11 @@ See [PERFORMANCE.md](./PERFORMANCE.md) for detailed benchmarks, load test result
 - [x] Docker Compose deployment
 - [x] CI pipeline (lint, test, build)
 - [x] API documentation (OpenAPI/Swagger)
+- [x] Explainability & decision traceability (confidence breakdown, per-node execution traces)
+- [x] AI Observability (LLM token usage tracking, model metadata)
+- [x] Production hardening (SECRET_KEY validation, Alembic migrations, startup health checks)
+- [x] Standardized error responses (request_id, trace_id, error_code)
+- [x] Token counting (tiktoken integration)
 - [ ] Multi-modal RAG (images, tables, charts)
 - [ ] Streaming responses (Server-Sent Events)
 - [ ] User authentication and multi-tenant support

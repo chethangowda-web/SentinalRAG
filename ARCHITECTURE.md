@@ -33,7 +33,8 @@ Python was chosen for its mature ML ecosystem (Sentence Transformers, PyTorch, L
 | `database.py` | Async SQLAlchemy engine + session factory | Lazy initialization; `pool_size=5`, `max_overflow=10` for 50+ concurrent users |
 | `logging.py` | Structured JSON logging | Suppresses verbose library logs (httpx, urllib3); supports `request_id` for distributed tracing |
 | `middleware.py` | RequestID, Security Headers, Rate Limiting | In-memory rate limiter (acceptable for single-instance; Redis upgrade path documented) |
-| `exceptions.py` | 8-custom-type exception hierarchy | Every exception maps to correct HTTP status code; generic handler prevents stack leaks |
+| `exceptions.py` | 8-custom-type exception hierarchy with standardized error responses | Every exception maps to correct HTTP status code; generic handler prevents stack leaks. All error responses include `request_id`, `trace_id`, `error_code`, and `message` for consistent client-side handling |
+| `health_check.py` | Exponential backback dependency waiter | `wait_for_postgres()` and `wait_for_qdrant()` with base 0.5s backoff, max 10 retries. Called during startup before Alembic migrations |
 | `metrics.py` | In-memory metrics with p50/p95/p99 | 10,000-sample max prevents unbounded growth; tagged latency recording per operation |
 | `resource_tracker.py` | Async CPU/memory/disk sampling | Background asyncio task at 1-second intervals; 3600-sample max (1 hour); graceful psutil degradation |
 
@@ -82,6 +83,18 @@ LangGraph was chosen over a simple if-else chain because it provides:
 **Node 7: Generate Answer** — Constructs a prompt with the original question and retrieved context. Instructs the LLM to use only the provided context and cite sources with `[Source N]` markers.
 
 **Node 8: Fallback** — Returns a standard low-confidence "I don't have enough information" response when all paths fail.
+
+### Confidence Breakdown & Observability
+
+Every node in the pipeline now returns a `confidence_breakdown` dict with per-component scores (`vector_similarity`, `reranker_confidence`, `citation_coverage`) plus pipeline status flags (`contradiction_status`, `retry_success`). The generation node computes the **definitive** final breakdown, reflecting the full pipeline state.
+
+An `llm_observability` dict tracks token usage per stage — prompt/completion/total tokens via `tiktoken` (cl100k_base, fallback `len//4`) — along with model name and temperature for AI observability.
+
+The `graph_execution` list captures per-node timing, input/output summaries, routing decisions, and retry counts for full decision traceability.
+
+### Trace Service
+
+A dedicated `TraceService` persists every pipeline execution as a `Trace` ORM record (SQLAlchemy + Alembic migrations). Traces include question, answer, confidence score, reasoning path, retrieval details, latencies, llm_observability, and graph execution data. Export endpoints support CSV, Markdown, and JSON formats.
 
 **Why 8 nodes and not simpler?** Each node has a single responsibility, making testing, logging, and debugging straightforward. The cost is slightly more indirection, but the ability to time, trace, and test each step independently justifies the design.
 

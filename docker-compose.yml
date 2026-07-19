@@ -84,7 +84,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://sentinel:sentinel@postgres:5432/sentinelrag
       REDIS_URL: redis://redis:6379/0
       QDRANT_URL: http://qdrant:6333
-      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+      SECRET_KEY: ${SECRET_KEY:-}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       BACKEND_CORS_ORIGINS: '["http://localhost:3000","http://localhost"]'
       UPLOAD_DIR: /data/uploads

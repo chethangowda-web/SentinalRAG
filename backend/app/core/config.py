@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://sentinel:sentinel@localhost:5432/sentinelrag"
     REDIS_URL: str = "redis://localhost:6379/0"
     QDRANT_URL: str = "http://localhost:6333"
-    SECRET_KEY: str = "change-me-in-production"
+    SECRET_KEY: str = ""
 
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
@@ -75,18 +75,26 @@ class Settings(BaseSettings):
         return self.FEATHERLESS_MODEL or self.LLM_MODEL
 
     def validate(self) -> list[str]:
-        warnings: list[str] = []
-        if self.SECRET_KEY == "change-me-in-production":
-            warnings.append("SECRET_KEY is set to the default value. Change it in production.")
+        errors: list[str] = []
+        if not self.SECRET_KEY:
+            errors.append("SECRET_KEY is required. Set it in .env or environment variables.")
         if not self.effective_llm_api_key:
-            warnings.append("No LLM API key configured (DEEPSEEK_API_KEY or FEATHERLESS_API_KEY). LLM features will not work.")
-        if not self.DATABASE_URL.startswith("postgresql"):
-            warnings.append("DATABASE_URL should use async PostgreSQL in production.")
-        return warnings
+            errors.append("No LLM API key configured (DEEPSEEK_API_KEY or FEATHERLESS_API_KEY). LLM features will not work.")
+        if not self.DATABASE_URL.startswith("postgresql") and not self.DATABASE_URL.startswith("sqlite"):
+            errors.append("DATABASE_URL should use async PostgreSQL or SQLite.")
+        return errors
 
 
 settings = Settings()
 
-_validation_warnings = settings.validate()
-for w in _validation_warnings:
-    logger.warning("Configuration warning: %s", w)
+_validation_errors = settings.validate()
+for e in _validation_errors:
+    logger.error("Configuration error: %s", e)
+if _validation_errors:
+    if settings.DEBUG or settings.DATABASE_URL.startswith("sqlite"):
+        logger.warning("Proceeding despite configuration errors (debug/dev mode)")
+    else:
+        raise SystemExit(
+            "Fatal configuration errors detected. Fix them before starting the server.\n"
+            + "\n".join(f"  - {e}" for e in _validation_errors)
+        )

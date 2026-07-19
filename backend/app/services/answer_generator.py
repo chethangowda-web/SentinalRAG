@@ -2,6 +2,7 @@ import logging
 import time
 
 from app.core.config import settings
+from app.services.token_counter import count_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,20 @@ def generate_answer(question: str, chunks: list[dict]) -> str:
     except Exception as e:
         logger.error("Answer generation failed: %s", e)
         return _no_llm_fallback(question, chunks)
+
+
+def get_usage_tokens(question: str, chunks: list[dict], answer: str) -> dict:
+    prompt_text = (
+        f"Question: {question}\n"
+        + "\n".join(c.get("text", "") or "" for c in chunks)
+    )
+    prompt_tokens = count_tokens(prompt_text)
+    completion_tokens = count_tokens(answer)
+    return {
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens": prompt_tokens + completion_tokens,
+    }
 
 
 def _no_llm_fallback(question: str, chunks: list[dict]) -> str:

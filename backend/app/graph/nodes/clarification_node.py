@@ -23,6 +23,17 @@ async def clarification_node(state: GraphState) -> dict:
 
     needed = clarification is not None
 
+    graph_execution = list(state.get("graph_execution", []))
+    graph_execution.append({
+        "node_name": "clarification",
+        "execution_time_ms": elapsed,
+        "input": f"question={question[:80]}, {len(chunks)} chunks",
+        "output": f"needed={needed}" + (f": {clarification[:80]}" if clarification else ""),
+        "decision": "complete -> END",
+        "next_node": "END",
+        "retry_count": state.get("retry_count", 0),
+    })
+
     logger.info(
         "Clarification node: needed=%s (%.1fms)",
         needed, elapsed,
@@ -33,4 +44,5 @@ async def clarification_node(state: GraphState) -> dict:
         "clarification_question": clarification,
         "latencies": latencies,
         "reasoning_path": reasoning_path,
+        "graph_execution": graph_execution,
     }
