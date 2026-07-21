@@ -3,6 +3,7 @@
 import { useHealth } from "@/hooks/use-health";
 import { useDocuments } from "@/hooks/use-documents";
 import { useEvaluationReport } from "@/hooks/use-evaluation";
+import { useDashboardStats } from "@/hooks/use-dashboard";
 import { MetricCard } from "@/components/shared/MetricCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
@@ -11,47 +12,48 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   FileText,
-  Brain,
   Search,
   Activity,
   Clock,
-  CheckCircle2,
   AlertTriangle,
   RefreshCw,
   Shield,
-  Zap,
-  Gauge,
   BarChart3,
+  Scan,
+  Layers,
 } from "lucide-react";
-import type { IngestResponse } from "@/types";
 
 export default function DashboardPage() {
-  const { data: health, isLoading: healthLoading } = useHealth();
+  const { data: health } = useHealth();
   const { data: documents, isLoading: docsLoading } = useDocuments();
-  const { data: evaluation, isLoading: evalLoading } = useEvaluationReport();
+  const { data: evaluation } = useEvaluationReport();
+  const { data: stats } = useDashboardStats();
 
-  const totalDocs = documents?.length ?? 0;
-  const totalChunks = documents?.reduce((sum, d) => sum + (d.chunk_count || 0), 0) ?? 0;
-  const totalWords = documents?.reduce((sum, d) => sum + (d.word_count || 0), 0) ?? 0;
+  const totalDocs = stats?.total_documents ?? documents?.length ?? 0;
+  const totalChunks = stats?.total_chunks ?? documents?.reduce((sum, d) => sum + (d.chunk_count || 0), 0) ?? 0;
+  const totalWords = stats?.total_words ?? documents?.reduce((sum, d) => sum + (d.word_count || 0), 0) ?? 0;
+  const totalSessions = stats?.total_sessions ?? 0;
   const uptime = health?.uptime_seconds ?? 0;
-  const uptimeFormatted = uptime > 3600
-    ? `${(uptime / 3600).toFixed(1)}h`
-    : `${(uptime / 60).toFixed(0)}m`;
+  const uptimeFormatted = uptime > 3600 ? `${(uptime / 3600).toFixed(1)}h` : `${(uptime / 60).toFixed(0)}m`;
+
+  const avgOcrConf = stats?.avg_ocr_confidence;
+  const docTypes = stats?.document_types ?? {};
 
   const summary = evaluation?.summary;
   const faithfulness = summary?.sentinel?.avg_faithfulness?.value;
-  const avgConfidence = summary?.sentinel?.avg_answer_relevancy?.value;
+  const avgRelevancy = summary?.sentinel?.avg_answer_relevancy?.value;
   const hallucinationRate = faithfulness != null ? ((1 - faithfulness) * 100).toFixed(1) : null;
+  const retryRate = summary?.sentinel?.retry_success_rate?.value;
 
-  const recentDocs = documents?.slice(0, 5) ?? [];
+  const recentDocs = stats?.recent_documents ?? documents?.slice(0, 5) ?? [];
 
   return (
     <ErrorBoundary>
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">RAG Dashboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Document Intelligence Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Real-time retrieval-augmented generation performance metrics.
+            Real-time metrics for your RAG system.
           </p>
         </div>
 
@@ -59,28 +61,28 @@ export default function DashboardPage() {
           <MetricCard
             title="Documents Indexed"
             value={totalDocs}
-            subtitle="total documents"
+            subtitle={`${totalPages(totalDocs, stats)} pages · ${totalWords.toLocaleString()} words`}
             icon={FileText}
             color="hsl(var(--chart-1))"
           />
           <MetricCard
-            title="Chunks Created"
+            title="Knowledge Chunks"
             value={totalChunks.toLocaleString()}
-            subtitle={`${totalWords.toLocaleString()} words`}
-            icon={Brain}
+            subtitle={`${totalSessions} chat sessions`}
+            icon={Layers}
             color="hsl(var(--chart-2))"
           />
           <MetricCard
-            title="Embeddings Stored"
-            value={totalChunks.toLocaleString()}
-            subtitle="384-dimensional vectors"
-            icon={BarChart3}
+            title="OCR Confidence"
+            value={avgOcrConf != null ? `${avgOcrConf.toFixed(0)}%` : "--"}
+            subtitle={avgOcrConf != null ? "average quality score" : "no OCR data"}
+            icon={Scan}
             color="hsl(var(--chart-3))"
           />
           <MetricCard
-            title="Average Retrieval"
-            value={avgConfidence != null ? `${(avgConfidence * 100).toFixed(0)}%` : "--"}
-            subtitle="confidence score"
+            title="Answer Relevancy"
+            value={avgRelevancy != null ? `${(avgRelevancy * 100).toFixed(0)}%` : "--"}
+            subtitle="retrieval confidence"
             icon={Search}
             color="hsl(var(--chart-4))"
           />
@@ -92,19 +94,19 @@ export default function DashboardPage() {
             value={hallucinationRate != null ? `${hallucinationRate}%` : "--"}
             subtitle="of generated answers"
             icon={AlertTriangle}
-            color="hsl(var(--chart-1))"
+            color={hallucinationRate != null && parseFloat(hallucinationRate) > 10 ? "hsl(var(--destructive))" : "hsl(var(--chart-1))"}
           />
           <MetricCard
             title="Self-Corrections"
-              value={summary?.sentinel?.retry_success_rate?.value != null ? `${((1 - summary.sentinel.retry_success_rate.value) * 100).toFixed(0)}%` : "--"}
+            value={retryRate != null ? `${((1 - retryRate) * 100).toFixed(0)}%` : "--"}
             subtitle="query rewrites triggered"
             icon={RefreshCw}
             color="hsl(var(--chart-2))"
           />
           <MetricCard
-            title="Average Confidence"
+            title="Faithfulness"
             value={faithfulness != null ? `${(faithfulness * 100).toFixed(0)}%` : "--"}
-            subtitle="faithfulness score"
+            subtitle="overall answer quality"
             icon={Shield}
             color="hsl(var(--chart-3))"
           />
@@ -117,7 +119,30 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                Document Types
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {Object.keys(docTypes).length > 0 ? (
+                <div className="space-y-2">
+                  {Object.entries(docTypes).map(([type, count]) => (
+                    <div key={type} className="flex items-center justify-between py-1.5">
+                      <span className="text-sm capitalize">{type.replace(/_/g, " ")}</span>
+                      <Badge variant="outline">{count}</Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-4 text-center">No documents categorized yet.</p>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -126,16 +151,7 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {evalLoading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="flex items-center justify-between p-3">
-                      <div className="h-4 w-32 bg-muted rounded animate-pulse" />
-                      <div className="h-4 w-16 bg-muted rounded animate-pulse" />
-                    </div>
-                  ))}
-                </div>
-              ) : summary ? (
+              {summary ? (
                 <div className="space-y-2">
                   <EvalRow label="Faithfulness" value={summary.sentinel?.avg_faithfulness?.value} />
                   <EvalRow label="Correctness" value={summary.sentinel?.avg_correctness?.value} />
@@ -146,7 +162,7 @@ export default function DashboardPage() {
               ) : (
                 <div className="flex flex-col items-center py-8 text-center">
                   <AlertTriangle className="h-8 w-8 text-muted-foreground mb-3" />
-                  <p className="text-sm text-muted-foreground">No evaluation data yet. Run an evaluation to see metrics.</p>
+                  <p className="text-sm text-muted-foreground">No evaluation data yet.</p>
                 </div>
               )}
             </CardContent>
@@ -169,25 +185,26 @@ export default function DashboardPage() {
                       key={doc.id}
                       className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-secondary/30"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
                           <FileText className="h-4 w-4 text-primary" />
                         </div>
-                        <div>
-                          <p className="text-sm font-medium">{doc.filename}</p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{doc.filename}</p>
                           <p className="text-xs text-muted-foreground">
-                            {doc.chunk_count ?? 0} chunks · {doc.word_count?.toLocaleString() ?? 0} words · {new Date(doc.created_at).toLocaleDateString()}
+                            {doc.document_type && <span className="capitalize">{doc.document_type.replace(/_/g, " ")}</span>}
+                            {doc.ocr_quality && <span> · OCR: {doc.ocr_quality}</span>}
+                            <span> · {new Date(doc.created_at).toLocaleDateString()}</span>
                           </p>
                         </div>
                       </div>
-                      <StatusBadge status={doc.status} />
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="flex flex-col items-center py-8 text-center">
                   <FileText className="h-8 w-8 text-muted-foreground mb-3" />
-                  <p className="text-sm text-muted-foreground">No documents yet. Upload your first document to get started.</p>
+                  <p className="text-sm text-muted-foreground">No documents yet.</p>
                 </div>
               )}
             </CardContent>
@@ -198,21 +215,9 @@ export default function DashboardPage() {
   );
 }
 
-function StatusRow({ label, status }: { label: string; status: string }) {
-  const isHealthy = status === "healthy" || status === "connected";
-  return (
-    <div className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-secondary/30 transition-colors">
-      <span className="text-sm">{label}</span>
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground capitalize">{status}</span>
-        {isHealthy ? (
-          <CheckCircle2 className="h-4 w-4 text-success" />
-        ) : (
-          <AlertTriangle className="h-4 w-4 text-warning" />
-        )}
-      </div>
-    </div>
-  );
+function totalPages(docCount: number, stats?: any): string {
+  if (stats?.total_pages) return `${stats.total_pages} pages`;
+  return `${docCount} docs`;
 }
 
 function EvalRow({ label, value }: { label: string; value?: number | string }) {

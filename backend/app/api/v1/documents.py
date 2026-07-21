@@ -43,6 +43,14 @@ async def list_documents(db: AsyncSession = Depends(get_db)):
             "file_size": d.file_size,
             "processing_time": d.processing_time,
             "chunk_count": chunk_count,
+            "ocr_quality": d.ocr_quality,
+            "ocr_confidence": d.ocr_confidence,
+            "summary": d.summary,
+            "key_topics": d.key_topics.split(",") if d.key_topics else [],
+            "keywords": d.keywords.split(",") if d.keywords else [],
+            "document_type": d.document_type,
+            "estimated_reading_time": d.estimated_reading_time,
+            "duplicate_of": d.duplicate_of,
         }
         for d, chunk_count in rows
     ]
@@ -70,6 +78,15 @@ async def get_document(document_id: str, db: AsyncSession = Depends(get_db)):
         "original_path": doc.original_path,
         "extracted_text_path": doc.extracted_text_path,
         "text_content": doc.text_content,
+        "ocr_quality": doc.ocr_quality,
+        "ocr_confidence": doc.ocr_confidence,
+        "summary": doc.summary,
+        "key_topics": doc.key_topics.split(",") if doc.key_topics else [],
+        "keywords": doc.keywords.split(",") if doc.keywords else [],
+        "document_type": doc.document_type,
+        "estimated_reading_time": doc.estimated_reading_time,
+        "sha256_hash": doc.sha256_hash,
+        "duplicate_of": doc.duplicate_of,
     }
 
 

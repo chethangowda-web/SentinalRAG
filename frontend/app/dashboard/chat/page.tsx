@@ -72,6 +72,7 @@ import {
   Shield,
   Layers,
   ArrowUpDown,
+  Lightbulb,
 } from "lucide-react";
 import type {
   ChatResponse,
@@ -92,14 +93,16 @@ interface Message {
 /* ─── helpers ───────────────────────────────────────── */
 
 const stageLabels: Record<string, string> = {
-  retrieve: "Embed & Vector Search",
-  rewrite_query: "Rewrite Query",
-  retry_retrieve: "Re-Retrieve",
-  confidence_evaluate: "Evaluate Confidence",
-  contradiction_detect: "Detect Contradictions",
-  clarification: "Request Clarification",
-  generate_answer: "Generate Answer",
-  fallback_low_confidence: "Fallback (Low Confidence)",
+  retrieve: "Searching document knowledge base",
+  rewrite_query: "Rewriting your question for better results",
+  retry_retrieve: "Re-searching with improved query",
+  confidence_evaluate: "Checking confidence in the evidence",
+  contradiction_detect: "Scanning for contradictions in evidence",
+  clarification: "Asking for clarification",
+  generate_answer: "Generating final answer from evidence",
+  fallback_low_confidence: "Falling back — confidence too low",
+  __start__: "Starting pipeline",
+  __end__: "Pipeline complete",
 };
 
 const stageIcons: Record<string, React.ReactNode> = {
@@ -153,6 +156,103 @@ function confidenceBar(level: string) {
     default:
       return "bg-red-500";
   }
+}
+
+/* ─── Confidence Breakdown Component ────────────────── */
+
+function ConfidenceBreakdown({
+  breakdown,
+}: {
+  breakdown: NonNullable<ChatResponse["confidence_breakdown"]>;
+}) {
+  const bars = [
+    { label: "Vector Similarity", value: breakdown.vector_similarity * 100, color: "hsl(var(--chart-1))" },
+    { label: "Content Coverage", value: breakdown.coverage * 100, color: "hsl(var(--chart-2))" },
+    { label: "Cross-Encoder", value: breakdown.cross_encoder_score * 100, color: "hsl(var(--chart-3))" },
+    { label: "Citation Strength", value: Math.min(breakdown.citation_count * 20, 100), color: "hsl(var(--chart-4))" },
+  ];
+
+  return (
+    <div className="rounded-lg border bg-card">
+      <div className="px-3 py-2 text-xs font-medium text-muted-foreground flex items-center gap-1.5 border-b">
+        <Shield className="h-3.5 w-3.5" />
+        Confidence Breakdown
+      </div>
+      <div className="space-y-2 px-3 py-2">
+        {bars.map((bar) => (
+          <div key={bar.label} className="space-y-0.5">
+            <div className="flex justify-between text-[10px]">
+              <span className="text-muted-foreground">{bar.label}</span>
+              <span className="font-medium tabular-nums">{bar.value.toFixed(0)}%</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(bar.value, 100)}%` }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="h-full rounded-full"
+                style={{ backgroundColor: bar.color }}
+              />
+            </div>
+          </div>
+        ))}
+        <div className="pt-1.5 border-t text-[10px] text-muted-foreground flex justify-between">
+          <span>Raw score: {breakdown.raw_score.toFixed(3)}</span>
+          <span>Final: {breakdown.final_score.toFixed(3)}</span>
+          <span>Contradictions: {breakdown.contradiction_status}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Smarter Suggestions Component ─────────────────── */
+
+function SmarterSuggestions({
+  response,
+  onSuggestionClick,
+}: {
+  response: ChatResponse;
+  onSuggestionClick: (q: string) => void;
+}) {
+  const suggestions = useMemo(() => {
+    const s: string[] = [];
+    if (response.citations && response.citations.length > 0) {
+      s.push("What are the key findings from the cited documents?");
+    }
+    if (response.confidence_level === "LOW") {
+      s.push("Can you search again with more specific keywords?");
+    }
+    if (response.rewritten_question) {
+      s.push("Show me the original vs rewritten query comparison");
+    }
+    s.push("Summarize the main points from this response");
+    s.push("What related documents might be relevant?");
+    return s.slice(0, 3);
+  }, [response]);
+
+  if (suggestions.length === 0) return null;
+
+  return (
+    <div className="rounded-lg border bg-card">
+      <div className="px-3 py-2 text-xs font-medium text-muted-foreground flex items-center gap-1.5 border-b">
+        <Lightbulb className="h-3.5 w-3.5" />
+        Suggested follow-up questions
+      </div>
+      <div className="space-y-1 px-3 py-2">
+        {suggestions.map((q, qi) => (
+          <button
+            key={qi}
+            onClick={() => onSuggestionClick(q)}
+            className="w-full text-left text-[11px] text-muted-foreground hover:text-foreground py-1.5 px-2 rounded-md hover:bg-secondary/50 transition-colors flex items-center gap-2"
+          >
+            <span className="text-primary/60">→</span>
+            {q}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 /* ─── Reasoning Timeline Component ──────────────────── */
@@ -1147,6 +1247,21 @@ export default function ChatPage() {
                                   }
                                 />
                               )}
+
+                            {/* Confidence Breakdown */}
+                            {msg.response?.confidence_breakdown && (
+                              <ConfidenceBreakdown
+                                breakdown={msg.response.confidence_breakdown}
+                              />
+                            )}
+
+                            {/* Smarter Suggestions */}
+                            {msg.response && (
+                              <SmarterSuggestions
+                                response={msg.response}
+                                onSuggestionClick={(q) => setInput(q)}
+                              />
+                            )}
 
                             {/* Low confidence warning */}
                             {msg.response &&

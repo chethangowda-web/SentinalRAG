@@ -164,6 +164,33 @@ export interface Document {
   updated_at: string;
   file_size: number | null;
   chunk_count?: number | null;
+  ocr_quality?: string | null;
+  ocr_confidence?: number | null;
+  summary?: string | null;
+  key_topics?: string[];
+  keywords?: string[];
+  document_type?: string | null;
+  estimated_reading_time?: number | null;
+  duplicate_of?: string | null;
+}
+
+export interface DashboardStats {
+  total_documents: number;
+  total_chunks: number;
+  total_sessions: number;
+  docs_by_status: Record<string, number>;
+  total_chars: number;
+  total_words: number;
+  total_pages: number;
+  avg_ocr_confidence: number | null;
+  document_types: Record<string, number>;
+  recent_documents: {
+    id: string;
+    filename: string;
+    created_at: string;
+    document_type: string | null;
+    ocr_quality: string | null;
+  }[];
 }
 
 export interface ChunkMetadata {

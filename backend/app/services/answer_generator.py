@@ -20,6 +20,7 @@ def _get_llm():
             api_key=settings.effective_llm_api_key,
             base_url=settings.effective_llm_base_url,
             temperature=0.05,
+            max_tokens=256,
         )
     return _llm
 
@@ -33,9 +34,9 @@ def generate_answer(question: str, chunks: list[dict]) -> str:
     start = time.perf_counter()
 
     context_parts = []
-    for i, chunk in enumerate(chunks):
+    for i, chunk in enumerate(chunks[:5]):
         doc_id = chunk.get("document_id", "?")
-        text = chunk.get("text", "")
+        text = (chunk.get("text", "") or "")[:2000]
         context_parts.append(f"[Source {i+1}] (Document: {doc_id})\n{text}")
 
     context = "\n\n".join(context_parts)

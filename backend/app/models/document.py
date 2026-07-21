@@ -24,5 +24,16 @@ class Document(Base):
     file_size = Column(Integer, default=0)
     text_content = Column(Text, nullable=True)
 
+    ocr_quality = Column(String(10), nullable=True)
+    ocr_confidence = Column(Float, nullable=True)
+    summary = Column(Text, nullable=True)
+    key_topics = Column(Text, nullable=True)
+    keywords = Column(Text, nullable=True)
+    entities = Column(Text, nullable=True)
+    document_type = Column(String(50), nullable=True)
+    estimated_reading_time = Column(Integer, nullable=True)
+    sha256_hash = Column(String(64), nullable=True, index=True)
+    duplicate_of = Column(String(36), nullable=True)
+
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

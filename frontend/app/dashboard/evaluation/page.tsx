@@ -27,6 +27,7 @@ import {
   Brain,
   Target,
   Activity,
+  Download,
 } from "lucide-react";
 
 function GaugeChart({ value, label, color }: { value: number; label: string; color: string }) {
@@ -73,6 +74,33 @@ function Bar({ value, label, max = 100, color = "hsl(var(--primary))" }: { value
   );
 }
 
+function exportEvalReport(report: any) {
+  const text = [
+    "# SentinelRAG Evaluation Report",
+    `Timestamp: ${report.timestamp ?? new Date().toISOString()}`,
+    `Total Questions: ${report.total_questions ?? "N/A"}`,
+    "",
+    "## Sentinel Metrics",
+    ...Object.entries(report.summary?.sentinel ?? {}).map(([key, val]: [string, any]) =>
+      `${key.replace(/_/g, " ")}: ${val.value != null ? `${(val.value * 100).toFixed(1)}%` : "N/A"}`
+    ),
+    "",
+    "## Comparison vs Baseline",
+    ...Object.entries(report.summary?.comparison ?? {}).map(([key, val]: [string, any]) => {
+      const v = val as any;
+      return `${key.replace(/_/g, " ")}: ${v.baseline != null ? `${(v.baseline * 100).toFixed(1)}%` : "N/A"} → ${v.sentinel != null ? `${(v.sentinel * 100).toFixed(1)}%` : "N/A"} (${v.improved ? "improved" : "regressed"})`;
+    }),
+  ].join("\n");
+
+  const blob = new Blob([text], { type: "text/markdown" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `evaluation-report-${Date.now()}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function EvaluationPage() {
   const { data: report, isLoading: reportLoading } = useEvaluationReport();
   const { data: history, isLoading: historyLoading } = useEvaluationHistory();
@@ -112,6 +140,12 @@ export default function EvaluationPage() {
             )}
             {runError && (
               <span className="text-sm text-destructive">Failed: {runError}</span>
+            )}
+            {report && !isRunning && (
+              <Button variant="outline" size="sm" onClick={() => exportEvalReport(report)}>
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
             )}
             <Button onClick={handleRun} disabled={runEval.isPending || isRunning}>
               {isRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}

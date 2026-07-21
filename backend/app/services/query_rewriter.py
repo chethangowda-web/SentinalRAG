@@ -20,6 +20,7 @@ def _get_llm():
             api_key=settings.effective_llm_api_key,
             base_url=settings.effective_llm_base_url,
             temperature=settings.LLM_TEMPERATURE,
+            max_tokens=512,
         )
     return _llm
 

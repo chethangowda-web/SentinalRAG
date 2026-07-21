@@ -11,6 +11,7 @@ from app.api.v1.metrics import router as metrics_router
 from app.api.v1.traces import router as traces_router
 from app.api.v1.documents import router as documents_router
 from app.api.v1.settings import router as settings_router
+from app.api.v1.dashboard import router as dashboard_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
 api_v1_router.include_router(health_router, tags=["health"])
@@ -24,3 +25,4 @@ api_v1_router.include_router(metrics_router, tags=["metrics"])
 api_v1_router.include_router(traces_router, tags=["traces"])
 api_v1_router.include_router(documents_router, tags=["documents"])
 api_v1_router.include_router(settings_router, tags=["settings"])
+api_v1_router.include_router(dashboard_router, tags=["dashboard"])
