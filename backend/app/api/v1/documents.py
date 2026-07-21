@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -19,9 +19,15 @@ router = APIRouter()
 @router.get("/documents")
 async def list_documents(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(Document).order_by(Document.created_at.desc())
+        select(
+            Document,
+            func.count(Chunk.id).label("chunk_count"),
+        )
+        .outerjoin(Chunk, Chunk.document_id == Document.id)
+        .group_by(Document.id)
+        .order_by(Document.created_at.desc())
     )
-    docs = result.scalars().all()
+    rows = result.all()
     return [
         {
             "id": d.id,
@@ -36,8 +42,9 @@ async def list_documents(db: AsyncSession = Depends(get_db)):
             "updated_at": d.updated_at.isoformat() if d.updated_at else None,
             "file_size": d.file_size,
             "processing_time": d.processing_time,
+            "chunk_count": chunk_count,
         }
-        for d in docs
+        for d, chunk_count in rows
     ]
 
 

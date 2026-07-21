@@ -7,30 +7,65 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle2, XCircle, Minus } from "lucide-react";
 import toast from "react-hot-toast";
-import { Settings, Cpu, Shield, RefreshCw, CheckCircle2 } from "lucide-react";
+import { Cpu, Shield, RefreshCw, Server, Database, Brain, Wifi, HardDrive, Zap, Clock, Activity } from "lucide-react";
 
 import type { SettingsResponse } from "@/services/settings";
 
+interface SystemHealth {
+  backend: { status: string; version?: string; error?: string };
+  qdrant: { status: string; error?: string };
+  database: { status: string; error?: string };
+  llm: { status: string; model?: string; error?: string };
+  embedding?: { status: string; model?: string; error?: string };
+  disk?: { upload_dir_mb?: number; processed_dir_mb?: number; total_mb?: number; error?: string };
+  memory?: { total_mb?: number; available_mb?: number; used_mb?: number; percent?: number; error?: string };
+}
+
+function StatusIndicator({ status }: { status: string }) {
+  if (status === "healthy" || status === "configured") return <CheckCircle2 className="h-4 w-4 text-success" />;
+  if (status === "unhealthy") return <XCircle className="h-4 w-4 text-destructive" />;
+  return <Minus className="h-4 w-4 text-muted-foreground" />;
+}
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
+  const [health, setHealth] = useState<SystemHealth | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [edits, setEdits] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const fetchSettings = async () => {
+    const fetchData = async () => {
       try {
-        const mod = await import("@/services/settings");
-        const data = await mod.getSettings();
-        setSettings(data);
+        const [mod, healthMod] = await Promise.all([
+          import("@/services/settings"),
+          import("@/services/settings"),
+        ]);
+        const [settingsData, healthRaw] = await Promise.all([
+          mod.getSettings(),
+          healthMod.getSettingsHealth(),
+        ]);
+        setSettings(settingsData);
+
+        // also fetch /api/v1/metrics for disk/memory
+        const { api } = await import("@/services/api");
+        const { data: metricsData } = await api.get("/api/v1/metrics");
+
+        setHealth({
+          ...(healthRaw as unknown as SystemHealth),
+          disk: metricsData?.disk,
+          memory: metricsData?.memory,
+        });
       } catch {
-        // settings endpoint may not exist - show placeholder
+        // API might not be reachable - show what we have
       } finally {
         setLoading(false);
       }
     };
-    fetchSettings();
+    fetchData();
   }, []);
 
   const handleSave = async () => {
@@ -58,6 +93,13 @@ export default function SettingsPage() {
     { key: "max_retries", label: "Max Retries", desc: "Maximum query rewrite retries", type: "number" },
     { key: "ocr_language", label: "OCR Language", desc: "Tesseract language code (e.g. eng)", type: "text" },
   ];
+
+  const llmLabel = health?.llm?.model
+    ? `Groq (${health.llm.model})`
+    : (settings?.llm_model ?? "Unknown");
+
+  const dbLabel = health?.database?.status === "healthy" ? "PostgreSQL (connected)" : "PostgreSQL (disconnected)";
+  const qdrantLabel = health?.qdrant?.status === "healthy" ? "Qdrant (connected)" : "Qdrant (disconnected)";
 
   return (
     <ErrorBoundary>
@@ -128,11 +170,55 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <InfoRow label="Version" value="1.0.0" />
-                  <InfoRow label="LLM Provider" value="Groq (llama-3.3-70b-versatile)" />
-                  <InfoRow label="Embedding Model" value="BAAI/bge-small-en-v1.5" />
-                  <InfoRow label="Vector Database" value="Qdrant" />
-                  <InfoRow label="Database" value="PostgreSQL 16" />
+                  <InfoRow
+                    label="Version"
+                    value={health?.backend?.version ?? "1.0.0"}
+                    icon={<Server className="h-4 w-4 text-muted-foreground" />}
+                  />
+                  <InfoRow label="LLM Provider" value={llmLabel} icon={<Brain className="h-4 w-4 text-muted-foreground" />}>
+                    <StatusIndicator status={health?.llm?.status ?? "unknown"} />
+                  </InfoRow>
+                  <InfoRow
+                    label="Embedding Model"
+                    value={settings?.embedding_model ?? "BAAI/bge-small-en-v1.5"}
+                    icon={<Zap className="h-4 w-4 text-muted-foreground" />}
+                  />
+                  <Separator />
+                  <InfoRow label="Vector Database" value={qdrantLabel} icon={<Database className="h-4 w-4 text-muted-foreground" />}>
+                    <StatusIndicator status={health?.qdrant?.status ?? "unknown"} />
+                  </InfoRow>
+                  <InfoRow label="Database" value={dbLabel} icon={<Database className="h-4 w-4 text-muted-foreground" />}>
+                    <StatusIndicator status={health?.database?.status ?? "unknown"} />
+                  </InfoRow>
+                  <Separator />
+                  {health?.memory?.total_mb != null && (
+                    <InfoRow
+                      label="Memory"
+                      value={`${health.memory.used_mb?.toFixed(0) ?? "?"} MB / ${health.memory.total_mb.toFixed(0)} MB (${health.memory.percent?.toFixed(0) ?? "?"}%)`}
+                      icon={<Activity className="h-4 w-4 text-muted-foreground" />}
+                    />
+                  )}
+                  {health?.disk?.total_mb != null && (
+                    <InfoRow
+                      label="Storage"
+                      value={`${health.disk.total_mb.toFixed(1)} MB used`}
+                      icon={<HardDrive className="h-4 w-4 text-muted-foreground" />}
+                    />
+                  )}
+                  {settings?.embedding_dimension != null && (
+                    <InfoRow
+                      label="Vector Dimension"
+                      value={`${settings.embedding_dimension}`}
+                      icon={<Wifi className="h-4 w-4 text-muted-foreground" />}
+                    />
+                  )}
+                  {settings != null && (settings.rate_limit_max_requests ?? 0) > 0 && (
+                    <InfoRow
+                      label="Rate Limit"
+                      value={`${settings.rate_limit_max_requests} req / ${settings.rate_limit_window_seconds}s`}
+                      icon={<Clock className="h-4 w-4 text-muted-foreground" />}
+                    />
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -143,11 +229,27 @@ export default function SettingsPage() {
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function InfoRow({
+  label,
+  value,
+  icon,
+  children,
+}: {
+  label: string;
+  value: string;
+  icon?: React.ReactNode;
+  children?: React.ReactNode;
+}) {
   return (
     <div className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-secondary/30 transition-colors">
-      <span className="text-sm">{label}</span>
-      <span className="text-sm text-muted-foreground">{value}</span>
+      <span className="flex items-center gap-2 text-sm">
+        {icon}
+        {label}
+      </span>
+      <span className="flex items-center gap-2 text-sm text-muted-foreground">
+        {value}
+        {children}
+      </span>
     </div>
   );
 }

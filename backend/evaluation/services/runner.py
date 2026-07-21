@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -21,6 +22,20 @@ RESULTS_DIR = EVALUATION_DIR / "results"
 DATASETS_DIR = EVALUATION_DIR / "datasets"
 REPORTS_DIR = EVALUATION_DIR / "reports"
 
+_STATUS_FILE = Path("/tmp/eval_tasks.json")
+
+
+def _update_status(eval_id: str, progress: int, total: int, status: str = "running", error: str | None = None) -> None:
+    tasks = {}
+    if _STATUS_FILE.exists():
+        try:
+            tasks = json.loads(_STATUS_FILE.read_text())
+        except Exception:
+            tasks = {}
+    tasks[eval_id] = {"status": status, "progress": progress, "total": total, "error": error}
+    _STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _STATUS_FILE.write_text(json.dumps(tasks, indent=2))
+
 
 class EvaluationRunner:
     def __init__(self) -> None:
@@ -35,8 +50,9 @@ class EvaluationRunner:
         self,
         db: AsyncSession,
         dataset_path: str | None = None,
+        eval_id: str | None = None,
     ) -> dict[str, Any]:
-        eval_id = str(uuid.uuid4())
+        eval_id = eval_id or str(uuid.uuid4())
         timestamp = datetime.now(timezone.utc).isoformat()
 
         if dataset_path is None:
@@ -44,57 +60,95 @@ class EvaluationRunner:
 
         questions = self._load_dataset(dataset_path)
         logger.info("Evaluation %s: loaded %d questions from %s", eval_id, len(questions), dataset_path)
+        _update_status(eval_id, 0, len(questions))
 
-        baseline_results: list[dict[str, Any]] = []
-        sentinel_results: list[dict[str, Any]] = []
-        per_question: list[dict[str, Any]] = []
+        sem = asyncio.Semaphore(2)
+        total = len(questions)
 
-        for q in questions:
-            qid = q["id"]
-            logger.info("Processing question %s/%s: %s", qid, len(questions), q["question"][:60])
+        async def process_one(idx: int, q: dict[str, Any]) -> dict[str, Any] | None:
+            try:
+                async with sem:
+                    qid = q["id"]
+                    logger.info("Processing question %s/%s: %s", qid, total, q["question"][:60])
 
-            b_result = await self.baseline.answer(q["question"], db)
-            s_result = await self.sentinel.answer(q["question"], db)
+                    b_result, s_result = await asyncio.gather(
+                        self.baseline.answer(q["question"], db),
+                        self.sentinel.answer(q["question"], db),
+                    )
 
-            b_result["question_id"] = qid
-            s_result["question_id"] = qid
+                    b_result["question_id"] = qid
+                    s_result["question_id"] = qid
 
-            baseline_results.append(b_result)
-            sentinel_results.append(s_result)
+                    _update_status(eval_id, idx + 1, total)
 
-            per_question.append({
-                "id": qid,
-                "question": q["question"],
-                "ground_truth": q["ground_truth"],
-                "category": q["category"],
-                "has_contradiction": q.get("has_contradiction", False),
-                "needs_clarification": q.get("needs_clarification", False),
-                "has_context": q.get("has_context", True),
-                "baseline": {
-                    "answer": b_result["answer"],
-                    "confidence_score": b_result["confidence_score"],
-                    "confidence_level": b_result["confidence_level"],
-                    "latencies": b_result.get("latencies", {}),
-                    "citations": b_result.get("citations", []),
-                    "reasoning_path": b_result.get("reasoning_path", []),
-                    "contradiction_detected": b_result.get("contradiction_detected", False),
-                    "clarification_needed": b_result.get("clarification_needed", False),
-                    "clarification_question": b_result.get("clarification_question"),
-                    "retry_count": b_result.get("retry_count", 0),
-                },
-                "sentinel": {
-                    "answer": s_result["answer"],
-                    "confidence_score": s_result["confidence_score"],
-                    "confidence_level": s_result["confidence_level"],
-                    "latencies": s_result.get("latencies", {}),
-                    "citations": s_result.get("citations", []),
-                    "reasoning_path": s_result.get("reasoning_path", []),
-                    "contradiction_detected": s_result.get("contradiction_detected", False),
-                    "contradiction_reason": s_result.get("contradiction_reason"),
-                    "clarification_needed": s_result.get("clarification_needed", False),
-                    "clarification_question": s_result.get("clarification_question"),
-                    "retry_count": s_result.get("retry_count", 0),
-                },
+                    return {
+                        "id": qid,
+                        "question": q["question"],
+                        "ground_truth": q["ground_truth"],
+                        "category": q["category"],
+                        "has_contradiction": q.get("has_contradiction", False),
+                        "needs_clarification": q.get("needs_clarification", False),
+                        "has_context": q.get("has_context", True),
+                        "baseline": {
+                            "answer": b_result["answer"],
+                            "confidence_score": b_result["confidence_score"],
+                            "confidence_level": b_result["confidence_level"],
+                            "latencies": b_result.get("latencies", {}),
+                            "citations": b_result.get("citations", []),
+                            "reasoning_path": b_result.get("reasoning_path", []),
+                            "contradiction_detected": b_result.get("contradiction_detected", False),
+                            "clarification_needed": b_result.get("clarification_needed", False),
+                            "clarification_question": b_result.get("clarification_question"),
+                            "retry_count": b_result.get("retry_count", 0),
+                        },
+                        "sentinel": {
+                            "answer": s_result["answer"],
+                            "confidence_score": s_result["confidence_score"],
+                            "confidence_level": s_result["confidence_level"],
+                            "latencies": s_result.get("latencies", {}),
+                            "citations": s_result.get("citations", []),
+                            "reasoning_path": s_result.get("reasoning_path", []),
+                            "contradiction_detected": s_result.get("contradiction_detected", False),
+                            "contradiction_reason": s_result.get("contradiction_reason"),
+                            "clarification_needed": s_result.get("clarification_needed", False),
+                            "clarification_question": s_result.get("clarification_question"),
+                            "retry_count": s_result.get("retry_count", 0),
+                        },
+                    }
+            except Exception as exc:
+                logger.error("Question %s failed: %s", q.get("id", "?"), exc)
+                return None
+
+        results = await asyncio.gather(*[process_one(i, q) for i, q in enumerate(questions)])
+        per_question = [r for r in results if r is not None]
+
+        baseline_results = [pq["baseline"] for pq in per_question]
+        sentinel_results = [pq["sentinel"] for pq in per_question]
+
+        baseline_results_raw = []
+        sentinel_results_raw = []
+        for pq in per_question:
+            baseline_results_raw.append({
+                "answer": pq["baseline"]["answer"],
+                "confidence_score": pq["baseline"]["confidence_score"],
+                "latencies": pq["baseline"]["latencies"],
+                "citations": pq["baseline"]["citations"],
+                "reasoning_path": pq["baseline"]["reasoning_path"],
+                "contradiction_detected": pq["baseline"]["contradiction_detected"],
+                "clarification_needed": pq["baseline"]["clarification_needed"],
+                "retry_count": pq["baseline"]["retry_count"],
+                "retrieved_chunks": [],
+            })
+            sentinel_results_raw.append({
+                "answer": pq["sentinel"]["answer"],
+                "confidence_score": pq["sentinel"]["confidence_score"],
+                "latencies": pq["sentinel"]["latencies"],
+                "citations": pq["sentinel"]["citations"],
+                "reasoning_path": pq["sentinel"]["reasoning_path"],
+                "contradiction_detected": pq["sentinel"]["contradiction_detected"],
+                "clarification_needed": pq["sentinel"]["clarification_needed"],
+                "retry_count": pq["sentinel"]["retry_count"],
+                "retrieved_chunks": [],
             })
 
         logger.info("Computing metrics for %d questions...", len(questions))

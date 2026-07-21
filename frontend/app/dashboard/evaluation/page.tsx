@@ -81,9 +81,13 @@ export default function EvaluationPage() {
   const handleRun = async () => {
     try {
       await runEval.mutateAsync();
-      toast.success("Evaluation completed");
-    } catch { toast.error("Evaluation failed"); }
+    } catch { toast.error("Evaluation failed to start"); }
   };
+
+  const isRunning = runEval.evalStatus?.status === "running";
+  const runProgress = runEval.evalStatus?.progress ?? 0;
+  const runTotal = runEval.evalStatus?.total ?? 18;
+  const runError = runEval.evalStatus?.error;
 
   const summary = report?.summary;
   const s = summary?.sentinel;
@@ -99,10 +103,21 @@ export default function EvaluationPage() {
               Benchmark your RAG pipeline against a standard baseline.
             </p>
           </div>
-          <Button onClick={handleRun} disabled={runEval.isPending}>
-            {runEval.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-            Run Evaluation
-          </Button>
+          <div className="flex items-center gap-3">
+            {isRunning && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Evaluating {runProgress}/{runTotal} questions...</span>
+              </div>
+            )}
+            {runError && (
+              <span className="text-sm text-destructive">Failed: {runError}</span>
+            )}
+            <Button onClick={handleRun} disabled={runEval.isPending || isRunning}>
+              {isRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+              {isRunning ? "Running..." : "Run Evaluation"}
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -198,6 +213,20 @@ export default function EvaluationPage() {
                   <GaugeChart value={s.faithfulness?.value != null ? s.faithfulness.value * 100 : 0} label="Faithfulness" color="#22c55e" />
                   <GaugeChart value={s.correctness?.value != null ? s.correctness.value * 100 : 0} label="Correctness" color="#3b82f6" />
                   <GaugeChart value={s.context_recall?.value != null ? s.context_recall.value * 100 : 0} label="Context Recall" color="#a855f7" />
+                </div>
+              </div>
+            ) : isRunning ? (
+              <div className="flex flex-col items-center py-12 text-center">
+                <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" />
+                <h3 className="text-lg font-medium">Evaluation in progress</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Processing {runProgress}/{runTotal} questions...
+                </p>
+                <div className="w-64 h-2 bg-secondary rounded-full mt-4 overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all duration-500"
+                    style={{ width: `${(runProgress / runTotal) * 100}%` }}
+                  />
                 </div>
               </div>
             ) : (

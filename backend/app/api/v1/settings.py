@@ -87,6 +87,17 @@ async def settings_health_check():
         "llm": {"status": "unknown"},
     }
 
+    # Check database
+    try:
+        from app.core.database import get_engine
+        from sqlalchemy import text as sa_text
+        engine = get_engine()
+        async with engine.connect() as conn:
+            await conn.execute(sa_text("SELECT 1"))
+        results["database"] = {"status": "healthy"}
+    except Exception as e:
+        results["database"] = {"status": "unhealthy", "error": str(e)}
+
     # Check Qdrant
     try:
         from app.core.qdrant import get_qdrant_client
