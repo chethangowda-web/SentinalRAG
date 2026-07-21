@@ -124,28 +124,28 @@ export default function EvaluationPage() {
           <Card>
             <CardContent className="pt-6 text-center">
               <Shield className="h-5 w-5 text-success mx-auto mb-2" />
-              <p className="text-2xl font-bold">{s?.faithfulness?.value != null ? `${(s.faithfulness.value * 100).toFixed(0)}%` : "--"}</p>
+              <p className="text-2xl font-bold">{s?.avg_faithfulness?.value != null ? `${(s.avg_faithfulness.value * 100).toFixed(0)}%` : "--"}</p>
               <p className="text-xs text-muted-foreground">Faithfulness</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
               <Target className="h-5 w-5 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold">{s?.correctness?.value != null ? `${(s.correctness.value * 100).toFixed(0)}%` : "--"}</p>
+              <p className="text-2xl font-bold">{s?.avg_correctness?.value != null ? `${(s.avg_correctness.value * 100).toFixed(0)}%` : "--"}</p>
               <p className="text-xs text-muted-foreground">Correctness</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
               <Activity className="h-5 w-5 text-chart-2 mx-auto mb-2" />
-              <p className="text-2xl font-bold">{s?.answer_relevancy?.value != null ? `${(s.answer_relevancy.value * 100).toFixed(0)}%` : "--"}</p>
+              <p className="text-2xl font-bold">{s?.avg_answer_relevancy?.value != null ? `${(s.avg_answer_relevancy.value * 100).toFixed(0)}%` : "--"}</p>
               <p className="text-xs text-muted-foreground">Answer Relevancy</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
               <Brain className="h-5 w-5 text-chart-3 mx-auto mb-2" />
-              <p className="text-2xl font-bold">{s?.context_recall?.value != null ? `${(s.context_recall.value * 100).toFixed(0)}%` : "--"}</p>
+              <p className="text-2xl font-bold">{s?.avg_context_recall?.value != null ? `${(s.avg_context_recall.value * 100).toFixed(0)}%` : "--"}</p>
               <p className="text-xs text-muted-foreground">Context Recall</p>
             </CardContent>
           </Card>
@@ -155,21 +155,21 @@ export default function EvaluationPage() {
           <Card>
             <CardContent className="pt-6 text-center">
               <CheckCircle2 className="h-5 w-5 text-success mx-auto mb-2" />
-              <p className="text-2xl font-bold">{s?.context_precision?.value != null ? `${(s.context_precision.value * 100).toFixed(0)}%` : "--"}</p>
+              <p className="text-2xl font-bold">{s?.avg_context_precision?.value != null ? `${(s.avg_context_precision.value * 100).toFixed(0)}%` : "--"}</p>
               <p className="text-xs text-muted-foreground">Precision</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
               <XCircle className="h-5 w-5 text-destructive mx-auto mb-2" />
-              <p className="text-2xl font-bold">{s?.faithfulness?.value != null ? `${((1 - s.faithfulness.value) * 100).toFixed(1)}%` : "--"}</p>
+              <p className="text-2xl font-bold">{s?.avg_faithfulness?.value != null ? `${((1 - s.avg_faithfulness.value) * 100).toFixed(1)}%` : "--"}</p>
               <p className="text-xs text-muted-foreground">Hallucination</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
               <RefreshCw className="h-5 w-5 text-warning mx-auto mb-2" />
-              <p className="text-2xl font-bold">{s?.retry_rate?.value != null ? `${(s.retry_rate.value * 100).toFixed(0)}%` : "--"}</p>
+              <p className="text-2xl font-bold">{s?.retry_success_rate?.value != null ? `${((1 - s.retry_success_rate.value) * 100).toFixed(0)}%` : "--"}</p>
               <p className="text-xs text-muted-foreground">Retry Rate</p>
             </CardContent>
           </Card>
@@ -199,20 +199,20 @@ export default function EvaluationPage() {
                     <CardTitle className="text-base">Performance Bars</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <Bar value={s.faithfulness?.value != null ? s.faithfulness.value * 100 : 0} label="Faithfulness" color="hsl(var(--success))" />
-                    <Bar value={s.correctness?.value != null ? s.correctness.value * 100 : 0} label="Correctness" color="hsl(var(--primary))" />
-                    <Bar value={s.answer_relevancy?.value != null ? s.answer_relevancy.value * 100 : 0} label="Answer Relevancy" color="hsl(var(--chart-2))" />
-                    <Bar value={s.context_recall?.value != null ? s.context_recall.value * 100 : 0} label="Context Recall" color="hsl(var(--chart-3))" />
-                    <Bar value={s.context_precision?.value != null ? s.context_precision.value * 100 : 0} label="Context Precision" color="hsl(var(--chart-4))" />
+                    <Bar value={s.avg_faithfulness?.value != null ? s.avg_faithfulness.value * 100 : 0} label="Faithfulness" color="hsl(var(--success))" />
+                    <Bar value={s.avg_correctness?.value != null ? s.avg_correctness.value * 100 : 0} label="Correctness" color="hsl(var(--primary))" />
+                    <Bar value={s.avg_answer_relevancy?.value != null ? s.avg_answer_relevancy.value * 100 : 0} label="Answer Relevancy" color="hsl(var(--chart-2))" />
+                    <Bar value={s.avg_context_recall?.value != null ? s.avg_context_recall.value * 100 : 0} label="Context Recall" color="hsl(var(--chart-3))" />
+                    <Bar value={s.avg_context_precision?.value != null ? s.avg_context_precision.value * 100 : 0} label="Context Precision" color="hsl(var(--chart-4))" />
                     <Separator />
-                    <Bar value={s.retry_rate?.value != null ? s.retry_rate.value * 100 : 0} label="Retry Rate" color="hsl(var(--warning))" max={50} />
+                    <Bar value={s.retry_success_rate?.value != null ? (1 - s.retry_success_rate.value) * 100 : 0} label="Retry Rate" color="hsl(var(--warning))" max={50} />
                   </CardContent>
                 </Card>
 
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <GaugeChart value={s.faithfulness?.value != null ? s.faithfulness.value * 100 : 0} label="Faithfulness" color="#22c55e" />
-                  <GaugeChart value={s.correctness?.value != null ? s.correctness.value * 100 : 0} label="Correctness" color="#3b82f6" />
-                  <GaugeChart value={s.context_recall?.value != null ? s.context_recall.value * 100 : 0} label="Context Recall" color="#a855f7" />
+                  <GaugeChart value={s.avg_faithfulness?.value != null ? s.avg_faithfulness.value * 100 : 0} label="Faithfulness" color="#22c55e" />
+                  <GaugeChart value={s.avg_correctness?.value != null ? s.avg_correctness.value * 100 : 0} label="Correctness" color="#3b82f6" />
+                  <GaugeChart value={s.avg_context_recall?.value != null ? s.avg_context_recall.value * 100 : 0} label="Context Recall" color="#a855f7" />
                 </div>
               </div>
             ) : isRunning ? (

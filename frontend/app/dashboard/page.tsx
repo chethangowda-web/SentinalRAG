@@ -39,8 +39,8 @@ export default function DashboardPage() {
     : `${(uptime / 60).toFixed(0)}m`;
 
   const summary = evaluation?.summary;
-  const faithfulness = summary?.sentinel?.faithfulness?.value;
-  const avgConfidence = summary?.sentinel?.answer_relevancy?.value;
+  const faithfulness = summary?.sentinel?.avg_faithfulness?.value;
+  const avgConfidence = summary?.sentinel?.avg_answer_relevancy?.value;
   const hallucinationRate = faithfulness != null ? ((1 - faithfulness) * 100).toFixed(1) : null;
 
   const recentDocs = documents?.slice(0, 5) ?? [];
@@ -96,7 +96,7 @@ export default function DashboardPage() {
           />
           <MetricCard
             title="Self-Corrections"
-            value={summary?.sentinel?.retry_rate?.value != null ? `${(summary.sentinel.retry_rate.value * 100).toFixed(0)}%` : "--"}
+              value={summary?.sentinel?.retry_success_rate?.value != null ? `${((1 - summary.sentinel.retry_success_rate.value) * 100).toFixed(0)}%` : "--"}
             subtitle="query rewrites triggered"
             icon={RefreshCw}
             color="hsl(var(--chart-2))"
@@ -137,11 +137,11 @@ export default function DashboardPage() {
                 </div>
               ) : summary ? (
                 <div className="space-y-2">
-                  <EvalRow label="Faithfulness" value={summary.sentinel?.faithfulness?.value} />
-                  <EvalRow label="Correctness" value={summary.sentinel?.correctness?.value} />
-                  <EvalRow label="Answer Relevancy" value={summary.sentinel?.answer_relevancy?.value} />
-                  <EvalRow label="Context Recall" value={summary.sentinel?.context_recall?.value} />
-                  <EvalRow label="Context Precision" value={summary.sentinel?.context_precision?.value} />
+                  <EvalRow label="Faithfulness" value={summary.sentinel?.avg_faithfulness?.value} />
+                  <EvalRow label="Correctness" value={summary.sentinel?.avg_correctness?.value} />
+                  <EvalRow label="Answer Relevancy" value={summary.sentinel?.avg_answer_relevancy?.value} />
+                  <EvalRow label="Context Recall" value={summary.sentinel?.avg_context_recall?.value} />
+                  <EvalRow label="Context Precision" value={summary.sentinel?.avg_context_precision?.value} />
                 </div>
               ) : (
                 <div className="flex flex-col items-center py-8 text-center">
