@@ -5,6 +5,7 @@ from app.api.v1.ingest import router as ingest_router
 from app.api.v1.embed import router as embed_router
 from app.api.v1.search import router as search_router
 from app.api.v1.chat import router as chat_router
+from app.api.v1.chat_history import router as chat_history_router
 from app.api.v1.evaluation import router as evaluation_router
 from app.api.v1.metrics import router as metrics_router
 from app.api.v1.traces import router as traces_router
@@ -17,6 +18,7 @@ api_v1_router.include_router(ingest_router, tags=["ingest"])
 api_v1_router.include_router(embed_router, tags=["embed"])
 api_v1_router.include_router(search_router, tags=["search"])
 api_v1_router.include_router(chat_router, tags=["chat"])
+api_v1_router.include_router(chat_history_router, tags=["chat_history"])
 api_v1_router.include_router(evaluation_router, tags=["evaluation"])
 api_v1_router.include_router(metrics_router, tags=["metrics"])
 api_v1_router.include_router(traces_router, tags=["traces"])

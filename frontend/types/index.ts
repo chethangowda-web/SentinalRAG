@@ -6,6 +6,7 @@ export interface HealthResponse {
 
 export interface ChatRequest {
   question: string;
+  session_id?: string | null;
 }
 
 export interface CitationItem {
@@ -15,6 +16,57 @@ export interface CitationItem {
   text: string | null;
 }
 
+export interface GraphExecutionStep {
+  node_name: string;
+  execution_time_ms: number;
+  input: string | null;
+  output: string | null;
+  decision: string | null;
+  next_node: string | null;
+  retry_count: number;
+}
+
+export interface RetrievalDetailItem {
+  chunk_id: string;
+  document_id: string;
+  text: string;
+  vector_score: number;
+  bm25_score: number;
+  fusion_score: number;
+  rerank_score: number;
+  final_rank: number;
+  selected: boolean;
+  reason: string;
+}
+
+export interface ConfidenceBreakdown {
+  vector_similarity: number;
+  vector_contribution: number;
+  coverage: number;
+  coverage_contribution: number;
+  cross_encoder_score: number;
+  cross_encoder_contribution: number;
+  citation_count: number;
+  citation_contribution: number;
+  contradiction_status: string;
+  retry_success: boolean;
+  raw_score: number;
+  final_score: number;
+}
+
+export interface LLMObservability {
+  rewrite_prompt_tokens: number;
+  rewrite_completion_tokens: number;
+  rewrite_total_tokens: number;
+  rewrite_latency_ms: number;
+  generation_prompt_tokens: number;
+  generation_completion_tokens: number;
+  generation_total_tokens: number;
+  generation_latency_ms: number;
+  model_name: string;
+  temperature: number;
+}
+
 export interface ChatResponse {
   answer: string;
   confidence: number;
@@ -22,8 +74,48 @@ export interface ChatResponse {
   reasoning_path: string[];
   citations: CitationItem[];
   clarification_question: string | null;
+  clarification_needed: boolean;
   latencies: Record<string, number> | null;
   trace_id: string | null;
+  session_id: string | null;
+  graph_execution: GraphExecutionStep[];
+  retrieval_details: RetrievalDetailItem[];
+  confidence_breakdown: ConfidenceBreakdown | null;
+  llm_observability: LLMObservability | null;
+  rewritten_question: string | null;
+  retry_count: number;
+  contradiction_detected: boolean;
+  contradiction_reason: string | null;
+  model_used: string | null;
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  pinned: boolean;
+  message_count: number;
+  created_at: string;
+  updated_at: string;
+  last_message: string | null;
+  last_confidence_level: string | null;
+}
+
+export interface ChatSessionList {
+  total: number;
+  sessions: ChatSession[];
+}
+
+export interface ChatMessageItem {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  response: ChatResponse | null;
+  created_at: string;
+}
+
+export interface ChatMessageList {
+  total: number;
+  messages: ChatMessageItem[];
 }
 
 export interface SearchResultItem {
