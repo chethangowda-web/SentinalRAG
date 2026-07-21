@@ -1,10 +1,8 @@
 import json
-import uuid
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services import trace_service
 
 
 class TestTraceAPI:

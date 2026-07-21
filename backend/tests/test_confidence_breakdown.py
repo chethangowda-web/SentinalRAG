@@ -1,4 +1,3 @@
-import pytest
 
 from app.services.confidence_service import (
     calculate_confidence,

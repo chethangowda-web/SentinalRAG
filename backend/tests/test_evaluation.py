@@ -713,7 +713,6 @@ class TestEvaluationRunner:
 
 class TestVisualizer:
     def test_visualizer_import(self):
-        from evaluation.reports.visualizer import Visualizer
         viz = Visualizer(output_dir=tempfile.gettempdir())
         assert viz is not None
 

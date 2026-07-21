@@ -80,7 +80,6 @@ async def reset_settings():
 
 @router.get("/settings/health")
 async def settings_health_check():
-    import httpx
     results = {
         "backend": {"status": "healthy", "version": settings.APP_VERSION},
         "qdrant": {"status": "unknown"},

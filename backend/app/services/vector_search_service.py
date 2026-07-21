@@ -2,7 +2,6 @@ import logging
 import time
 from typing import Any
 
-from qdrant_client.http import models as qmodels
 from qdrant_client.http.exceptions import UnexpectedResponse
 
 from app.core.config import settings

@@ -61,7 +61,7 @@ jobs:
       - run: |
           sudo apt-get update
           sudo apt-get install -y tesseract-ocr tesseract-ocr-eng
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt -r requirements-dev.txt
       - run: python -m pytest tests/ -v --tb=short --cov=app --cov-report=term --cov-report=xml --ignore=tests/failuretest --ignore=tests/performance --ignore=tests/stresstest
         env:
           DATABASE_URL: postgresql+asyncpg://sentinel:sentinel@localhost:5432/sentinelrag

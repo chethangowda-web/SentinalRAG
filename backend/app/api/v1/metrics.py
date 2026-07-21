@@ -40,7 +40,6 @@ async def get_performance_metrics():
 
 @router.get("/metrics/system", response_model=SystemMetricsResponse)
 async def get_system_metrics():
-    import time
     tracker = get_resource_tracker()
     summary = tracker.summarize()
 

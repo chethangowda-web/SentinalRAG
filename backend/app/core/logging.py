@@ -2,7 +2,6 @@ import json
 import logging
 import logging.config
 import sys
-import uuid
 from datetime import datetime, timezone
 
 from app.core.config import settings

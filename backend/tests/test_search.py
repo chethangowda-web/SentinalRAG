@@ -5,10 +5,9 @@ from app.core.exceptions import AppException
 from app.services.query_preprocessor import preprocess_query
 from app.services.vector_search_service import VectorSearchResult, search_vector
 from app.services.bm25_service import BM25Result, search_bm25
-from app.services.hybrid_search_service import fuse_results, HybridResult
+from app.services.hybrid_search_service import fuse_results
 from app.services.confidence_service import calculate_confidence
 from app.services.retrieval_service import retrieve, SearchResponse
-from app.schemas.search import SearchRequest
 
 
 class TestQueryPreprocessor:

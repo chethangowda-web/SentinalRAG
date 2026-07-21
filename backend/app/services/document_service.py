@@ -2,7 +2,6 @@ import logging
 import time
 from pathlib import Path
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -12,7 +11,7 @@ from app.schemas.document import IngestResponse
 from app.services.file_service import save_upload, validate_file
 from app.services.ocr_service import ocr_image, ocr_pdf
 from app.services.text_cleaning import clean_text
-from app.utils.file_utils import generate_document_id, get_processed_path, get_upload_path
+from app.utils.file_utils import get_processed_path, get_upload_path
 
 try:
     import fitz

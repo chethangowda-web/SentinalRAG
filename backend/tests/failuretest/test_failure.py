@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 from app.core.exceptions import (
     AppException, LLMTimeoutError, QdrantConnectionError, DatabaseConnectionError,
-    OCRError, EmbeddingError, InvalidUploadError, NetworkError,
+    OCRError, NetworkError,
 )
 
 pytestmark = pytest.mark.asyncio
@@ -33,7 +33,7 @@ class TestQdrantUnavailable:
 
     @patch("app.services.qdrant_service.get_qdrant_client")
     async def test_qdrant_upsert_failure(self, mock_get_client):
-        from app.services.qdrant_service import upsert_vectors, ensure_collection
+        from app.services.qdrant_service import upsert_vectors
         mock_client = MagicMock()
         mock_client.upsert.side_effect = ConnectionError("Qdrant connection lost")
         mock_get_client.return_value = mock_client
@@ -62,7 +62,6 @@ class TestDatabaseUnavailable:
     @patch("app.services.document_service.get_db")
     async def test_ingest_db_failure(self, mock_get_db):
         from app.services.document_service import ingest_document
-        from app.services.file_service import validate_file
         mock_get_db.side_effect = DatabaseConnectionError("DB unavailable")
         with pytest.raises(DatabaseConnectionError):
             await ingest_document("test.pdf", "application/pdf", b"test content", None)

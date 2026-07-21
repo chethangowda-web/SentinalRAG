@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from evaluation.dataset import load_dataset, get_dataset_summary, filter_dataset
+from evaluation.dataset import load_dataset, get_dataset_summary
 from evaluation.reports.report_generator import ReportGenerator
 from evaluation.reports.visualizer import Visualizer
 from evaluation.services.runner import EvaluationRunner

@@ -1,19 +1,16 @@
 import asyncio
 import os
-from pathlib import Path
 
 os.environ["SECRET_KEY"] = "test-secret-key-not-for-production"
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
 
 TEST_DATABASE_URL = "sqlite+aiosqlite://"
 
-import app.core.database as db_module
-from app.core.config import settings
+import app.core.database as db_module  # noqa: E402
+from app.core.config import settings  # noqa: E402
 
 settings.DATABASE_URL = TEST_DATABASE_URL
 settings.SECRET_KEY = "test-secret-key-not-for-production"
@@ -21,8 +18,8 @@ settings.SECRET_KEY = "test-secret-key-not-for-production"
 db_module._engine = None
 db_module._async_session_maker = None
 
-from app.core.database import Base, get_db
-from app.main import app
+from app.core.database import Base, get_db  # noqa: E402
+from app.main import app  # noqa: E402
 
 
 @pytest_asyncio.fixture(scope="session")

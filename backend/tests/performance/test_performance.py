@@ -58,7 +58,6 @@ class TestChunkingPerformance:
 
     def test_chunking_longest_document(self):
         from app.services.chunking_service import chunk_text
-        import time
 
         text = "\n\n".join([f"Section {i}. " + "content " * 500 for i in range(100)])
         start = time.perf_counter()
@@ -243,7 +242,6 @@ class TestPerformanceBenchmark:
     @pytest.mark.timeout(30)
     def test_text_cleaning_benchmark(self):
         from app.services.text_cleaning import clean_text
-        import time
 
         texts = [
             "Page 1\n" + "normal text. " * size + "\nFooter\nPage 2"
@@ -258,7 +256,6 @@ class TestPerformanceBenchmark:
     @pytest.mark.timeout(30)
     def test_chunking_scale(self):
         from app.services.chunking_service import chunk_text
-        import time
 
         sizes = [1000, 5000, 10000, 50000]
         for size in sizes:

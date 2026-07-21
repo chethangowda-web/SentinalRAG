@@ -153,7 +153,6 @@ class TestRapidApiStress:
     async def test_rapid_chat_api(self, mock_build):
         from app.api.v1.chat import chat_endpoint, ChatRequest
 
-        from fastapi import Depends
         from sqlalchemy.ext.asyncio import AsyncSession
 
         mock_graph = MagicMock()

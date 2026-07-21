@@ -1,7 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.core.exceptions import AppException
 from app.models.document import Document
 
 
