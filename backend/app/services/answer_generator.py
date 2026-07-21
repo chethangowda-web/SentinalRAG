@@ -28,7 +28,7 @@ def generate_answer(question: str, chunks: list[dict]) -> str:
     llm = _get_llm()
     if llm is None:
         logger.warning("No LLM configured, returning chunk-based fallback")
-        return _no_llm_fallback(question, chunks)
+        return _no_llm_fallback(question, chunks, "no_llm")
 
     start = time.perf_counter()
 
@@ -62,9 +62,11 @@ def generate_answer(question: str, chunks: list[dict]) -> str:
         logger.info("Answer generated in %.1fms from %d chunks", elapsed, len(chunks))
         return answer
     except Exception as e:
-        logger.error("LLM generation failed (will use retrieved context): %s", e)
+        err_str = str(e)
+        logger.error("LLM generation failed: %s", err_str[:200])
         logger.debug("LLM failure traceback:\n%s", traceback.format_exc())
-        return _no_llm_fallback(question, chunks)
+        reason = "rate_limit" if "429" in err_str or "rate_limit" in err_str.lower() else "llm_error"
+        return _no_llm_fallback(question, chunks, reason, err_str[:300])
 
 
 def get_usage_tokens(question: str, chunks: list[dict], answer: str) -> dict:
@@ -81,7 +83,7 @@ def get_usage_tokens(question: str, chunks: list[dict], answer: str) -> dict:
     }
 
 
-def _no_llm_fallback(question: str, chunks: list[dict]) -> str:
+def _no_llm_fallback(question: str, chunks: list[dict], reason: str = "unknown", detail: str = "") -> str:
     if not chunks:
         return (
             "I don't have enough information to answer this question. "
@@ -92,8 +94,27 @@ def _no_llm_fallback(question: str, chunks: list[dict]) -> str:
     snippet = top.get("text", "")[:300]
     doc_id = top.get("document_id", "unknown")
 
+    notice = ""
+    if reason == "rate_limit":
+        notice = (
+            "\n\n> ⚠️ **LLM rate limit reached.** The Groq API free tier (100K tokens/day) "
+            "has been exhausted. Generated content below is raw retrieved text. "
+            "Add a `DEEPSEEK_API_KEY` to your `.env` for unlimited usage, or wait until the rate limit resets."
+        )
+    elif reason == "no_llm":
+        notice = (
+            "\n\n> ⚠️ **No LLM configured.** Set `DEEPSEEK_API_KEY` or `FEATHERLESS_API_KEY` "
+            "in your `.env` file to enable AI-powered answers."
+        )
+    elif reason == "llm_error":
+        notice = (
+            f"\n\n> ⚠️ **LLM error:** {detail[:200]}\n"
+            "Displaying raw retrieved content below."
+        )
+
     return (
         f"Based on the retrieved documents (source: {doc_id}):\n\n"
         f"{snippet}\n\n"
-        "_(LLM is unavailable. Displaying the most relevant retrieved content above.)_"
+        f"_(LLM is unavailable. Displaying the most relevant retrieved content above.)_"
+        f"{notice}"
     )
