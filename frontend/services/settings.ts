@@ -14,6 +14,7 @@ export interface SettingsResponse {
   ocr_language: string;
   deepseek_api_key_set: boolean;
   hybrid_search_enabled: boolean;
+  [key: string]: unknown;
 }
 
 export interface SettingsUpdate {

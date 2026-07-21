@@ -1,6 +1,7 @@
 export interface HealthResponse {
   status: string;
   version: string;
+  uptime_seconds?: number;
 }
 
 export interface ChatRequest {
@@ -216,7 +217,7 @@ export interface Trace {
   clarification_needed: boolean;
   clarification_question: string | null;
   final_confidence: number;
-  final_confidence_level: string;
+  final_confidence_level?: ConfidenceLevel;
   execution_path: string[];
   graph_execution: GraphExecutionRecord[];
   retrieval_details: RetrievalDetail[];
@@ -226,6 +227,7 @@ export interface Trace {
   answer: string | null;
   citations: CitationItem[];
   latencies: Record<string, number>;
+  reasoning_path?: string[];
 }
 
 export interface TraceListResponse {

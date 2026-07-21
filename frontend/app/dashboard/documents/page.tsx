@@ -1,58 +1,82 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, FileText, Calendar, Layers, Trash2, RefreshCw, ArrowUpDown } from "lucide-react";
-import toast from "react-hot-toast";
 import { useDocuments, useDocumentChunks, useDeleteDocument } from "@/hooks/use-documents";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import type { Document as DocType } from "@/types";
+import toast from "react-hot-toast";
+import {
+  FileText,
+  Search,
+  Trash2,
+  Calendar,
+  File,
+  BarChart3,
+  BookOpen,
+  ArrowUpDown,
+  X,
+} from "lucide-react";
+import type { Document } from "@/types";
 
-function DocumentsContent() {
-  const { data: documents, isLoading, error, refetch } = useDocuments();
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<"date" | "name">("date");
-  const [selectedDoc, setSelectedDoc] = useState<DocType | null>(null);
-  const { data: chunkData } = useDocumentChunks(selectedDoc?.id || null);
+type SortBy = "date" | "name" | "status";
+
+export default function DocumentsPage() {
+  const { data: documents, isLoading } = useDocuments();
   const deleteDoc = useDeleteDocument();
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<SortBy>("date");
+  const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+  const { data: chunks } = useDocumentChunks(selectedDoc?.id ?? null);
 
-  const filtered = useMemo(() => {
-    if (!documents) return [];
-    let list = documents.filter((d) =>
-      d.filename.toLowerCase().includes(search.toLowerCase())
-    );
-    if (sortBy === "date") {
-      list = [...list].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    } else {
-      list = [...list].sort((a, b) => a.filename.localeCompare(b.filename));
-    }
-    return list;
-  }, [documents, search, sortBy]);
+  const filtered = (documents ?? [])
+    .filter(
+      (doc) =>
+        doc.filename.toLowerCase().includes(search.toLowerCase()) ||
+        doc.status.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (sortBy === "name") return a.filename.localeCompare(b.filename);
+      if (sortBy === "status") return a.status.localeCompare(b.status);
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
 
-  const handleDelete = async (e: React.MouseEvent, doc: DocType) => {
-    e.stopPropagation();
-    if (confirm(`Delete "${doc.filename}"? This cannot be undone.`)) {
-      await deleteDoc.mutateAsync(doc.id);
+  const handleDelete = async (id: string, filename: string) => {
+    try {
+      await deleteDoc.mutateAsync(id);
+      toast.success(`Deleted "${filename}"`);
+    } catch {
+      toast.error("Failed to delete document");
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
-          <p className="text-sm text-muted-foreground">Manage your uploaded documents</p>
+    <ErrorBoundary>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage your uploaded documents
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -62,158 +86,155 @@ function DocumentsContent() {
               className="pl-9"
             />
           </div>
-          <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh">
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setSortBy(sortBy === "date" ? "name" : "date")}>
-            <ArrowUpDown className="mr-1 h-3 w-3" />
-            {sortBy === "date" ? "Date" : "Name"}
-          </Button>
-        </div>
-      </div>
-
-      {isLoading ? (
-        <LoadingSkeleton type="card" count={4} />
-      ) : error ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            Failed to load documents. Please check the backend connection.
-          </CardContent>
-        </Card>
-      ) : filtered && filtered.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <AnimatePresence>
-            {filtered.map((doc) => (
-              <motion.div
-                key={doc.id}
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="group cursor-pointer rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/30 hover:shadow-lg"
-                onClick={() => setSelectedDoc(doc)}
+          <div className="flex items-center gap-2">
+            {(["date", "name", "status"] as const).map((s) => (
+              <Button
+                key={s}
+                variant={sortBy === s ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSortBy(s)}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-primary/10 p-2.5">
-                      <FileText className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{doc.filename}</p>
-                      <p className="text-xs text-muted-foreground">{doc.file_type?.toUpperCase()}</p>
-                    </div>
-                  </div>
-                  <StatusBadge status={doc.status} />
-                </div>
-
-                <div className="mt-4 grid grid-cols-3 gap-1 sm:gap-2 text-center text-xs">
-                  <div className="rounded-lg bg-secondary/50 p-2">
-                    <p className="font-medium text-foreground">{doc.pages ?? "-"}</p>
-                    <p className="text-muted-foreground">Pages</p>
-                  </div>
-                  <div className="rounded-lg bg-secondary/50 p-2">
-                    <p className="font-medium text-foreground">
-                      {doc.word_count ? (doc.word_count / 1000).toFixed(1) + "k" : "-"}
-                    </p>
-                    <p className="text-muted-foreground">Words</p>
-                  </div>
-                  <div className="rounded-lg bg-secondary/50 p-2">
-                    <p className="font-medium text-foreground">{doc.ocr_used ? "Yes" : "No"}</p>
-                    <p className="text-muted-foreground">OCR</p>
-                  </div>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                    <Calendar className="h-3 w-3" />
-                    {new Date(doc.created_at).toLocaleDateString()}
-                  </div>
-                  <button
-                    onClick={(e) => handleDelete(e, doc)}
-                    className="rounded p-1 text-muted-foreground opacity-0 transition-all hover:bg-red-500/10 hover:text-red-500 group-hover:opacity-100"
-                    title="Delete document"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </motion.div>
+                {s === "date" && <Calendar className="mr-1.5 h-3.5 w-3.5" />}
+                {s === "name" && <FileText className="mr-1.5 h-3.5 w-3.5" />}
+                {s === "status" && <BarChart3 className="mr-1.5 h-3.5 w-3.5" />}
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </Button>
             ))}
-          </AnimatePresence>
+          </div>
         </div>
-      ) : (
-        <EmptyState
-          icon={FileText}
-          title="No documents found"
-          description={search ? "No documents match your search." : "Upload your first document to get started."}
-        />
-      )}
 
-      <Dialog open={!!selectedDoc} onOpenChange={(open) => { if (!open) setSelectedDoc(null); }}>
-        {selectedDoc && (
-          <DialogContent className="max-w-2xl">
+        {isLoading ? (
+          <LoadingSkeleton type="table" count={5} />
+        ) : filtered.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <AnimatePresence>
+              {filtered.map((doc, i) => (
+                <motion.div
+                  key={doc.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                >
+                  <Card
+                    className="cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/20"
+                    onClick={() => setSelectedDoc(doc)}
+                  >
+                    <CardContent className="p-5">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                            <FileText className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium leading-tight">{doc.filename}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {doc.word_count?.toLocaleString() ?? 0} words
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 -mr-2 -mt-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(doc.id, doc.filename);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                        </Button>
+                      </div>
+
+                      <Separator className="my-3" />
+
+                      <div className="flex items-center justify-between">
+                        <StatusBadge status={doc.status} />
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(doc.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        ) : (
+          <EmptyState
+            icon={FileText}
+            title={search ? "No documents match your search" : "No documents yet"}
+            description={
+              search
+                ? "Try a different search term."
+                : "Upload your first document to get started with RAG."
+            }
+          />
+        )}
+
+        <Dialog open={!!selectedDoc} onOpenChange={() => setSelectedDoc(null)}>
+          <DialogContent className="max-w-2xl max-h-[80vh]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-primary" />
-                {selectedDoc.filename}
+                {selectedDoc?.filename}
               </DialogTitle>
               <DialogDescription>
-                Document details and chunks
+                {selectedDoc?.word_count?.toLocaleString() ?? 0} words ·{" "}
+                {selectedDoc?.pages ?? "--"} pages
+                {selectedDoc?.ocr_used ? " · OCR applied" : ""}
               </DialogDescription>
             </DialogHeader>
 
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              {[
-                { label: "Status", value: <StatusBadge status={selectedDoc.status} /> },
-                { label: "Type", value: selectedDoc.file_type?.toUpperCase() },
-                { label: "Pages", value: selectedDoc.pages ?? "-" },
-                { label: "Words", value: selectedDoc.word_count?.toLocaleString() ?? "-" },
-                { label: "OCR", value: selectedDoc.ocr_used ? "Yes" : "No" },
-                { label: "Created", value: new Date(selectedDoc.created_at).toLocaleString() },
-              ].map(({ label, value }) => (
-                <div key={label} className="rounded-lg bg-secondary/50 p-3">
-                  <p className="text-xs text-muted-foreground">{label}</p>
-                  <div className="mt-1 font-medium">{value}</div>
-                </div>
-              ))}
+            <Separator />
+
+            <div className="flex items-center gap-2">
+              <StatusBadge status={selectedDoc?.status ?? ""} />
+              <span className="text-xs text-muted-foreground ml-auto">
+                Created {selectedDoc?.created_at ? new Date(selectedDoc.created_at).toLocaleString() : ""}
+              </span>
             </div>
 
             <Separator />
 
-            <div>
-              <div className="mb-2 flex items-center gap-2">
-                <Layers className="h-4 w-4 text-muted-foreground" />
-                <p className="text-sm font-medium">Chunks ({chunkData?.total_chunks || 0})</p>
-              </div>
-              <ScrollArea className="h-64">
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-muted-foreground" />
+                Chunks ({chunks?.chunks?.length ?? 0})
+              </h4>
+              <ScrollArea className="h-[300px]">
                 <div className="space-y-2">
-                  {chunkData?.chunks?.map((chunk) => (
-                    <div key={chunk.id} className="rounded-lg border border-border p-3">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>Chunk #{chunk.chunk_index}</span>
-                        <div className="flex items-center gap-2">
-                          {chunk.page_number && <span>p.{chunk.page_number}</span>}
-                          <StatusBadge status={chunk.embedding_status} />
+                  {chunks?.chunks?.map((chunk, i) => (
+                    <Card key={chunk.id} className="bg-secondary/30">
+                      <CardContent className="p-3">
+                        <div className="flex items-start gap-3">
+                          <span className="text-xs font-mono text-muted-foreground shrink-0 mt-0.5">
+                            #{i + 1}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-xs text-muted-foreground line-clamp-3">
+                              {chunk.chunk_text}
+                            </p>
+                            {chunk.page_number && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Page {chunk.page_number}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <p className="mt-1 text-xs leading-relaxed text-foreground/80 line-clamp-2">
-                        {chunk.chunk_text}
-                      </p>
-                    </div>
+                      </CardContent>
+                    </Card>
                   ))}
+                  {(!chunks?.chunks || chunks.chunks.length === 0) && (
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                      No chunks available
+                    </p>
+                  )}
                 </div>
               </ScrollArea>
             </div>
           </DialogContent>
-        )}
-      </Dialog>
-    </div>
-  );
-}
-
-export default function DocumentsPage() {
-  return (
-    <ErrorBoundary>
-      <DocumentsContent />
+        </Dialog>
+      </div>
     </ErrorBoundary>
   );
 }

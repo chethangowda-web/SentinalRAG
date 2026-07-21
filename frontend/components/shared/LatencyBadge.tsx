@@ -1,19 +1,13 @@
-"use client";
-
 import { cn } from "@/lib/utils";
-import { Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
-interface LatencyBadgeProps {
-  ms: number;
-  className?: string;
-}
+export function LatencyBadge({ ms, className }: { ms: number; className?: string }) {
+  const variant = ms < 500 ? "success" : ms < 1000 ? "warning" : "destructive";
+  const label = ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`;
 
-export function LatencyBadge({ ms, className }: LatencyBadgeProps) {
-  const color = ms < 500 ? "text-emerald-500" : ms < 1000 ? "text-amber-500" : "text-red-500";
   return (
-    <span className={cn("inline-flex items-center gap-1 text-xs font-medium", color, className)}>
-      <Clock className="h-3 w-3" />
-      {ms.toFixed(0)}ms
-    </span>
+    <Badge variant={variant} className={cn("font-mono", className)}>
+      {label}
+    </Badge>
   );
 }

@@ -73,7 +73,9 @@ services:
       PROCESSED_DIR: /data/processed
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
-      LLM_MODEL: ${LLM_MODEL:-deepseek-chat}
+      FEATHERLESS_API_KEY: ${FEATHERLESS_API_KEY:-}
+      FEATHERLESS_BASE_URL: ${FEATHERLESS_BASE_URL:-}
+      FEATHERLESS_MODEL: ${FEATHERLESS_MODEL:-}
       LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0.1}
       # Ensure no CUDA devices are visible (CPU-only)
       CUDA_VISIBLE_DEVICES: ""

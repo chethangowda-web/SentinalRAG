@@ -7,170 +7,238 @@ import { MetricCard } from "@/components/shared/MetricCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
-  Activity,
   FileText,
-  Layers,
-  Database,
   Brain,
-  MessageSquare,
+  Search,
+  Database,
   Shield,
-  TrendingUp,
-  AlertCircle,
+  Activity,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 
-function DashboardContent() {
-  const { data: health, isLoading: healthLoading, error: healthError } = useHealth();
+export default function DashboardPage() {
+  const { data: health, isLoading: healthLoading } = useHealth();
   const { data: documents, isLoading: docsLoading } = useDocuments();
-  const { data: evaluation } = useEvaluationReport();
+  const { data: evaluation, isLoading: evalLoading } = useEvaluationReport();
 
-  const totalChunks = documents?.reduce((acc, d) => acc + (d.pages || 0) * 5, 0) || 0;
-  const completedDocs = documents?.filter((d) => d.status === "completed").length || 0;
-  const failedDocs = documents?.filter((d) => d.status === "failed").length || 0;
+  const totalDocs = documents?.length ?? 0;
+  const completedDocs = documents?.filter((d) => d.status === "completed").length ?? 0;
+  const totalWords = documents?.reduce((sum, d) => sum + (d.word_count || 0), 0) ?? 0;
+  const uptime = health?.uptime_seconds ?? 0;
+  const uptimeFormatted = uptime > 3600
+    ? `${(uptime / 3600).toFixed(1)}h`
+    : `${(uptime / 60).toFixed(0)}m`;
 
-  const latencyAvg = evaluation?.summary?.sentinel?.latency?.value;
+  const summary = evaluation?.summary;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <ErrorBoundary>
+      <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">SentinelRAG system overview and performance metrics</p>
-        </div>
-        {health && <StatusBadge status={health.status} />}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          title="System Status"
-          value={healthLoading ? "..." : healthError ? "Offline" : health?.status || "Unknown"}
-          subtitle={health?.version ? `v${health.version}` : undefined}
-          icon={Shield}
-          color={healthError ? "red" : "emerald"}
-        />
-        <MetricCard
-          title="Documents"
-          value={docsLoading ? "..." : documents?.length || 0}
-          subtitle={`${completedDocs} completed, ${failedDocs} failed`}
-          icon={FileText}
-          color="primary"
-        />
-        <MetricCard
-          title="Indexed Chunks"
-          value={totalChunks.toLocaleString()}
-          subtitle="Across all documents"
-          icon={Layers}
-          color="blue"
-        />
-        <MetricCard
-          title="Avg Latency"
-          value={latencyAvg ? `${latencyAvg.toFixed(0)}ms` : "---"}
-          subtitle="Per query"
-          icon={Activity}
-          color={latencyAvg && latencyAvg < 500 ? "emerald" : "amber"}
-        />
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h3 className="mb-4 text-sm font-semibold">System Components</h3>
-          <div className="space-y-3">
-            {[
-              { name: "Qdrant Vector DB", status: "healthy", desc: "Collection: documents" },
-              { name: "Embedding Model", status: "healthy", desc: "BAAI/bge-small-en-v1.5" },
-              { name: "LLM Backend", status: health?.status === "healthy" ? "healthy" : "error", desc: "DeepSeek V4" },
-              { name: "PostgreSQL", status: "healthy", desc: "Document metadata store" },
-            ].map((comp) => (
-              <div key={comp.name} className="flex items-center justify-between rounded-lg bg-secondary/50 p-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-background">
-                    {comp.status === "healthy" ? (
-                      <Database className="h-4 w-4 text-emerald-500" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 text-red-500" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">{comp.name}</p>
-                    <p className="text-xs text-muted-foreground">{comp.desc}</p>
-                  </div>
-                </div>
-                <StatusBadge status={comp.status} />
-              </div>
-            ))}
-          </div>
+          <h1 className="text-2xl font-bold tracking-tight">Overview</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            System status and key metrics at a glance.
+          </p>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h3 className="mb-4 text-sm font-semibold">Recent Activity</h3>
-          {documents && documents.length > 0 ? (
-            <div className="space-y-2">
-              {documents.slice(0, 5).map((doc) => (
-                <div key={doc.id} className="flex items-center justify-between rounded-lg bg-secondary/50 p-3">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">{doc.filename}</span>
-                  </div>
-                  <StatusBadge status={doc.status} />
-                </div>
-              ))}
-            </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {docsLoading ? (
+            <LoadingSkeleton type="card" count={4} />
           ) : (
-            <div className="flex flex-col items-center py-8 text-center">
-              <FileText className="mb-2 h-8 w-8 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">No documents uploaded yet</p>
-            </div>
+            <>
+              <MetricCard
+                title="Total Documents"
+                value={totalDocs}
+                subtitle={`${completedDocs} processed`}
+                icon={FileText}
+                color="hsl(var(--chart-1))"
+              />
+              <MetricCard
+                title="Words Indexed"
+                value={totalWords.toLocaleString()}
+                subtitle="across all documents"
+                icon={Brain}
+                color="hsl(var(--chart-2))"
+              />
+              <MetricCard
+                title="Uptime"
+                value={uptimeFormatted}
+                subtitle={health?.status === "healthy" ? "All systems operational" : "Issues detected"}
+                icon={Activity}
+                color="hsl(var(--chart-3))"
+              />
+              <MetricCard
+                title="Search Queries"
+                value="--"
+                subtitle="today"
+                icon={Search}
+                color="hsl(var(--chart-4))"
+              />
+            </>
           )}
         </div>
-      </div>
 
-      {evaluation && (
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h3 className="mb-4 text-sm font-semibold">Latest Evaluation Summary</h3>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <MetricCard
-              title="Hallucination Rate"
-              value={evaluation.summary?.sentinel?.avg_hallucination ? `${(evaluation.summary.sentinel.avg_hallucination.value * 100).toFixed(1)}%` : "---"}
-              icon={AlertCircle}
-              color="red"
-              trend={evaluation.summary?.comparison?.avg_hallucination ? {
-                value: Math.abs(evaluation.summary.comparison.avg_hallucination.relative_change_pct),
-                positive: evaluation.summary.comparison.avg_hallucination.improved,
-              } : undefined}
-            />
-            <MetricCard
-              title="Faithfulness"
-              value={evaluation.summary?.sentinel?.avg_faithfulness ? (evaluation.summary.sentinel.avg_faithfulness.value * 100).toFixed(1) + "%" : "---"}
-              icon={Brain}
-              color="emerald"
-              trend={evaluation.summary?.comparison?.avg_faithfulness ? {
-                value: Math.abs(evaluation.summary.comparison.avg_faithfulness.relative_change_pct),
-                positive: evaluation.summary.comparison.avg_faithfulness.improved,
-              } : undefined}
-            />
-            <MetricCard
-              title="Answer Relevancy"
-              value={evaluation.summary?.sentinel?.avg_answer_relevancy ? (evaluation.summary.sentinel.avg_answer_relevancy.value * 100).toFixed(1) + "%" : "---"}
-              icon={MessageSquare}
-              color="blue"
-            />
-            <MetricCard
-              title="Latency (Avg)"
-              value={evaluation.summary?.sentinel?.latency ? `${(evaluation.summary.sentinel.latency.details?.average_ms as number)?.toFixed(0)}ms` : "---"}
-              icon={Activity}
-              color="purple"
-            />
-          </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Database className="h-4 w-4 text-primary" />
+                System Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {healthLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="flex items-center justify-between rounded-lg bg-secondary/30 p-3">
+                      <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                      <div className="h-5 w-16 bg-muted rounded animate-pulse" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <StatusRow label="API Status" status={health?.status ?? "unknown"} />
+                  <StatusRow label="PostgreSQL" status={health?.status === "healthy" ? "connected" : "unknown"} />
+                  <StatusRow label="Qdrant" status={health?.status === "healthy" ? "connected" : "unknown"} />
+                  <StatusRow label="Version" status={health?.version ?? "--"} />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <BarChart3Icon className="h-4 w-4 text-primary" />
+                Evaluation Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {evalLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center justify-between p-3">
+                      <div className="h-4 w-32 bg-muted rounded animate-pulse" />
+                      <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+                    </div>
+                  ))}
+                </div>
+              ) : summary ? (
+                <div className="space-y-2">
+                  <EvalRow label="Faithfulness" value={summary.sentinel?.faithfulness?.value} />
+                  <EvalRow label="Answer Relevancy" value={summary.sentinel?.answer_relevancy?.value} />
+                  <EvalRow label="Context Precision" value={summary.sentinel?.context_precision?.value} />
+                  <EvalRow label="Context Recall" value={summary.sentinel?.context_recall?.value} />
+                  <EvalRow label="Correctness" value={summary.sentinel?.correctness?.value} />
+                </div>
+              ) : (
+                <div className="flex flex-col items-center py-8 text-center">
+                  <AlertTriangle className="h-8 w-8 text-muted-foreground mb-3" />
+                  <p className="text-sm text-muted-foreground">No evaluation data yet.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
-      )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Clock className="h-4 w-4 text-primary" />
+              Recent Documents
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {docsLoading ? (
+              <LoadingSkeleton type="table" count={3} />
+            ) : documents && documents.length > 0 ? (
+              <div className="space-y-2">
+                {documents.slice(0, 5).map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-secondary/30"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                        <FileText className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{doc.filename}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {doc.word_count?.toLocaleString() ?? 0} words · {new Date(doc.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <StatusBadge status={doc.status} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center py-8 text-center">
+                <FileText className="h-8 w-8 text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">No documents yet. Upload your first document to get started.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </ErrorBoundary>
+  );
+}
+
+function StatusRow({ label, status }: { label: string; status: string }) {
+  const isHealthy = status === "healthy" || status === "connected";
+  return (
+    <div className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-secondary/30 transition-colors">
+      <span className="text-sm">{label}</span>
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground capitalize">{status}</span>
+        {isHealthy ? (
+          <CheckCircle2 className="h-4 w-4 text-success" />
+        ) : (
+          <AlertTriangle className="h-4 w-4 text-warning" />
+        )}
+      </div>
     </div>
   );
 }
 
-export default function DashboardPage() {
+function EvalRow({ label, value }: { label: string; value?: number | string }) {
+  if (value === undefined || value === null) return null;
+  const numeric = typeof value === "string" ? parseFloat(value) : value;
   return (
-    <ErrorBoundary>
-      <DashboardContent />
-    </ErrorBoundary>
+    <div className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-secondary/30 transition-colors">
+      <span className="text-sm">{label}</span>
+      <Badge variant={numeric >= 80 ? "success" : numeric >= 50 ? "warning" : "destructive"}>
+        {typeof value === "number" ? `${(value * 100).toFixed(1)}%` : value}
+      </Badge>
+    </div>
+  );
+}
+
+function BarChart3Icon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="12" y1="20" x2="12" y2="10" />
+      <line x1="18" y1="20" x2="18" y2="4" />
+      <line x1="6" y1="20" x2="6" y2="16" />
+    </svg>
   );
 }

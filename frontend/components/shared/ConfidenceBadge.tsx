@@ -1,27 +1,28 @@
-"use client";
-
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import type { ConfidenceLevel } from "@/types";
 
-interface ConfidenceBadgeProps {
+const levelConfig: Record<ConfidenceLevel, { variant: "success" | "warning" | "destructive"; label: string }> = {
+  HIGH: { variant: "success", label: "High" },
+  MEDIUM: { variant: "warning", label: "Medium" },
+  LOW: { variant: "destructive", label: "Low" },
+};
+
+export function ConfidenceBadge({
+  level,
+  score,
+  className,
+}: {
   level: ConfidenceLevel;
   score?: number;
   className?: string;
-}
-
-const config: Record<ConfidenceLevel, { color: string; icon: string }> = {
-  HIGH: { color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/30", icon: "●" },
-  MEDIUM: { color: "bg-amber-500/10 text-amber-500 border-amber-500/30", icon: "●" },
-  LOW: { color: "bg-red-500/10 text-red-500 border-red-500/30", icon: "●" },
-};
-
-export function ConfidenceBadge({ level, score, className }: ConfidenceBadgeProps) {
-  const cfg = config[level];
+}) {
+  const config = levelConfig[level];
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium", cfg.color, className)}>
-      <span>{cfg.icon}</span>
-      {level}
-      {score !== undefined && <span className="opacity-70">({score.toFixed(1)})</span>}
-    </span>
+    <Badge variant={config.variant} className={cn("gap-1", className)}>
+      <span className={cn("h-1.5 w-1.5 rounded-full bg-current")} />
+      {config.label}
+      {score !== undefined && ` (${Math.round(score)})`}
+    </Badge>
   );
 }
