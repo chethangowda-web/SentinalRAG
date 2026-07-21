@@ -20,17 +20,10 @@ logger = logging.getLogger(__name__)
 
 
 async def run_migrations() -> None:
-    try:
-        from alembic.config import Config
-        from alembic import command
+    from app.core.database import init_db
 
-        alembic_cfg = Config("alembic.ini")
-        command.upgrade(alembic_cfg, "head")
-        logger.info("Alembic migrations up to date")
-    except Exception as e:
-        logger.warning("Alembic migration failed (%s), falling back to create_all", e)
-        from app.core.database import init_db
-        await init_db()
+    await init_db()
+    logger.info("Database schema up to date")
 
 
 @asynccontextmanager
@@ -46,7 +39,6 @@ async def lifespan(application: FastAPI):
         raise
     try:
         await run_migrations()
-        logger.info("Database schema up to date")
     except Exception as e:
         logger.error("Database migration failed: %s", e)
         get_metrics_collector().record_error("database_migration_failure")

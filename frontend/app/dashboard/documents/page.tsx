@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, FileText, Calendar, Layers, MoreVertical, X, ChevronDown } from "lucide-react";
+import { Search, FileText, Calendar, Layers, Trash2, RefreshCw, ArrowUpDown } from "lucide-react";
 import toast from "react-hot-toast";
-import { useDocuments, useDocumentChunks } from "@/hooks/use-documents";
+import { useDocuments, useDocumentChunks, useDeleteDocument } from "@/hooks/use-documents";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,14 +18,32 @@ import { Separator } from "@/components/ui/separator";
 import type { Document as DocType } from "@/types";
 
 function DocumentsContent() {
-  const { data: documents, isLoading, error } = useDocuments();
+  const { data: documents, isLoading, error, refetch } = useDocuments();
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"date" | "name">("date");
   const [selectedDoc, setSelectedDoc] = useState<DocType | null>(null);
   const { data: chunkData } = useDocumentChunks(selectedDoc?.id || null);
+  const deleteDoc = useDeleteDocument();
 
-  const filtered = documents?.filter((d) =>
-    d.filename.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    if (!documents) return [];
+    let list = documents.filter((d) =>
+      d.filename.toLowerCase().includes(search.toLowerCase())
+    );
+    if (sortBy === "date") {
+      list = [...list].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    } else {
+      list = [...list].sort((a, b) => a.filename.localeCompare(b.filename));
+    }
+    return list;
+  }, [documents, search, sortBy]);
+
+  const handleDelete = async (e: React.MouseEvent, doc: DocType) => {
+    e.stopPropagation();
+    if (confirm(`Delete "${doc.filename}"? This cannot be undone.`)) {
+      await deleteDoc.mutateAsync(doc.id);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -33,14 +52,23 @@ function DocumentsContent() {
           <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
           <p className="text-sm text-muted-foreground">Manage your uploaded documents</p>
         </div>
-        <div className="relative w-72">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search documents..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+        <div className="flex items-center gap-3">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search documents..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setSortBy(sortBy === "date" ? "name" : "date")}>
+            <ArrowUpDown className="mr-1 h-3 w-3" />
+            {sortBy === "date" ? "Date" : "Name"}
+          </Button>
         </div>
       </div>
 
@@ -78,7 +106,7 @@ function DocumentsContent() {
                   <StatusBadge status={doc.status} />
                 </div>
 
-                <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="mt-4 grid grid-cols-3 gap-1 sm:gap-2 text-center text-xs">
                   <div className="rounded-lg bg-secondary/50 p-2">
                     <p className="font-medium text-foreground">{doc.pages ?? "-"}</p>
                     <p className="text-muted-foreground">Pages</p>
@@ -95,9 +123,18 @@ function DocumentsContent() {
                   </div>
                 </div>
 
-                <div className="mt-3 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                  <Calendar className="h-3 w-3" />
-                  {new Date(doc.created_at).toLocaleDateString()}
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <Calendar className="h-3 w-3" />
+                    {new Date(doc.created_at).toLocaleDateString()}
+                  </div>
+                  <button
+                    onClick={(e) => handleDelete(e, doc)}
+                    className="rounded p-1 text-muted-foreground opacity-0 transition-all hover:bg-red-500/10 hover:text-red-500 group-hover:opacity-100"
+                    title="Delete document"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </motion.div>
             ))}

@@ -1,11 +1,11 @@
 import logging
 import time
+import traceback
 
 from app.core.config import settings
 from app.services.token_counter import count_tokens
 
 logger = logging.getLogger(__name__)
-
 
 _llm = None
 
@@ -62,7 +62,8 @@ def generate_answer(question: str, chunks: list[dict]) -> str:
         logger.info("Answer generated in %.1fms from %d chunks", elapsed, len(chunks))
         return answer
     except Exception as e:
-        logger.error("Answer generation failed: %s", e)
+        logger.error("LLM generation failed (will use retrieved context): %s", e)
+        logger.debug("LLM failure traceback:\n%s", traceback.format_exc())
         return _no_llm_fallback(question, chunks)
 
 
@@ -94,5 +95,5 @@ def _no_llm_fallback(question: str, chunks: list[dict]) -> str:
     return (
         f"Based on the retrieved documents (source: {doc_id}):\n\n"
         f"{snippet}\n\n"
-        f"_(This is a partial answer. For a complete answer, configure an LLM API key.)_"
+        "_(LLM is unavailable. Displaying the most relevant retrieved content above.)_"
     )

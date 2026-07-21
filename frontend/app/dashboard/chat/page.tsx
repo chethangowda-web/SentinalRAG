@@ -1,13 +1,19 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot, User, PanelRightOpen, PanelRightClose, AlertCircle, Loader2 } from "lucide-react";
+import {
+  Send, Bot, User, PanelRightOpen, PanelRightClose, AlertCircle, Loader2,
+  Copy, Check, RefreshCw, Download, Trash2, FileJson, FileText,
+} from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useChat } from "@/hooks/use-chat";
 import { ConfidenceBadge } from "@/components/shared/ConfidenceBadge";
 import { ExplainabilityPanel } from "@/components/explainability/ExplainabilityPanel";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
+import { Button } from "@/components/ui/button";
 import type { ChatResponse } from "@/types";
 
 interface Message {
@@ -17,11 +23,27 @@ interface Message {
   response?: ChatResponse;
 }
 
+function TypingIndicator() {
+  return (
+    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary">
+        <Bot className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <div className="flex items-center gap-1">
+        <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/40" style={{ animationDelay: "0ms" }} />
+        <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/40" style={{ animationDelay: "150ms" }} />
+        <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/40" style={{ animationDelay: "300ms" }} />
+      </div>
+    </div>
+  );
+}
+
 function ChatContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [selectedResponse, setSelectedResponse] = useState<ChatResponse | null>(null);
   const [showPanel, setShowPanel] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chat = useChat();
@@ -30,7 +52,7 @@ function ChatContent() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSubmit = async (e?: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e?: React.FormEvent) => {
     e?.preventDefault();
     const q = input.trim();
     if (!q || chat.isPending) return;
@@ -56,20 +78,78 @@ function ChatContent() {
       };
       setMessages((prev) => [...prev, errMsg]);
     }
-  };
+  }, [input, chat]);
 
   const handleExplain = (response: ChatResponse) => {
     setSelectedResponse(response);
     setShowPanel(true);
   };
 
+  const handleCopy = async (msg: Message) => {
+    try {
+      await navigator.clipboard.writeText(msg.content);
+      setCopiedId(msg.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch { /* fallback */ }
+  };
+
+  const handleRegenerate = () => {
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+    if (lastUserMsg) {
+      setMessages((prev) => prev.slice(0, -1));
+      setInput(lastUserMsg.content);
+    }
+  };
+
+  const handleClear = () => {
+    if (messages.length > 0 && confirm("Clear all messages?")) {
+      setMessages([]);
+    }
+  };
+
+  const handleExport = (format: "json" | "markdown") => {
+    const data = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+      confidence: m.response?.confidence,
+      confidence_level: m.response?.confidence_level,
+      citations: m.response?.citations,
+      latencies: m.response?.latencies,
+    }));
+    const content = format === "json"
+      ? JSON.stringify(data, null, 2)
+      : data.map((m) => `## ${m.role === "user" ? "User" : "Assistant"}\n\n${m.content}\n`).join("\n---\n");
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `chat-export-${Date.now()}.${format === "json" ? "json" : "md"}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="flex h-[calc(100vh-10rem)] gap-0">
+    <div className="flex min-h-[calc(100vh-10rem)] gap-0">
       <div className="flex flex-1 flex-col">
         <div className="flex items-center justify-between border-b border-border pb-3">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Chat</h1>
-            <p className="text-sm text-muted-foreground">Ask questions about your documents</p>
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Chat</h1>
+              <p className="text-sm text-muted-foreground">Ask questions about your documents</p>
+            </div>
+            {messages.length > 0 && (
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="sm" onClick={handleClear} title="Clear conversation">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => handleExport("json")} title="Export JSON">
+                  <FileJson className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => handleExport("markdown")} title="Export Markdown">
+                  <Download className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
           </div>
           <button
             onClick={() => setShowPanel(!showPanel)}
@@ -97,7 +177,7 @@ function ChatContent() {
                     animate={{ opacity: 1, y: 0 }}
                     className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                   >
-                    <div className={`flex gap-3 max-w-[80%] ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+                    <div className={`flex gap-3 max-w-[90%] sm:max-w-[80%] ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
                       <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
                         msg.role === "user" ? "bg-primary/10" : "bg-secondary"
                       }`}>
@@ -107,13 +187,21 @@ function ChatContent() {
                           <Bot className="h-4 w-4 text-muted-foreground" />
                         )}
                       </div>
-                      <div>
+                      <div className="group">
                         <div className={`rounded-xl px-4 py-3 text-sm leading-relaxed ${
                           msg.role === "user"
                             ? "bg-primary text-primary-foreground"
                             : "bg-card border border-border"
                         }`}>
-                          {msg.content}
+                          {msg.role === "assistant" ? (
+                            <div className="prose prose-sm prose-invert max-w-none prose-code:rounded prose-code:bg-secondary prose-code:px-1 prose-pre:bg-secondary prose-pre:border prose-pre:border-border">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {msg.content}
+                              </ReactMarkdown>
+                            </div>
+                          ) : (
+                            msg.content
+                          )}
                         </div>
                         {msg.response && (
                           <div className="mt-2 flex items-center gap-2">
@@ -124,6 +212,16 @@ function ChatContent() {
                             >
                               Show explainability
                             </button>
+                            <button
+                              onClick={() => handleCopy(msg)}
+                              className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+                            >
+                              {copiedId === msg.id ? (
+                                <><Check className="h-3 w-3" /> Copied</>
+                              ) : (
+                                <><Copy className="h-3 w-3" /> Copy</>
+                              )}
+                            </button>
                           </div>
                         )}
                       </div>
@@ -132,12 +230,7 @@ function ChatContent() {
                 ))}
               </AnimatePresence>
 
-              {chat.isPending && (
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Processing through self-correcting pipeline...
-                </div>
-              )}
+              {chat.isPending && <TypingIndicator />}
 
               <div ref={messagesEndRef} />
             </div>
@@ -145,6 +238,20 @@ function ChatContent() {
         </div>
 
         <form onSubmit={handleSubmit} className="relative border-t border-border pt-4">
+          {messages.filter((m) => m.role === "assistant" && m.response).length > 0 && !chat.isPending && (
+            <div className="mb-2 flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleRegenerate}
+                className="text-xs"
+              >
+                <RefreshCw className="mr-1 h-3 w-3" />
+                Regenerate
+              </Button>
+            </div>
+          )}
           <div className="flex items-end gap-2">
             <textarea
               ref={inputRef}

@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { ChevronRight, Bell, Search } from "lucide-react";
+import { ChevronRight, Bell, Search, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const breadcrumbMap: Record<string, string> = {
@@ -13,13 +13,16 @@ const breadcrumbMap: Record<string, string> = {
   settings: "Settings",
 };
 
-export function TopNavbar() {
+export function TopNavbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/80 backdrop-blur-xl px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/80 backdrop-blur-xl px-4 sm:px-6">
       <div className="flex items-center gap-2 text-sm">
+        <button onClick={onMenuClick} className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors lg:hidden">
+          <Menu className="h-5 w-5" />
+        </button>
         {segments.map((seg, i) => (
           <span key={seg} className="flex items-center gap-2">
             {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}

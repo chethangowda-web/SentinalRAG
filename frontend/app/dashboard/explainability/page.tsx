@@ -28,6 +28,7 @@ import {
   PieChart as RePieChart, Pie, Cell, Legend,
 } from "recharts";
 import { fetchTraces, fetchTrace, getExportUrl } from "@/services/traces";
+import toast from "react-hot-toast";
 import { ConfidenceBadge } from "@/components/shared/ConfidenceBadge";
 import { LatencyBadge } from "@/components/shared/LatencyBadge";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
@@ -301,7 +302,7 @@ function TraceDetail({ trace, onBack }: { trace: Trace; onBack: () => void }) {
                       </div>
                     ))}
                     <Separator />
-                    <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="grid grid-cols-2 gap-1 sm:gap-3 text-sm">
                       <div className="rounded-lg bg-secondary/30 p-2">
                         <p className="text-xs text-muted-foreground">Citation Count</p>
                         <p className="font-medium">{trace.confidence_breakdown.citation_count}</p>
@@ -512,7 +513,7 @@ function ExplainabilityContent() {
       const data = await fetchTraces();
       setTraces(data.traces);
     } catch (err) {
-      console.error("Failed to load traces", err);
+      toast.error("Failed to load traces");
     } finally {
       setLoading(false);
     }
@@ -527,7 +528,7 @@ function ExplainabilityContent() {
       const trace = await fetchTrace(traceId);
       setSelectedTrace(trace);
     } catch (err) {
-      console.error("Failed to load trace", err);
+      toast.error("Failed to load trace");
     }
   };
 

@@ -39,6 +39,7 @@ Thumbs.db
 
 # ─── Docker ───────────────────────────────────────────
 .docker/
+Docker/
 
 # ─── Data ─────────────────────────────────────────────
 uploads/
@@ -49,3 +50,8 @@ backend/evaluation/results/
 
 # ─── History ─────────────────────────────────────────
 .history/
+
+# ─── Local scripts ─────────────────────────────────
+start_backend.bat
+backend/req.txt
+*.whl

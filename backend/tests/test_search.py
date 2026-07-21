@@ -137,8 +137,8 @@ class TestBM25Search:
         mock_db = AsyncMock(spec=True)
         mock_execute = MagicMock()
         mock_execute.fetchall.return_value = [
-            MagicMock(chunk_id="c1", document_id="d1", chunk_text="a", page_number=None, word_count=100, filename="f1"),
-            MagicMock(chunk_id="c2", document_id="d2", chunk_text="b", page_number=None, word_count=50, filename="f2"),
+            MagicMock(chunk_id="c1", document_id="d1", chunk_text="a", page_number=None, word_count=100, filename="f1", bm25_score=10.0),
+            MagicMock(chunk_id="c2", document_id="d2", chunk_text="b", page_number=None, word_count=50, filename="f2", bm25_score=5.0),
         ]
 
         async def fake_execute(*a, **kw):

@@ -11,7 +11,10 @@ from app.models.trace import Trace
 class TestTraceService:
     @pytest.mark.asyncio
     async def test_save_and_retrieve_trace(self):
-        mock_db = AsyncMock()
+        mock_db = MagicMock()
+        mock_db.add.return_value = None
+        mock_db.commit = AsyncMock(return_value=None)
+        mock_db.refresh = AsyncMock(return_value=None)
         trace_id = str(uuid.uuid4())
         trace_data = {
             "trace_id": trace_id,
@@ -62,10 +65,6 @@ class TestTraceService:
         mock_trace.answer = trace_data["answer"]
         mock_trace.citations = json.dumps(trace_data["citations"])
         mock_trace.latencies = json.dumps(trace_data["latencies"])
-
-        mock_db.add.return_value = None
-        mock_db.commit.return_value = None
-        mock_db.refresh.return_value = None
 
         with patch("app.services.trace_service.Trace", return_value=mock_trace):
             result = await trace_service.save_trace(

@@ -10,7 +10,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-TEST_DATABASE_URL = "sqlite+aiosqlite:///./test_sentinelrag.db"
+TEST_DATABASE_URL = "sqlite+aiosqlite://"
 
 import app.core.database as db_module
 from app.core.config import settings

@@ -1,29 +1,38 @@
+# ─── Web Framework ────────────────────────────────────
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 pydantic==2.10.3
 pydantic-settings==2.7.0
-python-dotenv==1.0.1
+python-multipart==0.0.20
+
+# ─── HTTP Client ──────────────────────────────────────
 httpx==0.28.1
-pytest==8.3.4
-pytest-asyncio==0.25.0
-pytest-httpx==0.35.0
-pytest-cov==6.0.0
+
+# ─── Database ─────────────────────────────────────────
 sqlalchemy[asyncio]==2.0.36
 asyncpg==0.30.0
-greenlet==3.1.1
-aiosqlite==0.20.0
+alembic==1.14.1
+
+# ─── Document Processing ──────────────────────────────
 PyMuPDF==1.25.3
 Pillow==11.1.0
 pytesseract==0.3.13
-sentence-transformers==3.4.1
-qdrant-client==1.13.3
-numpy==2.2.1
+
+# ─── ML / Embeddings ──────────────────────────────────
+# For Docker: torch is pre-installed from CPU index to avoid CUDA bloat.
+# For local CPU-only dev: pip install torch --index-url https://download.pytorch.org/whl/cpu
+# For local GPU dev: pip install torch (default installs CUDA-enabled version)
 torch==2.5.1
+sentence-transformers==3.4.1
+numpy==2.2.1
+
+# ─── Vector Database Client ───────────────────────────
+qdrant-client==1.13.3
+
+# ─── LLM / LangGraph ──────────────────────────────────
 langgraph==0.4.2
 langchain-openai==0.3.8
+
+# ─── Monitoring ───────────────────────────────────────
 psutil==7.0.0
-ruff==0.8.6
-pytest-benchmark==5.1.0
-locust==2.33.0
-alembic==1.14.1
 tiktoken==0.9.0

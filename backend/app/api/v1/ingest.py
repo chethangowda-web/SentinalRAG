@@ -14,7 +14,10 @@ router = APIRouter()
 
 
 @router.post("/ingest", response_model=IngestResponse)
-async def upload_document(file: UploadFile, db: AsyncSession = Depends(get_db)):
+async def upload_document(file: UploadFile | None = None, db: AsyncSession = Depends(get_db)):
+    if file is None:
+        raise AppException(status_code=400, detail="No file provided. Send a file as multipart/form-data.")
+
     if not file.filename:
         raise AppException(status_code=400, detail="No file provided")
 

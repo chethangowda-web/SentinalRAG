@@ -15,12 +15,11 @@ _async_session_maker = None
 def get_engine():
     global _engine
     if _engine is None:
-        _engine = create_async_engine(
-            settings.DATABASE_URL,
-            echo=False,
-            pool_size=5,
-            max_overflow=10,
-        )
+        kwargs = {"echo": False}
+        if settings.DATABASE_URL.startswith("postgresql"):
+            kwargs["pool_size"] = 5
+            kwargs["max_overflow"] = 10
+        _engine = create_async_engine(settings.DATABASE_URL, **kwargs)
     return _engine
 
 

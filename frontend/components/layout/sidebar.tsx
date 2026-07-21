@@ -25,11 +25,15 @@ const navItems = [
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
-export function Sidebar() {
+export function Sidebar({ open, onClose }: { open?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-border bg-background">
+    <>
+      {open && (
+        <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={onClose} />
+      )}
+      <aside className={`fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-border bg-background transition-transform duration-200 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
       <div className="flex h-16 items-center gap-2 border-b border-border px-6">
         <Shield className="h-6 w-6 text-primary" />
         <span className="text-lg font-bold tracking-tight">SentinelRAG</span>
@@ -71,5 +75,6 @@ export function Sidebar() {
         </div>
       </div>
     </aside>
+    </>
   );
 }

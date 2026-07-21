@@ -60,7 +60,7 @@ Built-in benchmark suite with 18 questions across 7 categories (easy, medium, ha
 Every answer includes a confidence score, latency breakdown across all pipeline stages, reasoning path visualization, and source citations with chunk-level references.
 
 ### Enterprise Ready
-Docker Compose orchestration with 5 services (PostgreSQL, Redis, Qdrant, FastAPI, Next.js, NGINX). Structured JSON logging, comprehensive health/readiness/metrics endpoints, rate limiting, security headers, and graceful degradation under failure.
+Docker Compose orchestration (PostgreSQL, Qdrant, FastAPI, Next.js, NGINX). Structured JSON logging, comprehensive health/readiness/metrics endpoints, rate limiting, security headers, and graceful degradation under failure.
 
 ---
 
@@ -156,7 +156,7 @@ User Query
 | **ORM** | SQLAlchemy (async) | 2.0 |
 | **Vector DB** | Qdrant | 1.13 |
 | **Database** | PostgreSQL (asyncpg) | 16 |
-| **Cache** | Redis | 7 |
+| **Cache** | — | (future: Redis) |
 | **Embeddings** | BAAI/bge-small-en-v1.5 (Sentence Transformers) | 384d |
 | **Reranking** | ms-marco-MiniLM-L-6-v2 (Cross-Encoder) | — |
 | **LLM** | DeepSeek V4 (via langchain-openai) | — |
@@ -362,7 +362,7 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-# Ensure PostgreSQL, Qdrant, and Redis are running
+# Ensure PostgreSQL and Qdrant are running
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -389,7 +389,7 @@ npm run dev
 | `DATABASE_URL` | No | `postgresql+asyncpg://sentinel:sentinel@localhost:5432/sentinelrag` | PostgreSQL connection |
 | `REDIS_URL` | No | `redis://localhost:6379/0` | Redis connection |
 | `QDRANT_URL` | No | `http://localhost:6333` | Qdrant connection |
-| `SECRET_KEY` | Yes | `""` | App secret key (empty=crash, set a strong 32+ char value) |
+| `SECRET_KEY` | Yes | `change-me-in-production` (in `.env.example`) | App secret key (required; generate a 32+ char value for production) |
 | `LOG_LEVEL` | No | `INFO` | Logging level |
 | `MAX_FILE_SIZE` | No | `52428800` | Max upload size (50MB) |
 | `RATE_LIMIT_MAX_REQUESTS` | No | `100` | Max requests per window |
@@ -502,6 +502,61 @@ See [PERFORMANCE.md](./PERFORMANCE.md) for detailed benchmarks, load test result
 - [ ] A/B testing framework for configuration optimization
 - [ ] Prometheus + Grafana production monitoring
 - [ ] Kubernetes deployment (Helm charts)
+
+---
+
+## Deployment
+
+### Railway (Recommended)
+
+[Railway](https://railway.app) provides one-click deployment with PostgreSQL and persistent volumes.
+
+**Deploy via Railway Dashboard:**
+
+1. Fork the repo: `https://github.com/chethangowda-web/SentinalRAG`
+2. Create a new Railway project → **Deploy from GitHub repo**
+3. Add a **PostgreSQL** plugin → copy the `DATABASE_URL` (change `postgresql://` to `postgresql+asyncpg://`)
+4. Set required environment variables:
+   - `DEEPSEEK_API_KEY` — your DeepSeek API key
+   - `DATABASE_URL` — Railway PostgreSQL URL (with `+asyncpg`)
+   - `SECRET_KEY` — generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"`
+   - `QDRANT_URL` — leave default (Qdrant is embedded in-app)
+5. Set build command: `cd backend && pip install -r requirements.txt`
+6. Set start command: `cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+7. For **Frontend**, create a separate Railway service:
+   - Root directory: `frontend`
+   - Build command: `npm install && npm run build`
+   - Start command: `npm start`
+   - Set `NEXT_PUBLIC_API_URL` to your backend URL
+
+**Railway Configuration (railway.json):**
+
+A `railway.json` is included in the repo root for automatic service detection.
+
+```json
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "startCommand": "cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT",
+    "healthcheckPath": "/api/v1/health",
+    "healthcheckTimeout": 30,
+    "restartPolicyType": "ALWAYS"
+  }
+}
+```
+
+### Docker Compose (Self-Hosted)
+
+```bash
+cp .env.example .env
+# Edit .env: set your LLM API key (DEEPSEEK_API_KEY)
+docker compose up --build
+```
+
+Access: http://localhost (frontend) / http://localhost/api/v1/health (API)
 
 ---
 

@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.exceptions import AppException
+from app.core.exceptions import AppException, InvalidUploadError
 from app.models.document import Document
 from app.schemas.document import IngestResponse
 from app.services.file_service import save_upload, validate_file
@@ -36,7 +36,10 @@ def _extract_pdf_text(pdf_path: Path) -> tuple[str, int, bool]:
     if not PYMUPDF_AVAILABLE:
         raise RuntimeError("PyMuPDF is not available")
 
-    doc = fitz.open(str(pdf_path))
+    try:
+        doc = fitz.open(str(pdf_path))
+    except Exception as e:
+        raise InvalidUploadError(detail=f"Cannot process PDF file: {e}")
     total_pages = len(doc)
     raw_text_parts: list[str] = []
     ocr_used = False
@@ -70,7 +73,7 @@ async def ingest_document(
 ) -> IngestResponse:
     file_size = len(file_bytes)
 
-    validate_file(filename, content_type, file_size)
+    validate_file(filename, content_type, file_size, file_bytes)
 
     ext = Path(filename).suffix.lower()
     upload_path, doc_id = get_upload_path(filename)
@@ -88,6 +91,8 @@ async def ingest_document(
             raw_text, pages, ocr_used = _process_image(upload_path)
         else:
             raw_text, pages, ocr_used = _extract_pdf_text(upload_path)
+    except (InvalidUploadError, AppException):
+        raise
     except Exception as exc:
         raise AppException(status_code=500, detail=f"Processing failed: {exc}")
 

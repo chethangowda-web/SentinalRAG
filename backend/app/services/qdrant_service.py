@@ -84,3 +84,24 @@ def vector_exists(document_id: str, chunk_index: int) -> bool:
         return len(result[0]) > 0
     except UnexpectedResponse:
         return False
+
+
+def delete_document_vectors(document_id: str) -> None:
+    try:
+        client = get_qdrant_client()
+        client.delete(
+            collection_name=settings.QDRANT_COLLECTION,
+            points_selector=qmodels.FilterSelector(
+                filter=qmodels.Filter(
+                    must=[
+                        qmodels.FieldCondition(
+                            key="document_id",
+                            match=qmodels.MatchValue(value=document_id),
+                        ),
+                    ]
+                )
+            ),
+        )
+        logger.info("Deleted Qdrant vectors for document: %s", document_id)
+    except UnexpectedResponse:
+        logger.warning("No Qdrant vectors found for document: %s", document_id)

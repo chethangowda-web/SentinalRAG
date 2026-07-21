@@ -5,3 +5,12 @@ __pycache__
 venv
 *.egg-info
 .git
+.pytest_cache
+.coverage
+htmlcov
+tests/
+load_tests/
+performance/
+.history/
+*.db
+*.sqlite3

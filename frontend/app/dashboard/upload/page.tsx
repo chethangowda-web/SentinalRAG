@@ -92,7 +92,7 @@ function UploadContent() {
                     <CheckCircle className="h-5 w-5" />
                     <span className="text-sm font-medium">Document Processed Successfully</span>
                   </div>
-                  <div className="mt-3 grid grid-cols-3 gap-3 text-center text-xs">
+                  <div className="mt-3 grid grid-cols-3 gap-1 sm:gap-3 text-center text-xs">
                     <div className="rounded bg-background/50 p-2">
                       <p className="font-medium text-foreground">{upload.data.pages}</p>
                       <p className="text-muted-foreground">Pages</p>

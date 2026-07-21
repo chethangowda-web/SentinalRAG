@@ -80,5 +80,8 @@ async def wait_for_qdrant(
 
 async def wait_for_dependencies() -> None:
     await wait_for_postgres()
-    await wait_for_qdrant()
+    if settings.DATABASE_URL.startswith("sqlite"):
+        logger.info("SQLite in use, skipping Qdrant dependency check")
+    else:
+        await wait_for_qdrant()
     logger.info("All service dependencies ready")
