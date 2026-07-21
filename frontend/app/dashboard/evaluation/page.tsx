@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import toast from "react-hot-toast";
 import {
   BarChart3,
@@ -19,34 +20,74 @@ import {
   CheckCircle2,
   AlertTriangle,
   Loader2,
+  Shield,
+  Gauge,
+  RefreshCw,
+  XCircle,
+  Brain,
+  Target,
+  Activity,
 } from "lucide-react";
+
+function GaugeChart({ value, label, color }: { value: number; label: string; color: string }) {
+  const degrees = (value / 100) * 180;
+  return (
+    <div className="flex flex-col items-center p-4">
+      <div className="relative w-24 h-12 overflow-hidden">
+        <div className="absolute inset-0 rounded-t-full border-4 border-secondary" />
+        <div
+          className="absolute inset-0 rounded-t-full border-4 border-transparent origin-bottom"
+          style={{
+            borderColor: `${color} transparent transparent transparent`,
+            transform: `rotate(${degrees}deg)`,
+            transition: "transform 1s ease-out",
+          }}
+        />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
+          <span className="text-lg font-bold" style={{ color }}>{value}%</span>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground mt-2">{label}</p>
+    </div>
+  );
+}
+
+function Bar({ value, label, max = 100, color = "hsl(var(--primary))" }: { value: number; label: string; max?: number; color?: string }) {
+  const pct = Math.min((value / max) * 100, 100);
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="font-medium">{value}%</span>
+      </div>
+      <div className="h-2 rounded-full bg-secondary overflow-hidden">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="h-full rounded-full"
+          style={{ backgroundColor: color }}
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function EvaluationPage() {
   const { data: report, isLoading: reportLoading } = useEvaluationReport();
   const { data: history, isLoading: historyLoading } = useEvaluationHistory();
   const runEval = useRunEvaluation();
-  const [chartTab, setChartTab] = useState("metrics");
 
   const handleRun = async () => {
     try {
       await runEval.mutateAsync();
       toast.success("Evaluation completed");
-    } catch {
-      toast.error("Evaluation failed");
-    }
+    } catch { toast.error("Evaluation failed"); }
   };
 
   const summary = report?.summary;
-
-  const metricKeys = summary?.sentinel
-    ? Object.entries(summary.sentinel)
-        .filter(([k]) => k !== "timestamp" && k !== "dataset")
-        .map(([k, v]) => ({
-          key: k,
-          label: k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-          value: typeof v === "object" && v !== null ? (v as { value?: number }).value : undefined,
-        }))
-    : [];
+  const s = summary?.sentinel;
+  const c = summary?.comparison;
 
   return (
     <ErrorBoundary>
@@ -59,112 +100,105 @@ export default function EvaluationPage() {
             </p>
           </div>
           <Button onClick={handleRun} disabled={runEval.isPending}>
-            {runEval.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Play className="mr-2 h-4 w-4" />
-            )}
+            {runEval.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
             Run Evaluation
           </Button>
         </div>
 
-        <Tabs value={chartTab} onValueChange={setChartTab}>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <Shield className="h-5 w-5 text-success mx-auto mb-2" />
+              <p className="text-2xl font-bold">{s?.faithfulness?.value != null ? `${(s.faithfulness.value * 100).toFixed(0)}%` : "--"}</p>
+              <p className="text-xs text-muted-foreground">Faithfulness</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <Target className="h-5 w-5 text-primary mx-auto mb-2" />
+              <p className="text-2xl font-bold">{s?.correctness?.value != null ? `${(s.correctness.value * 100).toFixed(0)}%` : "--"}</p>
+              <p className="text-xs text-muted-foreground">Correctness</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <Activity className="h-5 w-5 text-chart-2 mx-auto mb-2" />
+              <p className="text-2xl font-bold">{s?.answer_relevancy?.value != null ? `${(s.answer_relevancy.value * 100).toFixed(0)}%` : "--"}</p>
+              <p className="text-xs text-muted-foreground">Answer Relevancy</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <Brain className="h-5 w-5 text-chart-3 mx-auto mb-2" />
+              <p className="text-2xl font-bold">{s?.context_recall?.value != null ? `${(s.context_recall.value * 100).toFixed(0)}%` : "--"}</p>
+              <p className="text-xs text-muted-foreground">Context Recall</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <CheckCircle2 className="h-5 w-5 text-success mx-auto mb-2" />
+              <p className="text-2xl font-bold">{s?.context_precision?.value != null ? `${(s.context_precision.value * 100).toFixed(0)}%` : "--"}</p>
+              <p className="text-xs text-muted-foreground">Precision</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <XCircle className="h-5 w-5 text-destructive mx-auto mb-2" />
+              <p className="text-2xl font-bold">{s?.faithfulness?.value != null ? `${((1 - s.faithfulness.value) * 100).toFixed(1)}%` : "--"}</p>
+              <p className="text-xs text-muted-foreground">Hallucination</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <RefreshCw className="h-5 w-5 text-warning mx-auto mb-2" />
+              <p className="text-2xl font-bold">{s?.retry_rate?.value != null ? `${(s.retry_rate.value * 100).toFixed(0)}%` : "--"}</p>
+              <p className="text-xs text-muted-foreground">Retry Rate</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <Activity className="h-5 w-5 text-chart-4 mx-auto mb-2" />
+              <p className="text-2xl font-bold">{report?.total_questions != null ? `${report.total_questions}` : "--"}</p>
+              <p className="text-xs text-muted-foreground">Questions</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Tabs defaultValue="metrics">
           <TabsList>
-            <TabsTrigger value="metrics">
-              <BarChart3 className="mr-2 h-4 w-4" />
-              Metrics
-            </TabsTrigger>
-            <TabsTrigger value="history" disabled={historyLoading}>
-              <History className="mr-2 h-4 w-4" />
-              History
-            </TabsTrigger>
+            <TabsTrigger value="metrics"><BarChart3 className="mr-2 h-4 w-4" /> Metrics</TabsTrigger>
+            <TabsTrigger value="comparison" disabled={!c}><TrendingUp className="mr-2 h-4 w-4" /> vs Baseline</TabsTrigger>
+            <TabsTrigger value="history" disabled={historyLoading}><History className="mr-2 h-4 w-4" /> History</TabsTrigger>
           </TabsList>
 
           <TabsContent value="metrics" className="mt-6">
             {reportLoading ? (
               <LoadingSkeleton type="card" count={3} />
-            ) : metricKeys.length > 0 ? (
+            ) : s ? (
               <div className="space-y-6">
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {metricKeys.map((metric, i) => (
-                    <motion.div
-                      key={metric.key}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                    >
-                      <Card>
-                        <CardContent className="pt-6">
-                          <p className="text-sm text-muted-foreground">{metric.label}</p>
-                          <div className="mt-2 flex items-baseline gap-2">
-                            <span className="text-2xl font-bold">
-                              {metric.value !== undefined
-                                ? `${(metric.value * 100).toFixed(1)}%`
-                                : "--"}
-                            </span>
-                            <Badge
-                              variant={
-                                metric.value !== undefined && metric.value >= 0.8
-                                  ? "success"
-                                  : metric.value !== undefined && metric.value >= 0.5
-                                  ? "warning"
-                                  : "destructive"
-                              }
-                            >
-                              {metric.value !== undefined
-                                ? metric.value >= 0.8
-                                  ? "Excellent"
-                                  : metric.value >= 0.5
-                                  ? "Good"
-                                  : "Needs Work"
-                                : "N/A"}
-                            </Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Performance Bars</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Bar value={s.faithfulness?.value != null ? s.faithfulness.value * 100 : 0} label="Faithfulness" color="hsl(var(--success))" />
+                    <Bar value={s.correctness?.value != null ? s.correctness.value * 100 : 0} label="Correctness" color="hsl(var(--primary))" />
+                    <Bar value={s.answer_relevancy?.value != null ? s.answer_relevancy.value * 100 : 0} label="Answer Relevancy" color="hsl(var(--chart-2))" />
+                    <Bar value={s.context_recall?.value != null ? s.context_recall.value * 100 : 0} label="Context Recall" color="hsl(var(--chart-3))" />
+                    <Bar value={s.context_precision?.value != null ? s.context_precision.value * 100 : 0} label="Context Precision" color="hsl(var(--chart-4))" />
+                    <Separator />
+                    <Bar value={s.retry_rate?.value != null ? s.retry_rate.value * 100 : 0} label="Retry Rate" color="hsl(var(--warning))" max={50} />
+                  </CardContent>
+                </Card>
 
-                {summary?.comparison && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <TrendingUp className="h-4 w-4 text-primary" />
-                        vs Baseline
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {Object.entries(summary.comparison).map(([key, val]) => {
-                          const v = val as { improvement?: string; absolute_change?: number };
-                          const label = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-                          const improved = v.improvement === "yes" || (v.absolute_change ?? 0) > 0;
-                          return (
-                            <div
-                              key={key}
-                              className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-secondary/30 transition-colors"
-                            >
-                              <span className="text-sm">{label}</span>
-                              <div className="flex items-center gap-2">
-                                {improved ? (
-                                  <CheckCircle2 className="h-4 w-4 text-success" />
-                                ) : (
-                                  <AlertTriangle className="h-4 w-4 text-warning" />
-                                )}
-                                <span className="text-sm font-medium">
-                                  {v.absolute_change !== undefined
-                                    ? `${(v.absolute_change * 100).toFixed(1)}%`
-                                    : "--"}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <GaugeChart value={s.faithfulness?.value != null ? s.faithfulness.value * 100 : 0} label="Faithfulness" color="#22c55e" />
+                  <GaugeChart value={s.correctness?.value != null ? s.correctness.value * 100 : 0} label="Correctness" color="#3b82f6" />
+                  <GaugeChart value={s.context_recall?.value != null ? s.context_recall.value * 100 : 0} label="Context Recall" color="#a855f7" />
+                </div>
               </div>
             ) : (
               <EmptyState
@@ -173,15 +207,44 @@ export default function EvaluationPage() {
                 description="Run an evaluation to see how your pipeline performs."
                 action={
                   <Button onClick={handleRun} disabled={runEval.isPending}>
-                    {runEval.isPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Play className="mr-2 h-4 w-4" />
-                    )}
+                    {runEval.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
                     Run Evaluation
                   </Button>
                 }
               />
+            )}
+          </TabsContent>
+
+          <TabsContent value="comparison" className="mt-6">
+            {c ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                    vs Baseline
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {Object.entries(c).map(([key, val]) => {
+                      const v = val as { baseline?: number; sentinel?: number; absolute_change?: number; relative_change_pct?: number; improved?: boolean };
+                      const label = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+                      return (
+                        <div key={key} className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-secondary/30 transition-colors">
+                          <span className="text-sm">{label}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-muted-foreground">Baseline: {v.baseline != null ? `${(v.baseline * 100).toFixed(1)}%` : "--"}</span>
+                            <span className="text-sm font-medium">{(v.sentinel ?? 0) * 100 > (v.baseline ?? 0) * 100 ? "▲" : "▼"} {(Math.abs(v.absolute_change ?? 0) * 100).toFixed(1)}%</span>
+                            {v.improved ? <CheckCircle2 className="h-4 w-4 text-success" /> : <AlertTriangle className="h-4 w-4 text-warning" />}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <EmptyState icon={TrendingUp} title="No comparison data" description="Run an evaluation with a baseline to see comparisons." />
             )}
           </TabsContent>
 
@@ -191,14 +254,9 @@ export default function EvaluationPage() {
             ) : history && history.length > 0 ? (
               <div className="space-y-2">
                 {history.map((item, i) => (
-                  <div
-                    key={item.evaluation_id ?? i}
-                    className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-secondary/30"
-                  >
+                  <div key={item.evaluation_id ?? i} className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-secondary/30">
                     <div>
-                      <p className="text-sm font-medium">
-                        Run #{i + 1}
-                      </p>
+                      <p className="text-sm font-medium">Run #{i + 1}</p>
                       <p className="text-xs text-muted-foreground">
                         {item.timestamp ? new Date(item.timestamp).toLocaleString() : "Unknown date"}
                         {item.total_questions ? ` · ${item.total_questions} questions` : ""}
@@ -209,11 +267,7 @@ export default function EvaluationPage() {
                 ))}
               </div>
             ) : (
-              <EmptyState
-                icon={History}
-                title="No evaluation history"
-                description="Run an evaluation to see history here."
-              />
+              <EmptyState icon={History} title="No evaluation history" description="Run an evaluation to see history here." />
             )}
           </TabsContent>
         </Tabs>

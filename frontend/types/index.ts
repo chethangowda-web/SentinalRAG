@@ -71,6 +71,7 @@ export interface Document {
   created_at: string;
   updated_at: string;
   file_size: number | null;
+  chunk_count?: number | null;
 }
 
 export interface ChunkMetadata {

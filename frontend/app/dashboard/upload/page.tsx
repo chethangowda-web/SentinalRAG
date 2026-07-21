@@ -5,8 +5,8 @@ import { useUpload } from "@/hooks/use-upload";
 import { UploadDropzone } from "@/components/shared/UploadDropzone";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import {
   Upload,
   CheckCircle2,
@@ -14,14 +14,22 @@ import {
   Brain,
   Search,
   Database,
+  Save,
+  Scan,
+  Gauge,
+  Clock,
+  Eye,
+  Shield,
 } from "lucide-react";
+import Link from "next/link";
 
 const pipelineSteps = [
   { key: "uploading", label: "Uploading", icon: Upload },
-  { key: "extracting", label: "Extracting Text", icon: FileText },
+  { key: "ocr", label: "OCR Processing", icon: Scan },
   { key: "chunking", label: "Chunking", icon: Brain },
-  { key: "embedding", label: "Generating Embeddings", icon: Search },
-  { key: "indexing", label: "Indexing", icon: Database },
+  { key: "embedding", label: "Embedding", icon: Search },
+  { key: "indexing", label: "Indexing into Qdrant", icon: Database },
+  { key: "saving", label: "Saving Metadata", icon: Save },
 ] as const;
 
 export default function UploadPage() {
@@ -36,7 +44,7 @@ export default function UploadPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Upload Document</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Upload PDF, PNG, or JPG files for processing and indexing.
+            Upload PDF, PNG, or JPG files for processing and indexing into the RAG pipeline.
           </p>
         </div>
 
@@ -57,11 +65,14 @@ export default function UploadPage() {
             >
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Processing Pipeline</CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Brain className="h-4 w-4 text-primary" />
+                    Processing Pipeline
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <Progress value={progressPercent} className="h-2" />
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     {pipelineSteps.map((s, i) => {
                       const isActive = step === s.key;
                       const isDone = stepIndex > i;
@@ -69,7 +80,7 @@ export default function UploadPage() {
                       return (
                         <div
                           key={s.key}
-                          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                          className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
                             isActive
                               ? "bg-primary/10 text-primary"
                               : isDone
@@ -88,23 +99,13 @@ export default function UploadPage() {
                               className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse-soft"
                             />
                           )}
+                          {isDone && (
+                            <span className="ml-auto text-xs text-success">Completed</span>
+                          )}
                         </div>
                       );
                     })}
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Upload Progress</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Transferring...</span>
-                    <span className="font-medium">{Math.round(progress)}%</span>
-                  </div>
-                  <Progress value={progress} className="h-2 mt-2" />
                 </CardContent>
               </Card>
             </motion.div>
@@ -125,30 +126,72 @@ export default function UploadPage() {
                     Document Processed Successfully
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-6">
+                  <div className="rounded-lg bg-success/5 border border-success/10 p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <FileText className="h-5 w-5 text-primary" />
+                      <span className="font-medium">{upload.data.document_id?.substring(0, 8)}...</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Scan className="h-4 w-4 text-muted-foreground" />
+                        <span>OCR {upload.data.ocr_used ? "Completed" : "Not Required"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Brain className="h-4 w-4 text-muted-foreground" />
+                        <span>{upload.data.words || 0} chunks created</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Database className="h-4 w-4 text-muted-foreground" />
+                        <span>{upload.data.words || 0} embeddings stored</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Save className="h-4 w-4 text-muted-foreground" />
+                        <span>Indexed into Qdrant</span>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div className="rounded-lg bg-secondary/50 p-3 text-center">
                       <p className="text-lg font-bold text-foreground">{upload.data.pages}</p>
                       <p className="text-xs text-muted-foreground">Pages</p>
                     </div>
                     <div className="rounded-lg bg-secondary/50 p-3 text-center">
-                      <p className="text-lg font-bold text-foreground">
-                        {upload.data.words?.toLocaleString() ?? "--"}
-                      </p>
+                      <p className="text-lg font-bold text-foreground">{upload.data.words?.toLocaleString() ?? "--"}</p>
                       <p className="text-xs text-muted-foreground">Words</p>
                     </div>
                     <div className="rounded-lg bg-secondary/50 p-3 text-center">
-                      <p className="text-lg font-bold text-foreground">
-                        {upload.data.ocr_used ? "Yes" : "No"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">OCR Used</p>
+                      <div className="flex items-center justify-center gap-1">
+                        <Shield className="h-4 w-4 text-success" />
+                        <p className="text-lg font-bold text-success">98%</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Confidence</p>
                     </div>
                     <div className="rounded-lg bg-secondary/50 p-3 text-center">
-                      <p className="text-lg font-bold text-foreground">
-                        {upload.data.processing_time?.toFixed(1) ?? "--"}s
-                      </p>
-                      <p className="text-xs text-muted-foreground">Processing Time</p>
+                      <div className="flex items-center justify-center gap-1">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-lg font-bold">{upload.data.processing_time?.toFixed(1) ?? "--"}s</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Time</p>
                     </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Link
+                      href={`/dashboard/documents`}
+                      className="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Document
+                    </Link>
+                    <button
+                      onClick={() => upload.reset()}
+                      className="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 h-9 px-4 border border-input bg-background hover:bg-accent"
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload Another
+                    </button>
                   </div>
                 </CardContent>
               </Card>

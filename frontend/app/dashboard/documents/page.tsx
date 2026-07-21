@@ -19,17 +19,24 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import toast from "react-hot-toast";
 import {
   FileText,
   Search,
   Trash2,
   Calendar,
-  File,
   BarChart3,
   BookOpen,
-  ArrowUpDown,
-  X,
+  Eye,
+  Download,
+  Database,
+  Scan,
+  Brain,
+  Hash,
+  File,
+  Info,
 } from "lucide-react";
 import type { Document } from "@/types";
 
@@ -71,7 +78,7 @@ export default function DocumentsPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Manage your uploaded documents
+              Manage your uploaded and indexed documents
             </p>
           </div>
         </div>
@@ -88,12 +95,7 @@ export default function DocumentsPage() {
           </div>
           <div className="flex items-center gap-2">
             {(["date", "name", "status"] as const).map((s) => (
-              <Button
-                key={s}
-                variant={sortBy === s ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSortBy(s)}
-              >
+              <Button key={s} variant={sortBy === s ? "default" : "outline"} size="sm" onClick={() => setSortBy(s)}>
                 {s === "date" && <Calendar className="mr-1.5 h-3.5 w-3.5" />}
                 {s === "name" && <FileText className="mr-1.5 h-3.5 w-3.5" />}
                 {s === "status" && <BarChart3 className="mr-1.5 h-3.5 w-3.5" />}
@@ -123,12 +125,12 @@ export default function DocumentsPage() {
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
                           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                            <FileText className="h-5 w-5 text-primary" />
+                            <File className="h-5 w-5 text-primary" />
                           </div>
                           <div>
                             <p className="text-sm font-medium leading-tight">{doc.filename}</p>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              {doc.word_count?.toLocaleString() ?? 0} words
+                              {doc.file_type?.toUpperCase() || "PDF"}
                             </p>
                           </div>
                         </div>
@@ -136,13 +138,31 @@ export default function DocumentsPage() {
                           variant="ghost"
                           size="icon"
                           className="shrink-0 -mr-2 -mt-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(doc.id, doc.filename);
-                          }}
+                          onClick={(e) => { e.stopPropagation(); handleDelete(doc.id, doc.filename); }}
                         >
                           <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                         </Button>
+                      </div>
+
+                      <Separator className="my-3" />
+
+                      <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1.5">
+                          <Hash className="h-3 w-3" />
+                          <span>{doc.word_count?.toLocaleString() ?? 0} words</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Brain className="h-3 w-3" />
+                          <span>{doc.chunk_count ?? "--"} chunks</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Database className="h-3 w-3" />
+                          <span>{doc.status === "embedded" ? "Embedded" : doc.status}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Scan className="h-3 w-3" />
+                          <span>{doc.ocr_used ? "OCR Done" : "No OCR"}</span>
+                        </div>
                       </div>
 
                       <Separator className="my-3" />
@@ -163,75 +183,122 @@ export default function DocumentsPage() {
           <EmptyState
             icon={FileText}
             title={search ? "No documents match your search" : "No documents yet"}
-            description={
-              search
-                ? "Try a different search term."
-                : "Upload your first document to get started with RAG."
-            }
+            description={search ? "Try a different search term." : "Upload your first document to get started with RAG."}
           />
         )}
 
         <Dialog open={!!selectedDoc} onOpenChange={() => setSelectedDoc(null)}>
-          <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogContent className="max-w-2xl max-h-[85vh]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" />
+                <File className="h-5 w-5 text-primary" />
                 {selectedDoc?.filename}
               </DialogTitle>
               <DialogDescription>
-                {selectedDoc?.word_count?.toLocaleString() ?? 0} words ·{" "}
-                {selectedDoc?.pages ?? "--"} pages
-                {selectedDoc?.ocr_used ? " · OCR applied" : ""}
+                {selectedDoc?.file_type?.toUpperCase() || "PDF"} · {selectedDoc?.word_count?.toLocaleString() ?? 0} words · {selectedDoc?.pages ?? "--"} pages
               </DialogDescription>
             </DialogHeader>
 
-            <Separator />
+            <Tabs defaultValue="chunks">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="chunks">Chunks</TabsTrigger>
+                <TabsTrigger value="metadata">Metadata</TabsTrigger>
+                <TabsTrigger value="preview">Preview</TabsTrigger>
+              </TabsList>
 
-            <div className="flex items-center gap-2">
-              <StatusBadge status={selectedDoc?.status ?? ""} />
-              <span className="text-xs text-muted-foreground ml-auto">
-                Created {selectedDoc?.created_at ? new Date(selectedDoc.created_at).toLocaleString() : ""}
-              </span>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-muted-foreground" />
-                Chunks ({chunks?.chunks?.length ?? 0})
-              </h4>
-              <ScrollArea className="h-[300px]">
-                <div className="space-y-2">
-                  {chunks?.chunks?.map((chunk, i) => (
-                    <Card key={chunk.id} className="bg-secondary/30">
-                      <CardContent className="p-3">
-                        <div className="flex items-start gap-3">
-                          <span className="text-xs font-mono text-muted-foreground shrink-0 mt-0.5">
-                            #{i + 1}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="text-xs text-muted-foreground line-clamp-3">
-                              {chunk.chunk_text}
-                            </p>
-                            {chunk.page_number && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Page {chunk.page_number}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  {(!chunks?.chunks || chunks.chunks.length === 0) && (
-                    <p className="text-sm text-muted-foreground text-center py-8">
-                      No chunks available
-                    </p>
-                  )}
+              <TabsContent value="chunks" className="mt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium">{chunks?.chunks?.length ?? 0} chunks</span>
+                  <StatusBadge status={selectedDoc?.status ?? ""} />
                 </div>
-              </ScrollArea>
-            </div>
+                <ScrollArea className="h-[300px]">
+                  <div className="space-y-2">
+                    {chunks?.chunks?.map((chunk, i) => (
+                      <Card key={chunk.id} className="bg-secondary/30">
+                        <CardContent className="p-3">
+                          <div className="flex items-start gap-3">
+                            <span className="text-xs font-mono text-muted-foreground shrink-0 mt-0.5">#{i + 1}</span>
+                            <div className="min-w-0">
+                              <p className="text-xs text-muted-foreground line-clamp-3">{chunk.chunk_text}</p>
+                              <div className="flex items-center gap-2 mt-1.5">
+                                {chunk.page_number && <Badge variant="outline" className="text-[10px]">Page {chunk.page_number}</Badge>}
+                                <Badge variant="outline" className="text-[10px]">{chunk.word_count ?? 0} words</Badge>
+                                <Badge variant={chunk.embedding_status === "embedded" ? "success" : "outline"} className="text-[10px]">
+                                  {chunk.embedding_status}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                    {(!chunks?.chunks || chunks.chunks.length === 0) && (
+                      <p className="text-sm text-muted-foreground text-center py-8">No chunks available</p>
+                    )}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="metadata" className="mt-4">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg bg-secondary/30 p-3">
+                      <p className="text-xs text-muted-foreground">File Type</p>
+                      <p className="text-sm font-medium">{selectedDoc?.file_type?.toUpperCase() || "PDF"}</p>
+                    </div>
+                    <div className="rounded-lg bg-secondary/30 p-3">
+                      <p className="text-xs text-muted-foreground">File Size</p>
+                      <p className="text-sm font-medium">{selectedDoc?.file_size ? `${(selectedDoc.file_size / 1024).toFixed(1)} KB` : "--"}</p>
+                    </div>
+                    <div className="rounded-lg bg-secondary/30 p-3">
+                      <p className="text-xs text-muted-foreground">Pages</p>
+                      <p className="text-sm font-medium">{selectedDoc?.pages ?? "--"}</p>
+                    </div>
+                    <div className="rounded-lg bg-secondary/30 p-3">
+                      <p className="text-xs text-muted-foreground">Words</p>
+                      <p className="text-sm font-medium">{selectedDoc?.word_count?.toLocaleString() ?? 0}</p>
+                    </div>
+                    <div className="rounded-lg bg-secondary/30 p-3">
+                      <p className="text-xs text-muted-foreground">Characters</p>
+                      <p className="text-sm font-medium">{selectedDoc?.char_count?.toLocaleString() ?? 0}</p>
+                    </div>
+                    <div className="rounded-lg bg-secondary/30 p-3">
+                      <p className="text-xs text-muted-foreground">OCR</p>
+                      <p className="text-sm font-medium">{selectedDoc?.ocr_used ? "Applied" : "Not Required"}</p>
+                    </div>
+                  </div>
+                  <Separator />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg bg-secondary/30 p-3">
+                      <p className="text-xs text-muted-foreground">Created</p>
+                      <p className="text-sm font-medium">{selectedDoc?.created_at ? new Date(selectedDoc.created_at).toLocaleString() : "--"}</p>
+                    </div>
+                    <div className="rounded-lg bg-secondary/30 p-3">
+                      <p className="text-xs text-muted-foreground">Last Updated</p>
+                      <p className="text-sm font-medium">{selectedDoc?.updated_at ? new Date(selectedDoc.updated_at).toLocaleString() : "--"}</p>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="preview" className="mt-4">
+                <ScrollArea className="h-[300px]">
+                  <div className="space-y-2">
+                    {chunks?.chunks?.slice(0, 5).map((chunk, i) => (
+                      <div key={chunk.id} className="rounded-lg border p-3">
+                        <p className="text-xs text-muted-foreground leading-relaxed">{chunk.chunk_text}</p>
+                        {chunk.page_number && (
+                          <p className="text-xs text-muted-foreground mt-1">— Page {chunk.page_number}</p>
+                        )}
+                      </div>
+                    ))}
+                    {(!chunks?.chunks || chunks.chunks.length === 0) && (
+                      <p className="text-sm text-muted-foreground text-center py-8">No preview available</p>
+                    )}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
       </div>
