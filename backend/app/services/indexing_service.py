@@ -22,16 +22,16 @@ async def embed_document(document_id: str, db: AsyncSession) -> EmbedResponse:
     if document is None:
         raise AppException(status_code=404, detail=f"Document {document_id} not found")
 
-    text_path_str = document.extracted_text_path
-    if not text_path_str:
-        raise AppException(status_code=400, detail="Document has no extracted text")
-
-    text_path = Path(text_path_str)
-    if not text_path.exists():
-        raise AppException(status_code=400, detail=f"Extracted text file not found: {text_path}")
-
-    with open(text_path, "r", encoding="utf-8") as f:
-        text = f.read()
+    text = document.text_content
+    if not text:
+        text_path_str = document.extracted_text_path
+        if text_path_str:
+            text_path = Path(text_path_str)
+            if text_path.exists():
+                with open(text_path, "r", encoding="utf-8") as f:
+                    text = f.read()
+        if not text:
+            raise AppException(status_code=400, detail="Document has no text content")
 
     if not text.strip():
         raise AppException(status_code=400, detail="Document text is empty")

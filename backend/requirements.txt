@@ -27,7 +27,7 @@ sentence-transformers==3.4.1
 numpy==2.2.1
 
 # ─── Vector Database Client ───────────────────────────
-qdrant-client==1.13.3
+qdrant-client>=1.13.0
 
 # ─── LLM / LangGraph ──────────────────────────────────
 langgraph==0.4.2
