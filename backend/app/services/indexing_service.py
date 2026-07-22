@@ -22,6 +22,15 @@ async def embed_document(document_id: str, db: AsyncSession) -> EmbedResponse:
     if document is None:
         raise AppException(status_code=404, detail=f"Document {document_id} not found")
 
+    if document.status == "embedded":
+        logger.info("Document %s already embedded, skipping", document_id)
+        return EmbedResponse(
+            document_id=document_id,
+            total_chunks=0,
+            embedded_chunks=0,
+            status="embedded",
+        )
+
     text = document.text_content
     if not text:
         text_path_str = document.extracted_text_path
@@ -88,26 +97,34 @@ async def embed_document(document_id: str, db: AsyncSession) -> EmbedResponse:
             status="skipped",
         )
 
-    vectors = await generate_embeddings_async(texts_for_embedding)
+    try:
+        vectors = await generate_embeddings_async(texts_for_embedding)
 
-    point_ids = upsert_vectors(vectors, payloads)
+        point_ids = upsert_vectors(vectors, payloads)
 
-    for i, chunk_rec in enumerate(chunk_records):
-        chunk_rec.vector_id = point_ids[i]
-        chunk_rec.embedding_status = "embedded"
-        db.add(chunk_rec)
+        for i, chunk_rec in enumerate(chunk_records):
+            chunk_rec.vector_id = point_ids[i]
+            chunk_rec.embedding_status = "embedded"
+            db.add(chunk_rec)
 
-    document.status = "embedded"
-    await db.commit()
+        document.status = "embedded"
+        await db.commit()
 
-    logger.info(
-        "Document %s embedded: %d chunks, %d vectors",
-        document_id, len(chunks), len(point_ids),
-    )
+        logger.info(
+            "Document %s embedded: %d chunks, %d vectors",
+            document_id, len(chunks), len(point_ids),
+        )
 
-    return EmbedResponse(
-        document_id=document_id,
-        total_chunks=len(chunks),
-        embedded_chunks=len(point_ids),
-        status="embedded",
-    )
+        return EmbedResponse(
+            document_id=document_id,
+            total_chunks=len(chunks),
+            embedded_chunks=len(point_ids),
+            status="embedded",
+        )
+    except Exception:
+        logger.exception("Embedding failed for document %s, cleaning up", document_id)
+        document.status = "failed"
+        for chunk_rec in chunk_records:
+            await db.delete(chunk_rec)
+        await db.commit()
+        raise AppException(status_code=500, detail=f"Embedding failed for document {document_id}")

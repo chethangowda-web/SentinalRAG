@@ -21,6 +21,8 @@ def _get_llm():
             base_url=settings.effective_llm_base_url,
             temperature=0.05,
             max_tokens=256,
+            timeout=30,
+            max_retries=1,
         )
     return _llm
 

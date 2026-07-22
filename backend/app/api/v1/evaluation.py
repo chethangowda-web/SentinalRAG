@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["evaluation"])
 
+_eval_tasks: set[asyncio.Task] = set()
 _runner = EvaluationRunner()
 _report_gen = ReportGenerator()
 _visualizer = Visualizer()
@@ -91,7 +92,9 @@ async def run_evaluation() -> dict[str, Any]:
     dataset_path = str(Path(__file__).resolve().parent.parent.parent.parent / "evaluation" / "datasets" / "benchmark.json")
     total_questions = _count_questions(dataset_path)
 
-    asyncio.create_task(_run_evaluation_background(eval_id, dataset_path, total_questions))
+    task = asyncio.create_task(_run_evaluation_background(eval_id, dataset_path, total_questions))
+    _eval_tasks.add(task)
+    task.add_done_callback(_eval_tasks.discard)
 
     return {
         "evaluation_id": eval_id,
