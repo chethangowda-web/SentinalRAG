@@ -27,9 +27,9 @@ async def check_duplicate(
     sha256 = compute_sha256(file_bytes)
 
     result = await db.execute(
-        select(Document).where(Document.sha256_hash == sha256)
+        select(Document).where(Document.sha256_hash == sha256).limit(1)
     )
-    exact_match = result.scalar_one_or_none()
+    exact_match = result.scalars().first()
     if exact_match:
         return {
             "is_duplicate": True,
