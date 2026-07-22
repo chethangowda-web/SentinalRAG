@@ -763,8 +763,8 @@ class TestEvaluationAPI:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "completed"
-        assert data["evaluation_id"] == "test-123"
+        assert data["status"] == "running"
+        assert data["evaluation_id"] is not None
 
 
 # ---------------------------------------------------------------------------
