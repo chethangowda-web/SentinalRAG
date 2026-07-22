@@ -59,7 +59,6 @@ async def check_duplicate(
 
     if text_preview and len(text_preview) > 50:
         try:
-            import asyncio
             from app.core.qdrant import get_qdrant_client
             from app.services.embedding_service import generate_embeddings
 

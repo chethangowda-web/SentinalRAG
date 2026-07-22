@@ -1,9 +1,8 @@
-import json
 import logging
 import time
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -20,7 +19,6 @@ from app.schemas.chat import (
     RetrievalDetailItem,
 )
 from app.services import chat_history_service, trace_service
-from app.services.confidence_service import ConfidenceLevel
 
 logger = logging.getLogger(__name__)
 

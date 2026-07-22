@@ -2,14 +2,13 @@ import asyncio
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, HTTPException
 
-from app.core.database import get_db, get_session_maker
+from app.core.database import get_session_maker
 from evaluation.dataset import load_dataset, get_dataset_summary
 from evaluation.reports.report_generator import ReportGenerator
 from evaluation.reports.visualizer import Visualizer

@@ -3,7 +3,7 @@ import logging
 import uuid
 from datetime import datetime
 
-from sqlalchemy import func as sqlfunc, or_, select, desc
+from sqlalchemy import func as sqlfunc, select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.chat_session import ChatMessage, ChatSession
@@ -26,7 +26,7 @@ async def create_session(db: AsyncSession, title: str = "New Chat", session_id: 
 
 async def get_session(db: AsyncSession, session_id: str) -> ChatSession | None:
     result = await db.execute(
-        select(ChatSession).where(ChatSession.id == session_id, ChatSession.deleted == False)
+        select(ChatSession).where(ChatSession.id == session_id, ChatSession.deleted.is_(False))
     )
     return result.scalar_one_or_none()
 
@@ -59,7 +59,7 @@ async def delete_session(db: AsyncSession, session_id: str) -> bool:
 async def list_sessions(
     db: AsyncSession, skip: int = 0, limit: int = 50, search: str | None = None
 ) -> list[ChatSession]:
-    query = select(ChatSession).where(ChatSession.deleted == False)
+    query = select(ChatSession).where(ChatSession.deleted.is_(False))
     if search:
         query = query.where(ChatSession.title.ilike(f"%{search}%"))
     query = query.order_by(ChatSession.pinned.desc(), desc(ChatSession.updated_at)).offset(skip).limit(limit)
@@ -68,7 +68,7 @@ async def list_sessions(
 
 
 async def count_sessions(db: AsyncSession, search: str | None = None) -> int:
-    query = select(sqlfunc.count(ChatSession.id)).where(ChatSession.deleted == False)
+    query = select(sqlfunc.count(ChatSession.id)).where(ChatSession.deleted.is_(False))
     if search:
         query = query.where(ChatSession.title.ilike(f"%{search}%"))
     result = await db.execute(query)
