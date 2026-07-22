@@ -15,7 +15,7 @@ def _load_reranker():
 
         logger.info("Loading cross-encoder model: %s", _RERANKER_MODEL)
         start = time.perf_counter()
-        _model = CrossEncoder(_RERANKER_MODEL)
+        _model = CrossEncoder(_RERANKER_MODEL, device="cpu")
         _model_name = _RERANKER_MODEL
         elapsed = round(time.perf_counter() - start, 2)
         logger.info("Cross-encoder loaded in %.2f seconds", elapsed)

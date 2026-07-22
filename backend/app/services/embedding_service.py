@@ -20,7 +20,7 @@ def _load_model():
 
         logger.info("Loading embedding model: %s", settings.EMBEDDING_MODEL)
         start = time.perf_counter()
-        _model = SentenceTransformer(settings.EMBEDDING_MODEL)
+        _model = SentenceTransformer(settings.EMBEDDING_MODEL, device="cpu")
         _model_name = settings.EMBEDDING_MODEL
         elapsed = round(time.perf_counter() - start, 2)
         logger.info("Model loaded in %.2f seconds", elapsed)
