@@ -27,5 +27,11 @@ async def upload_document(file: UploadFile | None = None, db: AsyncSession = Dep
 
     logger.info("Ingest request: filename=%s content_type=%s size=%d", filename, content_type, len(file_bytes))
 
-    result = await ingest_document(filename, content_type, file_bytes, db)
-    return result
+    try:
+        result = await ingest_document(filename, content_type, file_bytes, db)
+        return result
+    except AppException:
+        raise
+    except Exception as exc:
+        logger.exception("Unhandled error in upload_document")
+        raise AppException(status_code=500, detail=f"Unhandled error: {exc}")
