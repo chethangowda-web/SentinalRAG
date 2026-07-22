@@ -14,9 +14,12 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+_tasks: set[asyncio.Task] = set()
+
 
 async def _background_embed(document_id: str):
     try:
+        logger.info("Background embed starting for: %s", document_id)
         session_maker = get_session_maker()
         async with session_maker() as bg_db:
             await embed_document(document_id, bg_db)
@@ -28,7 +31,9 @@ async def _background_embed(document_id: str):
 @router.post("/embed/{document_id}", response_model=EmbedResponse)
 async def embed_document_endpoint(document_id: str, db: AsyncSession = Depends(get_db)):
     logger.info("Embed request for document: %s", document_id)
-    asyncio.create_task(_background_embed(document_id))
+    task = asyncio.create_task(_background_embed(document_id))
+    _tasks.add(task)
+    task.add_done_callback(_tasks.discard)
     return EmbedResponse(
         document_id=document_id,
         total_chunks=0,
