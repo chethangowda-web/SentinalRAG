@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://sentinel:sentinel@localhost:5432/sentinelrag"
     REDIS_URL: str = "redis://localhost:6379/0"
     QDRANT_URL: str = "http://localhost:6333"
+    QDRANT_API_KEY: str = ""
     SECRET_KEY: str = "change-me-in-production"
 
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000"]
