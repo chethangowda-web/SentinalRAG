@@ -507,6 +507,15 @@ See [PERFORMANCE.md](./PERFORMANCE.md) for detailed benchmarks, load test result
 
 ## Deployment
 
+### Live Deployments
+
+| Service | URL |
+|---|---|
+| Frontend | [https://frontend-production-10b2.up.railway.app](https://frontend-production-10b2.up.railway.app) |
+| Backend API | [https://sentinalrag-production.up.railway.app](https://sentinalrag-production.up.railway.app) |
+| API Health | [https://sentinalrag-production.up.railway.app/api/v1/health](https://sentinalrag-production.up.railway.app/api/v1/health) |
+| Swagger Docs | [https://sentinalrag-production.up.railway.app/docs](https://sentinalrag-production.up.railway.app/docs) |
+
 ### Railway (Recommended)
 
 [Railway](https://railway.app) provides one-click deployment with PostgreSQL and persistent volumes.
