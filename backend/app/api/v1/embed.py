@@ -1,10 +1,11 @@
+import asyncio
 import logging
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
+from app.core.database import get_db, get_session_maker
 from app.core.exceptions import AppException
 from app.models.chunk import Chunk
 from app.schemas.chunk import ChunkListResponse, ChunkMetadata, EmbedResponse
@@ -15,11 +16,33 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+async def _background_embed(document_id: str):
+    try:
+        session_maker = get_session_maker()
+        async with session_maker() as bg_db:
+            await embed_document(document_id, bg_db)
+        logger.info("Background embed completed for: %s", document_id)
+    except Exception as e:
+        logger.exception("Background embed failed for %s: %s", document_id, e)
+
+
 @router.post("/embed/{document_id}", response_model=EmbedResponse)
 async def embed_document_endpoint(document_id: str, db: AsyncSession = Depends(get_db)):
     logger.info("Embed request for document: %s", document_id)
-    result = await embed_document(document_id, db)
-    return result
+    try:
+        result = await embed_document(document_id, db)
+        return result
+    except AppException:
+        raise
+    except Exception:
+        logger.info("Offloading embed to background task for: %s", document_id)
+        asyncio.create_task(_background_embed(document_id))
+        return EmbedResponse(
+            document_id=document_id,
+            total_chunks=0,
+            embedded_chunks=0,
+            status="processing",
+        )
 
 
 @router.get("/document/{document_id}/chunks", response_model=ChunkListResponse)

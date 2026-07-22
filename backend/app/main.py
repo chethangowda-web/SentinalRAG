@@ -45,11 +45,8 @@ async def lifespan(application: FastAPI):
         raise
     try:
         from app.services.embedding_service import _load_model
-        from app.services.reranker_service import _load_reranker
         logger.info("Preloading embedding model...")
         _load_model()
-        logger.info("Preloading reranker model...")
-        _load_reranker()
     except Exception as e:
         logger.warning("Model preloading failed (will load on demand): %s", e)
 
