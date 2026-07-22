@@ -159,7 +159,7 @@ async def chat_endpoint(
     try:
         result = await graph.ainvoke(initial_state, {"configurable": {"db": db}})
     except Exception as e:
-        logger.exception("Graph execution failed: %s", e)
+        logger.exception("Graph execution failed for trace_id=%s: %s", trace_id, e)
         return ChatResponse(
             answer="An error occurred while processing your question. Please try again.",
             confidence=0.0,
@@ -169,6 +169,15 @@ async def chat_endpoint(
             trace_id=trace_id,
             model_used=settings.effective_llm_model or "unknown",
         )
+
+    answer_text = result.get("answer", "")
+    retrieved_chunks = result.get("retrieved_chunks", [])
+
+    if not answer_text and not retrieved_chunks:
+        answer_text = "No relevant information was found in the uploaded documents."
+        logger.info("No relevant chunks found for question: '%s' trace_id=%s", body.question.strip(), trace_id)
+    elif not answer_text and retrieved_chunks:
+        answer_text = "No relevant information was found in the uploaded documents."
 
     elapsed = round((time.perf_counter() - start) * 1000, 1)
     logger.info(

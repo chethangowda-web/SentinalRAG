@@ -66,7 +66,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             if len(self.requests.get(client_ip, [])) >= self.max_requests:
                 logging.getLogger("sentinelrag.security").warning(
                     "Rate limit exceeded for %s", client_ip,
-                    extra={"request_id": getattr(request.state, "request_id", None)},
+                    extra={"request_id": getattr(request.state, "request_id", "rate-limited")},
                 )
                 return JSONResponse(
                     status_code=429,

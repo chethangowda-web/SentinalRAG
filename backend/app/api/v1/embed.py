@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from pathlib import Path
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select, func
@@ -18,11 +19,29 @@ router = APIRouter()
 _auto_eval_tasks: set[asyncio.Task] = set()
 
 
-async def _auto_run_evaluation():
+async def _auto_run_evaluation(document_id: str | None = None):
     try:
-        from app.api.v1.evaluation import run_evaluation
-        result = await run_evaluation()
-        logger.info("Auto-evaluation triggered: %s", result.get("evaluation_id"))
+        from evaluation.services.runner import EvaluationRunner
+        from evaluation.reports.report_generator import ReportGenerator
+        from app.api.v1.ingest import _generate_eval_questions
+
+        session_maker = get_session_maker()
+        async with session_maker() as eval_db:
+            eval_id = str(uuid.uuid4())
+            runner = EvaluationRunner()
+
+            questions = None
+            if document_id:
+                questions = await _generate_eval_questions(document_id, eval_db)
+
+            dataset_path = None
+            if not questions:
+                dataset_path = str(Path(__file__).resolve().parent.parent.parent.parent / "evaluation" / "datasets" / "benchmark.json")
+
+            result = await runner.run(db=eval_db, dataset_path=dataset_path, eval_id=eval_id, questions=questions)
+            report_gen = ReportGenerator()
+            report_gen.generate_all(result)
+            logger.info("Auto-evaluation completed for document %s: eval_id=%s", document_id, eval_id)
     except Exception as e:
         logger.warning("Auto-evaluation trigger skipped: %s", e)
 
@@ -38,7 +57,7 @@ async def embed_document_endpoint(document_id: str, db: AsyncSession = Depends(g
         logger.exception("Embed failed for document %s", document_id)
         raise AppException(status_code=500, detail=f"Embedding failed: {e}")
 
-    task = asyncio.create_task(_auto_run_evaluation())
+    task = asyncio.create_task(_auto_run_evaluation(document_id))
     _auto_eval_tasks.add(task)
     task.add_done_callback(_auto_eval_tasks.discard)
 

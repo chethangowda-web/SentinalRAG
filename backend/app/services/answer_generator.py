@@ -100,18 +100,17 @@ def _no_llm_fallback(question: str, chunks: list[dict], reason: str = "unknown",
     notice = ""
     if reason == "rate_limit":
         notice = (
-            "\n\n> ⚠️ **LLM rate limit reached.** The Groq API free tier (100K tokens/day) "
-            "has been exhausted. Generated content below is raw retrieved text. "
-            "Add a `DEEPSEEK_API_KEY` to your `.env` for unlimited usage, or wait until the rate limit resets."
+            "\n\n> **LLM rate limit reached.** Generated content below is raw retrieved text. "
+            "Add a valid API key to your `.env` for unlimited usage."
         )
     elif reason == "no_llm":
         notice = (
-            "\n\n> ⚠️ **No LLM configured.** Set `DEEPSEEK_API_KEY` or `FEATHERLESS_API_KEY` "
+            "\n\n> **No LLM configured.** Set `DEEPSEEK_API_KEY` or `FEATHERLESS_API_KEY` "
             "in your `.env` file to enable AI-powered answers."
         )
     elif reason == "llm_error":
         notice = (
-            f"\n\n> ⚠️ **LLM error:** {detail[:200]}\n"
+            f"\n\n> **LLM error:** {detail[:200]}\n"
             "Displaying raw retrieved content below."
         )
 

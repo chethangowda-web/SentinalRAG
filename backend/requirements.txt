@@ -12,6 +12,7 @@ httpx==0.28.1
 sqlalchemy[asyncio]==2.0.36
 asyncpg==0.30.0
 alembic==1.14.1
+aiosqlite>=0.20.0
 
 # ─── Document Processing ──────────────────────────────
 PyMuPDF==1.25.3
@@ -22,7 +23,7 @@ pytesseract==0.3.13
 # For Docker: torch is pre-installed from CPU index to avoid CUDA bloat.
 # For local CPU-only dev: pip install torch --index-url https://download.pytorch.org/whl/cpu
 # For local GPU dev: pip install torch (default installs CUDA-enabled version)
-torch==2.5.1
+torch>=2.0.0
 sentence-transformers==3.4.1
 numpy==2.2.1
 

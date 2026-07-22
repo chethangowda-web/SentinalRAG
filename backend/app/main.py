@@ -84,13 +84,21 @@ def create_app() -> FastAPI:
     async def record_metrics_middleware(request, call_next):
         collector = get_metrics_collector()
         start = time.perf_counter()
-        response = await call_next(request)
-        elapsed = (time.perf_counter() - start) * 1000
+        request_id = getattr(request.state, "request_id", "unknown")
         endpoint = f"{request.method} {request.url.path}"
+        logger.info("Incoming request: method=%s path=%s request_id=%s", request.method, request.url.path, request_id)
+        try:
+            response = await call_next(request)
+        except Exception as exc:
+            logger.exception("Request failed: method=%s path=%s request_id=%s", request.method, request.url.path, request_id)
+            raise
+        elapsed = (time.perf_counter() - start) * 1000
         collector.record_latency(endpoint, elapsed)
         collector.increment("requests.total")
         if response.status_code >= 400:
             collector.record_error(f"http_{response.status_code}")
+        logger.info("Request completed: method=%s path=%s status=%d elapsed=%.1fms request_id=%s",
+                     request.method, request.url.path, response.status_code, elapsed, request_id)
         return response
 
     return application

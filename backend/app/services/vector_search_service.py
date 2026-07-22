@@ -43,7 +43,7 @@ def search_vector(query_text: str, top_k: int = 20) -> list[VectorSearchResult]:
     embed_elapsed = round((time.perf_counter() - embed_start) * 1000, 1)
 
     if not vectors:
-        logger.warning("Embedding generation returned empty result")
+        logger.warning("Embedding generation returned empty result for query: '%s'", query_text[:80])
         return []
 
     vector = vectors[0]
@@ -60,7 +60,10 @@ def search_vector(query_text: str, top_k: int = 20) -> list[VectorSearchResult]:
             score_threshold=0.0,
         )
     except UnexpectedResponse as e:
-        logger.error("Qdrant search failed: %s", e)
+        logger.error("Qdrant search failed for query '%s': %s", query_text[:80], e)
+        return []
+    except Exception as e:
+        logger.exception("Unexpected Qdrant search error for query '%s': %s", query_text[:80], e)
         return []
 
     search_elapsed = round((time.perf_counter() - search_start) * 1000, 1)

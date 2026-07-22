@@ -112,7 +112,7 @@ async def ingest_document(
         ocr_result = analyze_ocr_quality(cleaned, pages)
         logger.info("OCR quality: %s (confidence=%.1f)", ocr_result["quality"], ocr_result["confidence"])
 
-    summary_result = generate_document_summary(cleaned, filename)
+    summary_result = await generate_document_summary(cleaned, filename)
     logger.info("Summary generated for %s: type=%s topics=%d", doc_id, summary_result["document_type"], len(summary_result["key_topics"]))
 
     duplicate_result = await check_duplicate(file_bytes, filename, db, cleaned[:200])
@@ -144,9 +144,13 @@ async def ingest_document(
         duplicate_of=duplicate_result["existing_id"] if duplicate_result and duplicate_result["similarity"] > 90 else None,
     )
 
-    db.add(document)
-    await db.commit()
-    await db.refresh(document)
+    try:
+        db.add(document)
+        await db.commit()
+        await db.refresh(document)
+    except Exception as exc:
+        logger.exception("Database error while saving document %s", doc_id)
+        raise AppException(status_code=500, detail=f"Failed to save document to database: {exc}")
 
     logger.info(
         "Document ingested: id=%s pages=%d words=%d ocr=%s time=%.2fs",

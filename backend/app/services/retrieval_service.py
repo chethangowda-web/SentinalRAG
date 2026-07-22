@@ -132,10 +132,10 @@ async def retrieve(
     latencies["total"] = total_elapsed
 
     logger.info(
-        "Retrieval pipeline complete: %.1fms total, %d results, confidence=%.1f/%s",
-        total_elapsed, len(results), conf.score, conf.level,
+        "Retrieval pipeline complete: %.1fms total, %d results, confidence=%.1f/%s, query='%s'",
+        total_elapsed, len(results), conf.score, conf.level, raw_query[:60],
     )
-    logger.debug("Latency breakdown: %s", latencies)
+    logger.debug("Retrieval latency breakdown: %s query='%s'", latencies, raw_query[:60])
 
     return SearchResponse(
         query=normalized,

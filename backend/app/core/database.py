@@ -12,15 +12,26 @@ _engine = None
 _async_session_maker = None
 
 
+def _normalize_db_url(url: str) -> str:
+    if url.startswith("sqlite"):
+        if "+" not in url:
+            url = url.replace("sqlite://", "sqlite+aiosqlite://", 1)
+        return url
+    return url
+
+
 def get_engine():
     global _engine
     if _engine is None:
+        url = _normalize_db_url(settings.DATABASE_URL)
         kwargs = {"echo": False}
-        if settings.DATABASE_URL.startswith("postgresql"):
+        if url.startswith("postgresql"):
             kwargs["pool_size"] = 5
             kwargs["max_overflow"] = 10
-            kwargs["connect_args"] = {"ssl": "require"}
-        _engine = create_async_engine(settings.DATABASE_URL, **kwargs)
+            ssl_mode = settings.DATABASE_SSL
+            if ssl_mode and ssl_mode.lower() != "disable":
+                kwargs["connect_args"] = {"ssl": ssl_mode}
+        _engine = create_async_engine(url, **kwargs)
     return _engine
 
 

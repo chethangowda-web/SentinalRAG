@@ -16,7 +16,7 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir \
     --index-url https://download.pytorch.org/whl/cpu \
-    torch==2.5.1
+    torch>=2.0.0
 
 # Install all production dependencies
 RUN pip install --no-cache-dir -r requirements.txt

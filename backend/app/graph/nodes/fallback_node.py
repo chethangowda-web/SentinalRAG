@@ -8,12 +8,18 @@ logger = logging.getLogger(__name__)
 
 def fallback_node(state: GraphState) -> dict:
     start = time.perf_counter()
+    chunks = state.get("retrieved_chunks", [])
 
-    answer = (
-        "I don't have enough evidence to answer this question reliably. "
-        "Please upload additional documents or rephrase your question "
-        "to be more specific."
-    )
+    if not chunks:
+        answer = (
+            "No relevant information was found in the uploaded documents."
+        )
+    else:
+        answer = (
+            "I don't have enough evidence to answer this question reliably. "
+            "Please upload additional documents or rephrase your question "
+            "to be more specific."
+        )
 
     elapsed = round((time.perf_counter() - start) * 1000, 1)
     latencies = dict(state.get("latencies", {}))

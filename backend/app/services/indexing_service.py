@@ -20,6 +20,7 @@ async def embed_document(document_id: str, db: AsyncSession) -> EmbedResponse:
     document = result.scalar_one_or_none()
 
     if document is None:
+        logger.error("Document %s not found for embedding", document_id)
         raise AppException(status_code=404, detail=f"Document {document_id} not found")
 
     if document.status == "embedded":

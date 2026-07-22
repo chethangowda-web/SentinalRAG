@@ -51,15 +51,18 @@ class EvaluationRunner:
         db: AsyncSession,
         dataset_path: str | None = None,
         eval_id: str | None = None,
+        questions: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         eval_id = eval_id or str(uuid.uuid4())
         timestamp = datetime.now(timezone.utc).isoformat()
 
-        if dataset_path is None:
-            dataset_path = str(DATASETS_DIR / "benchmark.json")
-
-        questions = self._load_dataset(dataset_path)
-        logger.info("Evaluation %s: loaded %d questions from %s", eval_id, len(questions), dataset_path)
+        if questions is not None:
+            logger.info("Evaluation %s: using %d provided questions", eval_id, len(questions))
+        else:
+            if dataset_path is None:
+                dataset_path = str(DATASETS_DIR / "benchmark.json")
+            questions = self._load_dataset(dataset_path)
+            logger.info("Evaluation %s: loaded %d questions from %s", eval_id, len(questions), dataset_path)
         _update_status(eval_id, 0, len(questions))
 
         from app.core.database import get_session_maker
@@ -157,10 +160,11 @@ class EvaluationRunner:
 
         comparison = self._compute_comparison(baseline_metrics, sentinel_metrics)
 
+        dataset_label = os.path.basename(dataset_path) if dataset_path else "document_specific"
         result = {
             "evaluation_id": eval_id,
             "timestamp": timestamp,
-            "dataset": os.path.basename(dataset_path),
+            "dataset": dataset_label,
             "total_questions": len(questions),
             "summary": {
                 "baseline": baseline_metrics.to_dict(),
@@ -172,7 +176,7 @@ class EvaluationRunner:
         }
 
         self._save_result(result, eval_id)
-        self._update_history(eval_id, timestamp, len(questions))
+        self._update_history(eval_id, timestamp, len(questions), dataset_label)
 
         logger.info("Evaluation %s complete. Baseline=%d metrics, Sentinel=%d metrics",
                      eval_id, len(baseline_metrics.metrics), len(sentinel_metrics.metrics))
@@ -323,13 +327,13 @@ class EvaluationRunner:
             json.dump(result, f, indent=2, default=str)
         logger.info("Latest result saved to %s", latest_path)
 
-    def _update_history(self, eval_id: str, timestamp: str, total_questions: int) -> None:
+    def _update_history(self, eval_id: str, timestamp: str, total_questions: int, dataset: str = "benchmark.json") -> None:
         history_path = RESULTS_DIR / "evaluation_history.json"
         entry = {
             "evaluation_id": eval_id,
             "timestamp": timestamp,
             "total_questions": total_questions,
-            "dataset": "benchmark.json",
+            "dataset": dataset,
         }
 
         if history_path.exists():

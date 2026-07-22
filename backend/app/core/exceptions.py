@@ -58,6 +58,7 @@ def _standard_error_response(
         "error": True,
         "error_code": error_type,
         "message": message,
+        "detail": message,
         "status_code": status_code,
         "request_id": getattr(request.state, "request_id", None),
         "trace_id": getattr(request.state, "trace_id", None),

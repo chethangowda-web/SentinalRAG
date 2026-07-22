@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 
@@ -6,7 +7,7 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
-def generate_document_summary(text: str, filename: str) -> dict:
+async def generate_document_summary(text: str, filename: str) -> dict:
     if not text or len(text.strip()) < 20:
         return {
             "summary": "Document is too short to summarize.",
@@ -33,7 +34,7 @@ def generate_document_summary(text: str, filename: str) -> dict:
     )
 
     try:
-        response = llm.invoke(prompt)
+        response = await asyncio.to_thread(llm.invoke, prompt)
         content = response.content.strip()
         content = content.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         result = json.loads(content)

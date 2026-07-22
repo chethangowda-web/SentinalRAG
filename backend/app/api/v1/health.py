@@ -27,6 +27,8 @@ async def _check_database() -> dict:
 
 
 def _check_qdrant() -> dict:
+    if settings.DATABASE_URL.startswith("sqlite"):
+        return {"status": "skipped", "reason": "SQLite mode"}
     try:
         from app.core.qdrant import get_qdrant_client
         client = get_qdrant_client()

@@ -21,7 +21,14 @@ async def wait_for_postgres(
         logger.info("SQLite in use, skipping PostgreSQL health check")
         return
 
-    engine = create_async_engine(url, echo=False, pool_size=1, max_overflow=0, connect_args={"ssl": "require"})
+    if "+" not in url:
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+    kwargs = {"echo": False, "pool_size": 1, "max_overflow": 0}
+    ssl_mode = settings.DATABASE_SSL
+    if ssl_mode and ssl_mode.lower() != "disable":
+        kwargs["connect_args"] = {"ssl": ssl_mode}
+    engine = create_async_engine(url, **kwargs)
     last_exception = None
 
     for attempt in range(1, max_retries + 1):

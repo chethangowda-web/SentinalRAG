@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     DATABASE_URL: str = "postgresql+asyncpg://sentinel:sentinel@localhost:5432/sentinelrag"
+    DATABASE_SSL: str = "require"
     REDIS_URL: str = "redis://localhost:6379/0"
     QDRANT_URL: str = "http://localhost:6333"
     QDRANT_API_KEY: str = ""
