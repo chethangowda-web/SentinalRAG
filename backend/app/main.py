@@ -43,6 +43,12 @@ async def lifespan(application: FastAPI):
         logger.error("Database migration failed: %s", e)
         get_metrics_collector().record_error("database_migration_failure")
         raise
+    try:
+        from app.services.embedding_service import _load_model
+        _load_model()
+        logger.info("Embedding model preloaded")
+    except Exception as e:
+        logger.warning("Failed to preload embedding model: %s", e)
     logger.info("Resource tracking started")
     yield
     tracker.stop()
