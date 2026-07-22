@@ -39,9 +39,19 @@ def _save_tasks(tasks: dict[str, Any]) -> None:
     _STATUS_FILE.write_text(json.dumps(tasks, indent=2))
 
 
-async def _run_evaluation_background(eval_id: str, dataset_path: str) -> None:
+def _count_questions(dataset_path: str) -> int:
+    try:
+        with open(dataset_path, "r", encoding="utf-8") as f:
+            import json
+            data = json.load(f)
+            return len(data) if isinstance(data, list) else 18
+    except Exception:
+        return 18
+
+
+async def _run_evaluation_background(eval_id: str, dataset_path: str, total: int) -> None:
     tasks = _load_tasks()
-    tasks[eval_id] = {"status": "running", "progress": 0, "total": 18, "error": None}
+    tasks[eval_id] = {"status": "running", "progress": 0, "total": total, "error": None}
     _save_tasks(tasks)
 
     session_maker = get_session_maker()
@@ -71,7 +81,7 @@ async def _run_evaluation_background(eval_id: str, dataset_path: str) -> None:
     except Exception as exc:
         logger.exception("Background evaluation %s failed", eval_id)
         tasks = _load_tasks()
-        tasks[eval_id] = {"status": "failed", "progress": 0, "total": 18, "error": str(exc)}
+        tasks[eval_id] = {"status": "failed", "progress": 0, "total": total, "error": str(exc)}
         _save_tasks(tasks)
 
 
@@ -79,13 +89,14 @@ async def _run_evaluation_background(eval_id: str, dataset_path: str) -> None:
 async def run_evaluation() -> dict[str, Any]:
     eval_id = str(uuid.uuid4())
     dataset_path = str(Path(__file__).resolve().parent.parent.parent.parent / "evaluation" / "datasets" / "benchmark.json")
+    total_questions = _count_questions(dataset_path)
 
-    asyncio.create_task(_run_evaluation_background(eval_id, dataset_path))
+    asyncio.create_task(_run_evaluation_background(eval_id, dataset_path, total_questions))
 
     return {
         "evaluation_id": eval_id,
         "status": "running",
-        "total_questions": 18,
+        "total_questions": total_questions,
     }
 
 
