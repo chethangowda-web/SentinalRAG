@@ -8,8 +8,8 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-MAX_RETRIES = 5
-BACKOFF_BASE = 1.0
+MAX_RETRIES = 3
+BACKOFF_BASE = 0.5
 
 
 async def wait_for_postgres(
