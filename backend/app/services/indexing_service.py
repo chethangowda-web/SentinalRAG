@@ -9,7 +9,7 @@ from app.models.chunk import Chunk
 from app.models.document import Document
 from app.schemas.chunk import EmbedResponse
 from app.services.chunking_service import TextChunk, chunk_text
-from app.services.embedding_service import generate_embeddings
+from app.services.embedding_service import generate_embeddings_async
 from app.services.qdrant_service import ensure_collection, upsert_vectors, vector_exists
 
 logger = logging.getLogger(__name__)
@@ -88,7 +88,7 @@ async def embed_document(document_id: str, db: AsyncSession) -> EmbedResponse:
             status="skipped",
         )
 
-    vectors = generate_embeddings(texts_for_embedding)
+    vectors = await generate_embeddings_async(texts_for_embedding)
 
     point_ids = upsert_vectors(vectors, payloads)
 

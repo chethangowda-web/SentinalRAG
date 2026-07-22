@@ -62,18 +62,19 @@ class EvaluationRunner:
         logger.info("Evaluation %s: loaded %d questions from %s", eval_id, len(questions), dataset_path)
         _update_status(eval_id, 0, len(questions))
 
-        sem = asyncio.Semaphore(2)
+        from app.core.database import get_session_maker
         total = len(questions)
 
         async def process_one(idx: int, q: dict[str, Any]) -> dict[str, Any] | None:
-            try:
-                async with sem:
+            session_maker = get_session_maker()
+            async with session_maker() as session:
+                try:
                     qid = q["id"]
                     logger.info("Processing question %s/%s: %s", qid, total, q["question"][:60])
 
                     b_result, s_result = await asyncio.gather(
-                        self.baseline.answer(q["question"], db),
-                        self.sentinel.answer(q["question"], db),
+                        self.baseline.answer(q["question"], session),
+                        self.sentinel.answer(q["question"], session),
                     )
 
                     b_result["question_id"] = qid
@@ -115,9 +116,9 @@ class EvaluationRunner:
                             "retry_count": s_result.get("retry_count", 0),
                         },
                     }
-            except Exception as exc:
-                logger.error("Question %s failed: %s", q.get("id", "?"), exc)
-                return None
+                except Exception as exc:
+                    logger.error("Question %s failed: %s", q.get("id", "?"), exc)
+                    return None
 
         results = await asyncio.gather(*[process_one(i, q) for i, q in enumerate(questions)])
         per_question = [r for r in results if r is not None]

@@ -73,7 +73,7 @@ async def retrieve(
         raise AppException(status_code=400, detail="Query cannot be empty after preprocessing")
 
     embed_start = time.perf_counter()
-    vector_results = vector_search_service.search_vector(normalized, top_k=20)
+    vector_results = await vector_search_service.search_vector_async(normalized, top_k=20)
     latencies["vector_search"] = round((time.perf_counter() - embed_start) * 1000, 1)
 
     bm25_start = time.perf_counter()

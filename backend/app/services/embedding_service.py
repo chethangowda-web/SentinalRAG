@@ -1,5 +1,7 @@
+import asyncio
 import logging
 import time
+from functools import partial
 
 import numpy as np
 
@@ -67,3 +69,8 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
     total_elapsed = round(time.perf_counter() - total_start, 2)
     logger.info("Embedding complete: %d vectors in %.2fs", len(all_embeddings), total_elapsed)
     return all_embeddings
+
+
+async def generate_embeddings_async(texts: list[str]) -> list[list[float]]:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, partial(generate_embeddings, texts))

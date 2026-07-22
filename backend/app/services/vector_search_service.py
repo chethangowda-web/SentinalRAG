@@ -1,5 +1,7 @@
+import asyncio
 import logging
 import time
+from functools import partial
 from typing import Any
 
 from qdrant_client.http.exceptions import UnexpectedResponse
@@ -84,3 +86,8 @@ def search_vector(query_text: str, top_k: int = 20) -> list[VectorSearchResult]:
         ))
 
     return parsed
+
+
+async def search_vector_async(query_text: str, top_k: int = 20) -> list[VectorSearchResult]:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, partial(search_vector, query_text, top_k))

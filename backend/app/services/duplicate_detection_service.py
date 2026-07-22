@@ -60,9 +60,9 @@ async def check_duplicate(
     if text_preview and len(text_preview) > 50:
         try:
             from app.core.qdrant import get_qdrant_client
-            from app.services.embedding_service import generate_embeddings
+            from app.services.embedding_service import generate_embeddings_async
 
-            vectors = generate_embeddings([text_preview[:500]])
+            vectors = await generate_embeddings_async([text_preview[:500]])
             if vectors:
                 client = get_qdrant_client()
                 qdrant_results = client.search(
