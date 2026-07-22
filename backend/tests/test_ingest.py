@@ -27,13 +27,13 @@ class TestFileValidation:
     def test_invalid_content_type(self):
         with pytest.raises(AppException) as exc:
             validate_file("doc.pdf", "application/xml", 1024)
-        assert exc.value.status_code == 400
+        assert exc.value.status_code == 415
 
     def test_file_too_large(self, monkeypatch):
         monkeypatch.setattr("app.core.config.settings.MAX_FILE_SIZE", 100)
         with pytest.raises(AppException) as exc:
             validate_file("doc.pdf", "application/pdf", 200)
-        assert exc.value.status_code == 400
+        assert exc.value.status_code == 413
         assert "too large" in exc.value.detail.lower()
 
 
@@ -41,7 +41,7 @@ class TestIngestAPI:
     @pytest.mark.asyncio
     async def test_upload_no_file(self, async_client):
         response = await async_client.post("/api/v1/ingest")
-        assert response.status_code == 422
+        assert response.status_code == 400
 
     @pytest.mark.asyncio
     async def test_upload_invalid_extension(self, async_client):
