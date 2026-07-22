@@ -34,9 +34,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
+# Create non-root user (owned files but we run as root initially for Railway compat)
 RUN groupadd -r sentinel && \
-    useradd -r -g sentinel -d /app -s /sbin/nologin sentinel
+    useradd -r -g sentinel -d /app -s /bin/bash sentinel
 
 WORKDIR /app
 
@@ -59,9 +59,4 @@ ENV PYTHONPATH=/app \
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -sf http://localhost:8000/api/v1/health || exit 1
-
-USER sentinel
-
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
