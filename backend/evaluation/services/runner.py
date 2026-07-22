@@ -66,16 +66,14 @@ class EvaluationRunner:
         total = len(questions)
 
         async def process_one(idx: int, q: dict[str, Any]) -> dict[str, Any] | None:
-            session_maker = get_session_maker()
-            async with session_maker() as session:
+            bsm = get_session_maker()
+            async with bsm() as session:
                 try:
                     qid = q["id"]
                     logger.info("Processing question %s/%s: %s", qid, total, q["question"][:60])
 
-                    b_result, s_result = await asyncio.gather(
-                        self.baseline.answer(q["question"], session),
-                        self.sentinel.answer(q["question"], session),
-                    )
+                    b_result = await self.baseline.answer(q["question"], session)
+                    s_result = await self.sentinel.answer(q["question"], session)
 
                     b_result["question_id"] = qid
                     s_result["question_id"] = qid
@@ -120,7 +118,7 @@ class EvaluationRunner:
                     logger.error("Question %s failed: %s", q.get("id", "?"), exc)
                     return None
 
-        results = await asyncio.gather(*[process_one(i, q) for i, q in enumerate(questions)])
+        results = [await process_one(i, q) for i, q in enumerate(questions)]
         per_question = [r for r in results if r is not None]
 
         baseline_results = [pq["baseline"] for pq in per_question]
