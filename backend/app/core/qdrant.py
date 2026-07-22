@@ -1,4 +1,5 @@
 import logging
+import warnings
 
 from app.core.config import settings
 
@@ -12,12 +13,13 @@ def get_qdrant_client():
     if _client is None:
         from qdrant_client import QdrantClient as _QdrantClient
 
-        _client = _QdrantClient(
-            url=settings.QDRANT_URL,
-            api_key=settings.QDRANT_API_KEY or None,
-            timeout=60,
-            check_version=False,
-        )
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*incompatible.*")
+            _client = _QdrantClient(
+                url=settings.QDRANT_URL,
+                api_key=settings.QDRANT_API_KEY or None,
+                timeout=60,
+            )
         logger.info("Qdrant client initialized: %s", settings.QDRANT_URL)
     return _client
 
