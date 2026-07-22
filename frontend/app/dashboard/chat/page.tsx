@@ -73,6 +73,7 @@ import {
   Layers,
   ArrowUpDown,
   Lightbulb,
+  ExternalLink,
 } from "lucide-react";
 import type {
   ChatResponse,
@@ -442,26 +443,30 @@ function CitationsRow({
 }) {
   if (!citations || citations.length === 0) return null;
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {citations.map((cit, ci) => (
-        <button
-          key={ci}
-          onClick={() => onCitationClick?.(cit)}
-          className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-secondary/40 px-2 py-1 text-[11px] text-muted-foreground hover:border-primary/40 hover:bg-primary/5 transition-colors"
-        >
-          <FileText className="h-3 w-3 shrink-0" />
-          <span className="max-w-[80px] truncate">
-            {getSourceFilename(cit)}
-          </span>
-          {cit.page != null && <span>p.{cit.page}</span>}
-          <Badge
-            variant="outline"
-            className="text-[9px] px-1 py-0 h-4"
+    <div className="space-y-1.5">
+      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+        Sources ({citations.length})
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {citations.map((cit, ci) => (
+          <button
+            key={ci}
+            onClick={() => onCitationClick?.(cit)}
+            className="group relative flex items-center gap-2 rounded-lg border border-border/60 bg-card px-3 py-2 text-[11px] text-muted-foreground hover:border-primary/40 hover:bg-primary/5 hover:shadow-sm transition-all duration-200"
           >
-            {ci + 1}
-          </Badge>
-        </button>
-      ))}
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[9px] font-bold text-primary group-hover:bg-primary/20 transition-colors">
+              {ci + 1}
+            </span>
+            <FileText className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+            <span className="max-w-[90px] truncate font-medium">
+              {getSourceFilename(cit)}
+            </span>
+            {cit.page != null && (
+              <span className="text-[10px] text-muted-foreground/60">p.{cit.page}</span>
+            )}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -993,15 +998,15 @@ export default function ChatPage() {
           )}
         </AnimatePresence>
 
-        {/* ── Main ── */}
+          {/* ── Main ── */}
         <div className="flex flex-1 flex-col min-w-0">
           {/* header */}
-          <div className="flex items-center justify-between border-b px-4 py-2.5">
+          <div className="flex items-center justify-between border-b px-3 sm:px-4 py-2.5">
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 p-0"
+                className="h-8 w-8 p-0"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
               >
                 {sidebarOpen ? (
@@ -1016,7 +1021,7 @@ export default function ChatPage() {
                 </div>
                 <div>
                   <h1 className="text-sm font-bold tracking-tight">Chat</h1>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-[10px] text-muted-foreground hidden sm:block">
                     Ask questions about your documents
                   </p>
                 </div>
@@ -1031,21 +1036,21 @@ export default function ChatPage() {
                   onClick={handleNewSession}
                 >
                   <Plus className="h-3.5 w-3.5 mr-1" />
-                  New Chat
+                  <span className="hidden sm:inline">New Chat</span>
                 </Button>
               )}
             </div>
           </div>
 
           {/* messages */}
-          <ScrollArea className="flex-1 px-4" ref={scrollRef}>
+          <ScrollArea className="flex-1 px-3 sm:px-4" ref={scrollRef}>
             <AnimatePresence mode="wait">
               {messages.length === 0 && !isStreaming ? (
                 <motion.div
                   key="empty"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="flex h-full items-center justify-center"
+                  className="flex h-full items-center justify-center px-4"
                 >
                   <EmptyState
                     icon={MessageSquare}
@@ -1058,7 +1063,7 @@ export default function ChatPage() {
                   key="messages"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="space-y-5 py-4 max-w-3xl mx-auto"
+                  className="space-y-4 sm:space-y-5 py-4 max-w-3xl mx-auto"
                 >
                   {messages.map((msg, i) => (
                     <motion.div
@@ -1066,13 +1071,13 @@ export default function ChatPage() {
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.2 }}
-                      className={`flex gap-3 ${
+                      className={`flex gap-2 sm:gap-3 ${
                         msg.role === "user" ? "justify-end" : "justify-start"
                       }`}
                     >
                       {/* assistant avatar */}
                       {msg.role === "assistant" && (
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-1">
                           <Sparkles className="h-3.5 w-3.5 text-primary" />
                         </div>
                       )}
@@ -1081,13 +1086,13 @@ export default function ChatPage() {
                         className={cn(
                           msg.role === "user" ? "order-first" : "",
                           msg.role === "user"
-                            ? "max-w-[75%]"
-                            : "max-w-[90%] min-w-0"
+                            ? "max-w-[85%] sm:max-w-[70%]"
+                            : "max-w-full sm:max-w-[90%] min-w-0"
                         )}
                       >
                         {msg.role === "user" ? (
-                          <div className="rounded-2xl bg-primary px-4 py-2.5 text-primary-foreground">
-                            <p className="text-sm whitespace-pre-wrap">
+                          <div className="rounded-2xl bg-primary px-3.5 py-2.5 sm:px-4 text-primary-foreground shadow-sm">
+                            <p className="text-sm whitespace-pre-wrap leading-relaxed">
                               {msg.content}
                             </p>
                           </div>
@@ -1100,7 +1105,7 @@ export default function ChatPage() {
                                 {msg.response && (
                                   <div
                                     className={cn(
-                                      "flex items-center gap-3 border-b px-4 py-2",
+                                      "flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b px-4 py-2",
                                       confidenceBg(
                                         msg.response.confidence_level
                                       )
@@ -1151,12 +1156,26 @@ export default function ChatPage() {
                                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                       <BookOpen className="h-3 w-3" />
                                       <span>
-                                        {msg.response.citations?.length ?? 0}
+                                        {msg.response.citations?.length ?? 0} sources
                                       </span>
                                     </div>
 
+                                    {msg.response.retrieval_details && (
+                                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                        <Layers className="h-3 w-3" />
+                                        <span>{msg.response.retrieval_details.length} chunks</span>
+                                      </div>
+                                    )}
+
+                                    {msg.response.retry_count > 0 && (
+                                      <Badge variant="warning" className="text-[10px] h-5 px-1.5 gap-1">
+                                        <RefreshCw className="h-3 w-3" />
+                                        {msg.response.retry_count} correction{msg.response.retry_count > 1 ? "s" : ""}
+                                      </Badge>
+                                    )}
+
                                     {msg.response.model_used && (
-                                      <div className="ml-auto text-[10px] text-muted-foreground/60 truncate max-w-[120px]">
+                                      <div className="ml-auto text-[10px] text-muted-foreground/60 truncate max-w-[120px] hidden sm:block">
                                         {msg.response.model_used}
                                       </div>
                                     )}
@@ -1335,17 +1354,57 @@ export default function ChatPage() {
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-3"
+                      className="flex items-start gap-3"
                     >
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-1">
                         <Sparkles className="h-3.5 w-3.5 text-primary" />
                       </div>
-                      <Card className="flex-1 border-border/60">
-                        <CardContent className="flex items-center gap-3 px-4 py-3">
-                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                          <span className="text-sm text-muted-foreground">
-                            Processing your question through the pipeline…
-                          </span>
+                      <Card className="flex-1 border-border/60 shadow-sm">
+                        <CardContent className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex gap-1">
+                              <motion.span
+                                className="h-2 w-2 rounded-full bg-primary"
+                                animate={{ scale: [1, 1.5, 1] }}
+                                transition={{ duration: 1, repeat: Infinity, delay: 0 }}
+                              />
+                              <motion.span
+                                className="h-2 w-2 rounded-full bg-primary"
+                                animate={{ scale: [1, 1.5, 1] }}
+                                transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
+                              />
+                              <motion.span
+                                className="h-2 w-2 rounded-full bg-primary"
+                                animate={{ scale: [1, 1.5, 1] }}
+                                transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
+                              />
+                            </div>
+                            <span className="text-sm text-muted-foreground">
+                              Processing your question through the pipeline…
+                            </span>
+                          </div>
+                          <div className="mt-2 grid grid-cols-4 gap-1.5">
+                            {["Searching", "Analyzing", "Generating", "Verifying"].map((step, si) => (
+                              <motion.div
+                                key={step}
+                                className="h-1 rounded-full bg-secondary overflow-hidden"
+                              >
+                                <motion.div
+                                  className="h-full rounded-full bg-primary"
+                                  initial={{ width: "0%" }}
+                                  animate={{
+                                    width: ["0%", "100%", "100%", "100%", "100%"],
+                                  }}
+                                  transition={{
+                                    duration: 3,
+                                    repeat: Infinity,
+                                    delay: si * 0.75,
+                                    ease: "easeInOut",
+                                  }}
+                                />
+                              </motion.div>
+                            ))}
+                          </div>
                         </CardContent>
                       </Card>
                     </motion.div>
@@ -1377,7 +1436,7 @@ export default function ChatPage() {
           </ScrollArea>
 
           {/* input area */}
-          <div className="border-t px-4 py-3">
+          <div className="border-t px-3 sm:px-4 py-3 bg-background">
             <div className="mx-auto max-w-3xl">
               <div className="relative flex items-end gap-2">
                 <textarea
@@ -1385,9 +1444,9 @@ export default function ChatPage() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask a question…"
+                  placeholder="Ask a question about your documents…"
                   rows={1}
-                  className="flex min-h-[2.75rem] w-full rounded-xl border border-input bg-background px-4 py-2.5 pr-12 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+                  className="flex min-h-[2.75rem] w-full rounded-xl border border-input bg-background px-4 py-2.5 pr-12 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-primary/50 resize-none transition-all shadow-sm"
                   style={{ maxHeight: "200px" }}
                   onInput={(e) => {
                     const target = e.currentTarget;
@@ -1401,7 +1460,7 @@ export default function ChatPage() {
                   onClick={handleSend}
                   disabled={!input.trim() || isStreaming}
                   size="icon"
-                  className="absolute right-1.5 bottom-1.5 h-8 w-8 shrink-0"
+                  className="absolute right-1.5 bottom-1.5 h-8 w-8 shrink-0 rounded-lg"
                 >
                   {isStreaming ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -1410,7 +1469,8 @@ export default function ChatPage() {
                   )}
                 </Button>
               </div>
-              <p className="mt-1.5 text-[10px] text-center text-muted-foreground">
+              <p className="mt-1.5 text-[10px] text-center text-muted-foreground/60 flex items-center justify-center gap-1.5">
+                <Sparkles className="h-3 w-3" />
                 Powered by hybrid search + self-correction pipeline
               </p>
             </div>

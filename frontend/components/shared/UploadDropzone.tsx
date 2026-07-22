@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Upload, File, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Upload, File, X, CheckCircle2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 
@@ -78,6 +79,11 @@ export function UploadDropzone({
     if (file) handleFile(file);
   };
 
+  const resetFile = () => {
+    setSelectedFile(null);
+    setError(null);
+  };
+
   return (
     <div className="space-y-2">
       <div
@@ -88,10 +94,12 @@ export function UploadDropzone({
         className={cn(
           "relative flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-12 transition-all duration-200",
           dragOver
-            ? "border-primary bg-primary/5"
+            ? "border-primary bg-primary/5 shadow-sm"
             : error
             ? "border-destructive bg-destructive/5"
-            : "border-muted-foreground/25 hover:border-muted-foreground/50 hover:bg-secondary/30",
+            : isUploading
+            ? "border-primary/30 bg-primary/3"
+            : "border-muted-foreground/25 hover:border-primary/50 hover:bg-primary/3 hover:shadow-sm",
           disabled && "pointer-events-none opacity-50"
         )}
       >
@@ -104,36 +112,82 @@ export function UploadDropzone({
           disabled={disabled}
         />
 
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-4">
-          <Upload className="h-6 w-6 text-primary" />
-        </div>
-
-        <p className="text-sm font-medium">
-          {isUploading ? "Uploading..." : "Drop your file here"}
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          or click to browse (PDF, PNG, JPG — up to 50MB)
-        </p>
-
-        {selectedFile && !isUploading && (
-          <div className="mt-4 flex items-center gap-2 rounded-lg bg-secondary/50 px-3 py-2">
-            <File className="h-4 w-4 text-primary" />
-            <span className="text-sm">{selectedFile.name}</span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedFile(null);
-                setError(null);
-              }}
-              className="ml-2 rounded p-0.5 hover:bg-secondary"
+        <AnimatePresence mode="wait">
+          {isUploading ? (
+            <motion.div
+              key="uploading"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex flex-col items-center"
             >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-4">
+                <Loader2 className="h-6 w-6 text-primary animate-spin" />
+              </div>
+              <p className="text-sm font-medium">Uploading...</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {selectedFile?.name}
+              </p>
+              <div className="w-48 mt-4">
+                <Progress value={progress} className="h-1.5" />
+              </div>
+              <p className="mt-2 text-[10px] text-muted-foreground tabular-nums">
+                {progress}% complete
+              </p>
+            </motion.div>
+          ) : selectedFile && !error ? (
+            <motion.div
+              key="selected"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex flex-col items-center"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10 mb-4">
+                <File className="h-6 w-6 text-success" />
+              </div>
+              <p className="text-sm font-medium">{selectedFile.name}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Ready to upload
+              </p>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  resetFile();
+                }}
+                className="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-3 w-3" />
+                Remove file
+              </button>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex flex-col items-center"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-4">
+                <Upload className="h-6 w-6 text-primary" />
+              </div>
+              <p className="text-sm font-medium">
+                Drop your file here
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                or click to browse (PDF, PNG, JPG — up to 50MB)
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {error && (
-          <p className="mt-3 text-xs text-destructive">{error}</p>
+          <motion.p
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-3 text-xs text-destructive flex items-center gap-1"
+          >
+            <X className="h-3 w-3" />
+            {error}
+          </motion.p>
         )}
       </div>
     </div>
