@@ -21,7 +21,7 @@ async def wait_for_postgres(
         logger.info("SQLite in use, skipping PostgreSQL health check")
         return
 
-    engine = create_async_engine(url, echo=False, pool_size=1, max_overflow=0)
+    engine = create_async_engine(url, echo=False, pool_size=1, max_overflow=0, connect_args={"ssl": "require"})
     last_exception = None
 
     for attempt in range(1, max_retries + 1):

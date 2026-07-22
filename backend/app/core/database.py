@@ -19,6 +19,7 @@ def get_engine():
         if settings.DATABASE_URL.startswith("postgresql"):
             kwargs["pool_size"] = 5
             kwargs["max_overflow"] = 10
+            kwargs["connect_args"] = {"ssl": "require"}
         _engine = create_async_engine(settings.DATABASE_URL, **kwargs)
     return _engine
 
