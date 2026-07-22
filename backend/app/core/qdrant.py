@@ -16,7 +16,6 @@ def get_qdrant_client():
             url=settings.QDRANT_URL,
             api_key=settings.QDRANT_API_KEY or None,
             timeout=30,
-            check_version=False,
         )
         logger.info("Qdrant client initialized: %s", settings.QDRANT_URL)
     return _client
