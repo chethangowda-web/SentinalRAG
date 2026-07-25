@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import AsyncGenerator
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
@@ -79,7 +80,6 @@ def reset_engine():
     global _engine, _async_session_maker
     if _engine:
         try:
-            import asyncio
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
@@ -114,9 +114,18 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
-async def run_alembic_migrations() -> None:
-    from migrations.env import run_async_migrations
-    await run_async_migrations()
+async def _run_alembic_migrations() -> None:
+    """Run Alembic migrations using the configured DATABASE_URL."""
+    from alembic.config import Config as AlembicConfig
+    from alembic.command import upgrade as alembic_upgrade
+    loop = asyncio.get_event_loop()
+    cfg = AlembicConfig("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+
+    def _sync_upgrade():
+        alembic_upgrade(cfg, "head")
+
+    await loop.run_in_executor(None, _sync_upgrade)
     logger.info("Alembic migrations applied")
 
 
@@ -125,7 +134,10 @@ async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables created")
-    try:
-        await run_alembic_migrations()
-    except Exception as e:
-        logger.warning("Alembic migration skipped: %s", e)
+    if not settings.DATABASE_URL.startswith("sqlite"):
+        try:
+            await _run_alembic_migrations()
+        except Exception as e:
+            logger.warning("Alembic migration skipped: %s", e)
+    else:
+        logger.info("SQLite mode — Alembic migrations skipped (create_all covers it)")
