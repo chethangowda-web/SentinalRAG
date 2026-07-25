@@ -33,6 +33,7 @@ async def search_bm25(
     query_text: str,
     db: AsyncSession,
     top_k: int = 20,
+    user_id: str | None = None,
 ) -> list[BM25Result]:
     start = time.perf_counter()
 
@@ -45,7 +46,13 @@ async def search_bm25(
     if not tsquery:
         return []
 
-    sql = text("""
+    user_condition = ""
+    params: dict = {"query": query_text, "limit": top_k}
+    if user_id:
+        user_condition = "AND d.user_id = :user_id"
+        params["user_id"] = user_id
+
+    sql = text(f"""
         SELECT
             c.id AS chunk_id,
             c.document_id,
@@ -57,12 +64,13 @@ async def search_bm25(
         JOIN documents d ON d.id = c.document_id
         WHERE c.embedding_status = 'embedded'
           AND to_tsvector('english', c.chunk_text) @@ plainto_tsquery('english', :query)
+          {user_condition}
         ORDER BY bm25_score DESC
         LIMIT :limit
     """)
 
     try:
-        result = await db.execute(sql, {"query": query_text, "limit": top_k})
+        result = await db.execute(sql, params)
         rows = result.fetchall()
     except Exception as e:
         logger.error("BM25 search failed: %s", e)

@@ -64,6 +64,7 @@ class SearchResponse:
 async def retrieve(
     raw_query: str,
     db: AsyncSession,
+    user_id: str | None = None,
 ) -> SearchResponse:
     total_start = time.perf_counter()
     latencies: dict[str, float] = {}
@@ -73,11 +74,11 @@ async def retrieve(
         raise AppException(status_code=400, detail="Query cannot be empty after preprocessing")
 
     embed_start = time.perf_counter()
-    vector_results = await vector_search_service.search_vector_async(normalized, top_k=20)
+    vector_results = await vector_search_service.search_vector_async(normalized, top_k=20, user_id=user_id)
     latencies["vector_search"] = round((time.perf_counter() - embed_start) * 1000, 1)
 
     bm25_start = time.perf_counter()
-    bm25_results = await bm25_service.search_bm25(normalized, db, top_k=20)
+    bm25_results = await bm25_service.search_bm25(normalized, db, top_k=20, user_id=user_id)
     latencies["bm25_search"] = round((time.perf_counter() - bm25_start) * 1000, 1)
 
     fusion_start = time.perf_counter()
