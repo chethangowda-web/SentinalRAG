@@ -7,9 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from pathlib import Path
 
+from app.core.auth import get_current_user
 from app.core.database import get_db, get_session_maker
 from app.core.exceptions import AppException
 from app.models.document import Document
+from app.models.user import User
 from app.schemas.document import IngestResponse
 from app.services.document_service import ingest_document
 from app.services.indexing_service import embed_document
@@ -171,7 +173,11 @@ def _generate_questions_from_text(filename: str, text_preview: str, summary: str
 
 
 @router.post("/ingest", response_model=IngestResponse)
-async def upload_document(file: UploadFile | None = None, db: AsyncSession = Depends(get_db)):
+async def upload_document(
+    file: UploadFile | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     if file is None:
         raise AppException(status_code=400, detail="No file provided. Send a file as multipart/form-data.")
 
@@ -186,7 +192,7 @@ async def upload_document(file: UploadFile | None = None, db: AsyncSession = Dep
     logger.info("Ingest request: filename=%s content_type=%s size=%d", filename, content_type, len(file_bytes))
 
     try:
-        result = await ingest_document(filename, content_type, file_bytes, db)
+        result = await ingest_document(filename, content_type, file_bytes, db, user_id=current_user.id)
     except AppException:
         raise
     except Exception as exc:

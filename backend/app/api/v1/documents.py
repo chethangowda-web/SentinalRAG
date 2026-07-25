@@ -5,10 +5,12 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.core.exceptions import AppException
 from app.models.document import Document
 from app.models.chunk import Chunk
+from app.models.user import User
 from app.services.qdrant_service import delete_document_vectors
 
 logger = logging.getLogger(__name__)
@@ -17,13 +19,17 @@ router = APIRouter()
 
 
 @router.get("/documents")
-async def list_documents(db: AsyncSession = Depends(get_db)):
+async def list_documents(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     result = await db.execute(
         select(
             Document,
             func.count(Chunk.id).label("chunk_count"),
         )
         .outerjoin(Chunk, Chunk.document_id == Document.id)
+        .where(Document.user_id == current_user.id)
         .group_by(Document.id)
         .order_by(Document.created_at.desc())
     )
@@ -57,8 +63,14 @@ async def list_documents(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/documents/{document_id}")
-async def get_document(document_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Document).where(Document.id == document_id))
+async def get_document(
+    document_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Document).where(Document.id == document_id, Document.user_id == current_user.id)
+    )
     doc = result.scalar_one_or_none()
     if not doc:
         raise AppException(status_code=404, detail=f"Document {document_id} not found")
@@ -91,8 +103,14 @@ async def get_document(document_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.delete("/documents/{document_id}")
-async def delete_document(document_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Document).where(Document.id == document_id))
+async def delete_document(
+    document_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Document).where(Document.id == document_id, Document.user_id == current_user.id)
+    )
     doc = result.scalar_one_or_none()
     if not doc:
         raise AppException(status_code=404, detail=f"Document {document_id} not found")

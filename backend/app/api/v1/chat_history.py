@@ -3,7 +3,9 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.models.user import User
 from app.schemas.chat import (
     ChatMessageList,
     ChatMessageOut,
@@ -23,8 +25,9 @@ router = APIRouter(prefix="/chat/history", tags=["chat_history"])
 async def create_chat_session(
     body: ChatSessionCreate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    session = await chat_history_service.create_session(db, title=body.title)
+    session = await chat_history_service.create_session(db, title=body.title, user_id=current_user.id)
     return chat_history_service.session_to_dict(session)
 
 
@@ -34,9 +37,10 @@ async def list_chat_sessions(
     limit: int = Query(50, ge=1, le=100),
     search: str = Query(None, max_length=200),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    sessions = await chat_history_service.list_sessions(db, skip=skip, limit=limit, search=search)
-    total = await chat_history_service.count_sessions(db, search=search)
+    sessions = await chat_history_service.list_sessions(db, skip=skip, limit=limit, search=search, user_id=current_user.id)
+    total = await chat_history_service.count_sessions(db, search=search, user_id=current_user.id)
     return {"total": total, "sessions": [chat_history_service.session_to_dict(s) for s in sessions]}
 
 
@@ -44,9 +48,10 @@ async def list_chat_sessions(
 async def get_chat_session(
     session_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     session = await chat_history_service.get_session(db, session_id)
-    if not session:
+    if not session or session.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Session not found")
     return chat_history_service.session_to_dict(session)
 
@@ -56,12 +61,14 @@ async def update_chat_session(
     session_id: str,
     body: ChatSessionUpdate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    session = await chat_history_service.get_session(db, session_id)
+    if not session or session.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Session not found")
     session = await chat_history_service.update_session(
         db, session_id, title=body.title, pinned=body.pinned
     )
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
     return chat_history_service.session_to_dict(session)
 
 
@@ -69,7 +76,11 @@ async def update_chat_session(
 async def delete_chat_session(
     session_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    session = await chat_history_service.get_session(db, session_id)
+    if not session or session.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Session not found")
     deleted = await chat_history_service.delete_session(db, session_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -81,9 +92,10 @@ async def list_chat_messages(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     session = await chat_history_service.get_session(db, session_id)
-    if not session:
+    if not session or session.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Session not found")
     messages = await chat_history_service.get_messages(db, session_id, skip=skip, limit=limit)
     total = await chat_history_service.count_messages(db, session_id)
@@ -100,8 +112,9 @@ async def list_chat_messages(
 async def clear_chat_messages(
     session_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     session = await chat_history_service.get_session(db, session_id)
-    if not session:
+    if not session or session.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Session not found")
     await chat_history_service.delete_all_messages(db, session_id)

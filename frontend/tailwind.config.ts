@@ -65,6 +65,20 @@ const config: Config = {
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
         },
+        confidence: {
+          high: {
+            DEFAULT: "hsl(var(--confidence-high))",
+            bg: "hsl(var(--confidence-high-bg))",
+          },
+          medium: {
+            DEFAULT: "hsl(var(--confidence-medium))",
+            bg: "hsl(var(--confidence-medium-bg))",
+          },
+          low: {
+            DEFAULT: "hsl(var(--confidence-low))",
+            bg: "hsl(var(--confidence-low-bg))",
+          },
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -74,6 +88,7 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
         mono: ["var(--font-mono)", "monospace"],
+        "system-mono": ["var(--font-mono)", "JetBrains Mono", "IBMPlexMono", "SF Mono", "ui-monospace", "monospace"],
       },
       keyframes: {
         "accordion-down": {
@@ -84,10 +99,30 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "confidence-pulse": {
+          "0%, 100%": { boxShadow: "0 0 0 0 hsl(var(--confidence-high) / 0.4)" },
+          "50%": { boxShadow: "0 0 0 4px hsl(var(--confidence-high) / 0)" },
+        },
+        "step-enter": {
+          from: { opacity: "0", transform: "translateY(-4px) scale(0.95)" },
+          to: { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        "count-up": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "gauge-fill": {
+          from: { strokeDashoffset: "var(--gauge-offset)" },
+          to: { strokeDashoffset: "var(--gauge-final)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "confidence-pulse": "confidence-pulse 2s ease-in-out infinite",
+        "step-enter": "step-enter 0.3s ease-out both",
+        "count-up": "count-up 0.5s ease-out",
+        "gauge-fill": "gauge-fill 1s ease-out forwards",
       },
     },
   },

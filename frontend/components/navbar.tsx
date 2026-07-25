@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, Menu, X } from "lucide-react";
+import { Shield, Menu, X, LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/auth-context";
 
 const navLinks = [
   { href: "#features", label: "Features" },
@@ -18,6 +19,7 @@ const navLinks = [
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -54,9 +56,26 @@ export function Navbar() {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Button variant="default" size="sm" asChild className="hidden sm:flex">
-            <Link href="/dashboard">Dashboard</Link>
-          </Button>
+          {loading ? null : user ? (
+            <Button variant="default" size="sm" asChild className="hidden sm:flex">
+              <Link href="/dashboard">Dashboard</Link>
+            </Button>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
+                <Link href="/login">
+                  <LogIn className="mr-1.5 h-4 w-4" />
+                  Sign In
+                </Link>
+              </Button>
+              <Button variant="default" size="sm" asChild className="hidden sm:flex">
+                <Link href="/register">
+                  <UserPlus className="mr-1.5 h-4 w-4" />
+                  Get Started
+                </Link>
+              </Button>
+            </>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -87,9 +106,20 @@ export function Navbar() {
                   {link.label}
                 </Link>
               ))}
-              <Button variant="default" size="sm" asChild className="mt-2">
-                <Link href="/dashboard" onClick={() => setMobileOpen(false)}>Dashboard</Link>
-              </Button>
+              {user ? (
+                <Button variant="default" size="sm" asChild className="mt-2">
+                  <Link href="/dashboard" onClick={() => setMobileOpen(false)}>Dashboard</Link>
+                </Button>
+              ) : (
+                <>
+                  <Button variant="ghost" size="sm" asChild className="mt-2">
+                    <Link href="/login" onClick={() => setMobileOpen(false)}>Sign In</Link>
+                  </Button>
+                  <Button variant="default" size="sm" asChild>
+                    <Link href="/register" onClick={() => setMobileOpen(false)}>Get Started</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </motion.div>
         )}

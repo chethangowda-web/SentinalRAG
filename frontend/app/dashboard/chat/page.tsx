@@ -129,33 +129,33 @@ function getSourceFilename(cit: CitationItem) {
 function confidenceColor(level: string) {
   switch (level) {
     case "HIGH":
-      return "text-green-600 dark:text-green-400";
+      return "text-confidence-high";
     case "MEDIUM":
-      return "text-yellow-600 dark:text-yellow-400";
+      return "text-confidence-medium";
     default:
-      return "text-red-600 dark:text-red-400";
+      return "text-confidence-low";
   }
 }
 
 function confidenceBg(level: string) {
   switch (level) {
     case "HIGH":
-      return "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800/50";
+      return "bg-confidence-high-bg border-confidence-high/30";
     case "MEDIUM":
-      return "bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800/50";
+      return "bg-confidence-medium-bg border-confidence-medium/30";
     default:
-      return "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/50";
+      return "bg-confidence-low-bg border-confidence-low/30";
   }
 }
 
 function confidenceBar(level: string) {
   switch (level) {
     case "HIGH":
-      return "bg-green-500";
+      return "bg-confidence-high";
     case "MEDIUM":
-      return "bg-yellow-500";
+      return "bg-confidence-medium";
     default:
-      return "bg-red-500";
+      return "bg-confidence-low";
   }
 }
 
@@ -323,7 +323,7 @@ function ReasoningTimelineMini({
                         <span className="truncate font-medium">
                           {stageLabels[step.node_name] || step.node_name}
                         </span>
-                        <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                        <span className="shrink-0 text-[10px] font-system-mono tabular-nums text-muted-foreground">
                           {formatLatency(step.execution_time_ms)}
                         </span>
                       </div>
@@ -913,7 +913,7 @@ export default function ChatPage() {
                                   {s.last_confidence_level && (
                                     <span
                                       className={cn(
-                                        "text-[10px]",
+                                        "text-[10px] font-system-mono font-bold",
                                         confidenceColor(
                                           s.last_confidence_level
                                         )
@@ -1122,7 +1122,7 @@ export default function ChatPage() {
                                       />
                                       <span
                                         className={cn(
-                                          "text-xs font-bold tabular-nums",
+                                          "text-xs font-bold font-system-mono tabular-nums",
                                           confidenceColor(
                                             msg.response.confidence_level
                                           )
@@ -1130,25 +1130,39 @@ export default function ChatPage() {
                                       >
                                         {msg.response.confidence}%
                                       </span>
-                                      <Badge
-                                        variant={
-                                          msg.response.confidence_level ===
-                                          "HIGH"
-                                            ? "success"
-                                            : msg.response
-                                                  .confidence_level === "MEDIUM"
-                                              ? "warning"
-                                              : "destructive"
-                                        }
-                                        className="text-[10px] h-5 px-1.5"
+                                      <span
+                                        className={cn(
+                                          "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-system-mono font-bold h-5",
+                                          confidenceColor(
+                                            msg.response.confidence_level
+                                          )
+                                        )}
+                                        style={{
+                                          borderColor: `hsl(var(--confidence-${
+                                            msg.response.confidence_level === "HIGH" ? "high" : 
+                                            msg.response.confidence_level === "MEDIUM" ? "medium" : "low"
+                                          }/0.3))`,
+                                          backgroundColor: `hsl(var(--confidence-${
+                                            msg.response.confidence_level === "HIGH" ? "high" : 
+                                            msg.response.confidence_level === "MEDIUM" ? "medium" : "low"
+                                          }-bg))`,
+                                        }}
                                       >
+                                        <span
+                                          className={cn(
+                                            "h-1.5 w-1.5 rounded-full",
+                                            msg.response.confidence_level === "HIGH" && "bg-confidence-high",
+                                            msg.response.confidence_level === "MEDIUM" && "bg-confidence-medium",
+                                            msg.response.confidence_level === "LOW" && "bg-confidence-low",
+                                          )}
+                                        />
                                         {msg.response.confidence_level}
-                                      </Badge>
+                                      </span>
                                     </div>
 
                                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                       <Gauge className="h-3 w-3" />
-                                      <span className="tabular-nums">
+                                      <span className="font-system-mono tabular-nums">
                                         {totalLatency(msg.response)}
                                       </span>
                                     </div>
@@ -1168,10 +1182,10 @@ export default function ChatPage() {
                                     )}
 
                                     {msg.response.retry_count > 0 && (
-                                      <Badge variant="warning" className="text-[10px] h-5 px-1.5 gap-1">
+                                      <span className="inline-flex items-center gap-1 rounded-full border border-confidence-medium/30 bg-confidence-medium-bg px-1.5 py-0.5 text-[10px] font-medium text-confidence-medium h-5">
                                         <RefreshCw className="h-3 w-3" />
                                         {msg.response.retry_count} correction{msg.response.retry_count > 1 ? "s" : ""}
-                                      </Badge>
+                                      </span>
                                     )}
 
                                     {msg.response.model_used && (
@@ -1285,14 +1299,14 @@ export default function ChatPage() {
                             {/* Low confidence warning */}
                             {msg.response &&
                               msg.response.confidence_level === "LOW" && (
-                                <div className="rounded-lg border border-red-200 bg-red-50/50 dark:border-red-800/50 dark:bg-red-950/20 px-3 py-2.5">
+                                <div className="rounded-lg border border-confidence-low/30 bg-confidence-low-bg px-3 py-2.5">
                                   <div className="flex items-start gap-2">
-                                    <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                                    <AlertTriangle className="h-4 w-4 text-confidence-low shrink-0 mt-0.5" />
                                     <div>
-                                      <p className="text-xs font-medium text-red-700 dark:text-red-400">
+                                      <p className="text-xs font-medium text-confidence-low">
                                         Low Confidence Response
                                       </p>
-                                      <p className="text-[11px] text-red-600/70 dark:text-red-400/70 mt-0.5">
+                                      <p className="text-[11px] text-confidence-low/70 mt-0.5">
                                         The model had low confidence (
                                         {msg.response.confidence}%) in this
                                         answer. The retrieved evidence may be

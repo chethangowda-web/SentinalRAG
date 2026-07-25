@@ -1,10 +1,12 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { ChevronRight, Bell, Search, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/auth-context";
 
 const breadcrumbMap: Record<string, string> = {
   dashboard: "Overview",
@@ -14,11 +16,13 @@ const breadcrumbMap: Record<string, string> = {
   search: "Search",
   evaluation: "Evaluation",
   settings: "Settings",
+  profile: "Profile",
 };
 
 export function TopNavbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
+  const { user } = useAuth();
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b bg-background/80 backdrop-blur-xl px-4 sm:px-6">
@@ -53,15 +57,17 @@ export function TopNavbar({ onMenuClick }: { onMenuClick?: () => void }) {
         <Button variant="ghost" size="icon" className="hidden sm:flex">
           <Bell className="h-4 w-4" />
         </Button>
-        <div className="ml-2 flex items-center gap-2 border-l pl-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-            SO
+        <Link href="/dashboard/profile">
+          <div className="ml-2 flex items-center gap-2 border-l pl-3 cursor-pointer hover:opacity-80 transition-opacity">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+              {user?.name?.charAt(0)?.toUpperCase() || "U"}
+            </div>
+            <div className="hidden sm:block">
+              <p className="text-xs font-medium">{user?.name || "User"}</p>
+              <p className="text-[10px] text-muted-foreground">{user?.email || ""}</p>
+            </div>
           </div>
-          <div className="hidden sm:block">
-            <p className="text-xs font-medium">Operator</p>
-            <p className="text-[10px] text-muted-foreground">admin</p>
-          </div>
-        </div>
+        </Link>
       </div>
     </header>
   );

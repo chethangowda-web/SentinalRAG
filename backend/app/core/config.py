@@ -60,6 +60,15 @@ class Settings(BaseSettings):
     FEATHERLESS_BASE_URL: str = ""
     FEATHERLESS_MODEL: str = ""
 
+    # JWT
+    JWT_SECRET: str = ""
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRATION_MINUTES: int = 1440
+
+    @property
+    def effective_jwt_secret(self) -> str:
+        return self.JWT_SECRET or self.SECRET_KEY
+
     # Rate limiting
     RATE_LIMIT_MAX_REQUESTS: int = 100
     RATE_LIMIT_WINDOW_SECONDS: int = 60

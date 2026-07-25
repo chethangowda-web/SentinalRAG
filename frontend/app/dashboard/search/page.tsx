@@ -58,9 +58,9 @@ export default function SearchPage() {
                 {results.length} retrieved chunks for &ldquo;{query}&rdquo;
               </p>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><Gauge className="h-3 w-3" /> Confidence: {Math.round(searchMutation.data.confidence * 100)}%</span>
+                <span className="flex items-center gap-1"><Gauge className="h-3 w-3" /> <span className="font-system-mono tabular-nums">{Math.round(searchMutation.data.confidence * 100)}%</span></span>
                 {latencies && (
-                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {(Object.values(latencies).reduce((a, b) => a + b, 0) / 1000).toFixed(2)}s</span>
+                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> <span className="font-system-mono tabular-nums">{(Object.values(latencies).reduce((a, b) => a + b, 0) / 1000).toFixed(2)}s</span></span>
                 )}
               </div>
             </div>
@@ -88,19 +88,23 @@ export default function SearchPage() {
                       </td>
                       <td className="p-3 text-xs text-muted-foreground">{item.page ?? "--"}</td>
                       <td className="p-3">
-                        <Badge variant="outline" className="text-[10px]">
+                        <span className="inline-flex items-center rounded-md border border-border/60 px-1.5 py-0.5 text-[10px] font-system-mono font-medium tabular-nums text-muted-foreground">
                           {(item.vector_score * 100).toFixed(1)}%
-                        </Badge>
+                        </span>
                       </td>
                       <td className="p-3">
-                        <Badge variant="outline" className="text-[10px]">
+                        <span className="inline-flex items-center rounded-md border border-border/60 px-1.5 py-0.5 text-[10px] font-system-mono font-medium tabular-nums text-muted-foreground">
                           {(item.bm25_score * 100).toFixed(1)}%
-                        </Badge>
+                        </span>
                       </td>
                       <td className="p-3">
-                        <Badge variant={item.rerank_score > 0.5 ? "success" : "outline"} className="text-[10px]">
+                        <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-system-mono font-medium tabular-nums ${
+                          item.rerank_score > 0.5
+                            ? "border-confidence-high/30 bg-confidence-high-bg text-confidence-high"
+                            : "border-border/60 text-muted-foreground"
+                        }`}>
                           {item.rerank_score.toFixed(3)}
-                        </Badge>
+                        </span>
                       </td>
                       <td className="p-3">
                         <p className="text-xs text-muted-foreground line-clamp-2 max-w-[200px]">

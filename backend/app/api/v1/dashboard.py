@@ -4,10 +4,12 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.models.document import Document
 from app.models.chunk import Chunk
 from app.models.chat_session import ChatSession
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -15,48 +17,68 @@ router = APIRouter(tags=["dashboard"])
 
 
 @router.get("/dashboard/stats")
-async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
-    doc_count_result = await db.execute(select(func.count(Document.id)))
+async def get_dashboard_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    doc_count_result = await db.execute(
+        select(func.count(Document.id)).where(Document.user_id == current_user.id)
+    )
     total_docs = doc_count_result.scalar() or 0
 
-    chunk_count_result = await db.execute(select(func.count(Chunk.id)))
+    chunk_count_result = await db.execute(
+        select(func.count(Chunk.id)).where(Chunk.document_id.in_(
+            select(Document.id).where(Document.user_id == current_user.id)
+        ))
+    )
     total_chunks = chunk_count_result.scalar() or 0
 
-    session_count_result = await db.execute(select(func.count(ChatSession.id)))
+    session_count_result = await db.execute(
+        select(func.count(ChatSession.id)).where(ChatSession.user_id == current_user.id)
+    )
     total_sessions = session_count_result.scalar() or 0
 
     doc_by_status_result = await db.execute(
-        select(Document.status, func.count(Document.id)).group_by(Document.status)
+        select(Document.status, func.count(Document.id))
+        .where(Document.user_id == current_user.id)
+        .group_by(Document.status)
     )
     docs_by_status = {row[0]: row[1] for row in doc_by_status_result.all()}
 
     total_chars_result = await db.execute(
         select(func.coalesce(func.sum(Document.char_count), 0))
+        .where(Document.user_id == current_user.id)
     )
     total_chars = total_chars_result.scalar() or 0
 
     total_words_result = await db.execute(
         select(func.coalesce(func.sum(Document.word_count), 0))
+        .where(Document.user_id == current_user.id)
     )
     total_words = total_words_result.scalar() or 0
 
     total_pages_result = await db.execute(
         select(func.coalesce(func.sum(Document.pages), 0))
+        .where(Document.user_id == current_user.id)
     )
     total_pages = total_pages_result.scalar() or 0
 
     avg_ocr_conf_result = await db.execute(
-        select(func.avg(Document.ocr_confidence)).where(Document.ocr_confidence.isnot(None))
+        select(func.avg(Document.ocr_confidence))
+        .where(Document.user_id == current_user.id, Document.ocr_confidence.isnot(None))
     )
     avg_ocr_conf = avg_ocr_conf_result.scalar()
 
     doc_types_result = await db.execute(
-        select(Document.document_type, func.count(Document.id)).where(Document.document_type.isnot(None)).group_by(Document.document_type)
+        select(Document.document_type, func.count(Document.id))
+        .where(Document.user_id == current_user.id, Document.document_type.isnot(None))
+        .group_by(Document.document_type)
     )
     doc_types = {row[0]: row[1] for row in doc_types_result.all()}
 
     recent_result = await db.execute(
         select(Document.id, Document.filename, Document.created_at, Document.document_type, Document.ocr_quality)
+        .where(Document.user_id == current_user.id)
         .order_by(Document.created_at.desc())
         .limit(5)
     )
@@ -86,7 +108,10 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/dashboard/daily-stats")
-async def get_daily_stats(db: AsyncSession = Depends(get_db)):
+async def get_daily_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     from sqlalchemy import cast, Date
 
     daily_counts = await db.execute(
@@ -94,6 +119,7 @@ async def get_daily_stats(db: AsyncSession = Depends(get_db)):
             cast(Document.created_at, Date).label("date"),
             func.count(Document.id).label("count"),
         )
+        .where(Document.user_id == current_user.id)
         .group_by(cast(Document.created_at, Date))
         .order_by(cast(Document.created_at, Date).desc())
         .limit(14)

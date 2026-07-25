@@ -14,9 +14,11 @@ logger = logging.getLogger(__name__)
 ### Session CRUD ###
 
 
-async def create_session(db: AsyncSession, title: str = "New Chat", session_id: str | None = None) -> ChatSession:
+async def create_session(
+    db: AsyncSession, title: str = "New Chat", session_id: str | None = None, user_id: str | None = None
+) -> ChatSession:
     sid = session_id or str(uuid.uuid4())
-    session = ChatSession(id=sid, title=title)
+    session = ChatSession(id=sid, title=title, user_id=user_id)
     db.add(session)
     await db.commit()
     await db.refresh(session)
@@ -57,9 +59,11 @@ async def delete_session(db: AsyncSession, session_id: str) -> bool:
 
 
 async def list_sessions(
-    db: AsyncSession, skip: int = 0, limit: int = 50, search: str | None = None
+    db: AsyncSession, skip: int = 0, limit: int = 50, search: str | None = None, user_id: str | None = None
 ) -> list[ChatSession]:
     query = select(ChatSession).where(ChatSession.deleted.is_(False))
+    if user_id:
+        query = query.where(ChatSession.user_id == user_id)
     if search:
         query = query.where(ChatSession.title.ilike(f"%{search}%"))
     query = query.order_by(ChatSession.pinned.desc(), desc(ChatSession.updated_at)).offset(skip).limit(limit)
@@ -67,8 +71,10 @@ async def list_sessions(
     return list(result.scalars().all())
 
 
-async def count_sessions(db: AsyncSession, search: str | None = None) -> int:
+async def count_sessions(db: AsyncSession, search: str | None = None, user_id: str | None = None) -> int:
     query = select(sqlfunc.count(ChatSession.id)).where(ChatSession.deleted.is_(False))
+    if user_id:
+        query = query.where(ChatSession.user_id == user_id)
     if search:
         query = query.where(ChatSession.title.ilike(f"%{search}%"))
     result = await db.execute(query)

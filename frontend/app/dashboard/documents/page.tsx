@@ -91,7 +91,7 @@ function OcrBadge({ quality }: { quality?: string | null }) {
 function ConfidenceScore({ score }: { score?: number | null }) {
   if (score == null) return null;
   const pct = Math.min(Math.max(score * 100, 0), 100);
-  const color = pct >= 80 ? "hsl(var(--success))" : pct >= 50 ? "hsl(var(--warning))" : "hsl(var(--destructive))";
+  const color = pct >= 70 ? "hsl(var(--confidence-high))" : pct >= 40 ? "hsl(var(--confidence-medium))" : "hsl(var(--confidence-low))";
   return (
     <TooltipProvider>
       <Tooltip>
@@ -100,7 +100,7 @@ function ConfidenceScore({ score }: { score?: number | null }) {
             <div className="h-1.5 w-16 rounded-full bg-secondary overflow-hidden">
               <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
             </div>
-            <span className="text-[10px] font-medium tabular-nums" style={{ color }}>{pct.toFixed(0)}%</span>
+            <span className="text-[10px] font-system-mono font-bold tabular-nums" style={{ color }}>{pct.toFixed(0)}%</span>
           </div>
         </TooltipTrigger>
         <TooltipContent side="top">
@@ -318,15 +318,15 @@ export default function DocumentsPage() {
                           </div>
                           <div className="flex items-center gap-1.5 text-muted-foreground">
                             <FileText className="h-3 w-3 shrink-0" />
-                            <span>{doc.pages ?? "--"} pages</span>
+                            <span className="font-system-mono tabular-nums">{doc.pages ?? "--"} pages</span>
                           </div>
                           <div className="flex items-center gap-1.5 text-muted-foreground">
                             <Layers className="h-3 w-3 shrink-0" />
-                            <span>{doc.chunk_count ?? "--"} chunks</span>
+                            <span className="font-system-mono tabular-nums">{doc.chunk_count ?? "--"} chunks</span>
                           </div>
                           <div className="flex items-center gap-1.5 text-muted-foreground">
                             <Clock className="h-3 w-3 shrink-0" />
-                            <span>{doc.estimated_reading_time ? `${doc.estimated_reading_time}m read` : "--"}</span>
+                            <span className="font-system-mono tabular-nums">{doc.estimated_reading_time ? `${doc.estimated_reading_time}m read` : "--"}</span>
                           </div>
                         </div>
 

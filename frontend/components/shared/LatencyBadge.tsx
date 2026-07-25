@@ -6,7 +6,7 @@ export function LatencyBadge({ ms, className }: { ms: number; className?: string
   const label = ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`;
 
   return (
-    <Badge variant={variant} className={cn("font-mono", className)}>
+    <Badge variant={variant} className={cn("font-system-mono tabular-nums text-[10px] h-5 px-1.5", className)}>
       {label}
     </Badge>
   );

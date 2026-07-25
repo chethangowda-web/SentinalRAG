@@ -5,10 +5,12 @@ import uuid
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.graph.graph_builder import build_graph
 from app.graph.state import GraphState
+from app.models.user import User
 from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
@@ -110,6 +112,7 @@ async def chat_endpoint(
     request: Request,
     body: ChatRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     start = time.perf_counter()
     trace_id = str(uuid.uuid4())
@@ -248,6 +251,7 @@ async def chat_endpoint(
             answer=result.get("answer"),
             citations=[c.model_dump() for c in citations],
             latencies=result.get("latencies", {}),
+            user_id=current_user.id,
         )
     except Exception as e:
         logger.error("Failed to save trace %s: %s", trace_id, e)
@@ -280,7 +284,7 @@ async def chat_endpoint(
         existing = await chat_history_service.get_session(db, session_id)
         if not existing:
             existing = await chat_history_service.create_session(
-                db, title=body.question.strip()[:100], session_id=session_id
+                db, title=body.question.strip()[:100], session_id=session_id, user_id=current_user.id
             )
         if existing:
             await chat_history_service.add_message(

@@ -34,6 +34,10 @@ qdrant-client==1.18.0
 langgraph==0.4.2
 langchain-openai==0.3.8
 
+# ─── Auth ──────────────────────────────────────────────
+bcrypt==4.2.1
+PyJWT==2.10.1
+
 # ─── Monitoring ───────────────────────────────────────
 psutil==7.0.0
 tiktoken==0.9.0

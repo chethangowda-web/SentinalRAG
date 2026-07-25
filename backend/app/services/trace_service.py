@@ -36,9 +36,11 @@ async def save_trace(
     answer: str | None,
     citations: list[dict],
     latencies: dict[str, float],
+    user_id: str | None = None,
 ) -> Trace:
     trace = Trace(
         id=trace_id,
+        user_id=user_id,
         original_query=original_query,
         rewritten_query=rewritten_query,
         confidence_before_rewrite=confidence_before_rewrite,
@@ -73,15 +75,22 @@ async def get_trace(db: AsyncSession, trace_id: str) -> Trace | None:
     return result.scalar_one_or_none()
 
 
-async def list_traces(db: AsyncSession, skip: int = 0, limit: int = 50) -> list[Trace]:
-    result = await db.execute(
-        select(Trace).order_by(desc(Trace.timestamp)).offset(skip).limit(limit)
-    )
+async def list_traces(
+    db: AsyncSession, skip: int = 0, limit: int = 50, user_id: str | None = None
+) -> list[Trace]:
+    query = select(Trace)
+    if user_id:
+        query = query.where(Trace.user_id == user_id)
+    query = query.order_by(desc(Trace.timestamp)).offset(skip).limit(limit)
+    result = await db.execute(query)
     return list(result.scalars().all())
 
 
-async def count_traces(db: AsyncSession) -> int:
-    result = await db.execute(select(sqlfunc.count(Trace.id)))
+async def count_traces(db: AsyncSession, user_id: str | None = None) -> int:
+    query = select(sqlfunc.count(Trace.id))
+    if user_id:
+        query = query.where(Trace.user_id == user_id)
+    result = await db.execute(query)
     return result.scalar() or 0
 
 

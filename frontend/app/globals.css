@@ -38,6 +38,12 @@
     --chart-3: 38 92% 50%;
     --chart-4: 271 91% 65%;
     --chart-5: 0 84% 60%;
+    --confidence-high: 173 80% 40%;
+    --confidence-high-bg: 173 80% 40% / 0.1;
+    --confidence-medium: 36 100% 55%;
+    --confidence-medium-bg: 36 100% 55% / 0.1;
+    --confidence-low: 350 70% 60%;
+    --confidence-low-bg: 350 70% 60% / 0.1;
   }
 
   .dark {
@@ -74,6 +80,12 @@
     --chart-3: 38 92% 50%;
     --chart-4: 271 91% 65%;
     --chart-5: 0 84% 60%;
+    --confidence-high: 173 60% 48%;
+    --confidence-high-bg: 173 60% 48% / 0.12;
+    --confidence-medium: 36 90% 60%;
+    --confidence-medium-bg: 36 90% 60% / 0.12;
+    --confidence-low: 350 65% 55%;
+    --confidence-low-bg: 350 65% 55% / 0.12;
   }
 
   * {
@@ -124,14 +136,8 @@
   }
 
   @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   @keyframes pulse-soft {
@@ -157,6 +163,21 @@
   @keyframes scale-in {
     from { opacity: 0; transform: scale(0.95); }
     to { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes confidence-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 hsl(var(--confidence-high) / 0.4); }
+    50% { box-shadow: 0 0 0 4px hsl(var(--confidence-high) / 0); }
+  }
+
+  @keyframes step-enter {
+    from { opacity: 0; transform: translateY(-4px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes count-up {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
   .animate-pulse-soft {
@@ -186,6 +207,18 @@
     animation: shimmer 2s infinite;
   }
 
+  .animate-confidence-pulse {
+    animation: confidence-pulse 2s ease-in-out infinite;
+  }
+
+  .animate-step-enter {
+    animation: step-enter 0.3s ease-out both;
+  }
+
+  .animate-count-up {
+    animation: count-up 0.5s ease-out;
+  }
+
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
@@ -197,5 +230,10 @@
 
   .tabular-nums {
     font-variant-numeric: tabular-nums;
+  }
+
+  .font-system-mono {
+    font-family: 'JetBrains Mono', 'IBMPlexMono', 'SF Mono', ui-monospace, monospace;
+    font-feature-settings: "tnum" 1, "calt" 1, "ss01" 1;
   }
 }

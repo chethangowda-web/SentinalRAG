@@ -41,10 +41,10 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { Trace } from "@/types";
 
-const confidenceColors: Record<string, string> = {
-  HIGH: "#22c55e",
-  MEDIUM: "#eab308",
-  LOW: "#ef4444",
+const confidenceColors = {
+  HIGH: "hsl(var(--confidence-high))",
+  MEDIUM: "hsl(var(--confidence-medium))",
+  LOW: "hsl(var(--confidence-low))",
 };
 
 export default function ExplainabilityPage() {
@@ -303,7 +303,7 @@ function TraceDetail({ trace, onBack }: { trace: Trace; onBack: () => void }) {
                           dataKey="value"
                         >
                           {pieData.map((entry, i) => (
-                            <Cell key={i} fill={[hsl(221, 83, 53), hsl(142, 76, 36), hsl(38, 92, 50)][i]} />
+                            <Cell key={i} fill={[hsl(173, 60, 48), hsl(36, 90, 60), hsl(350, 65, 55)][i]} />
                           ))}
                         </Pie>
                         <Tooltip />
@@ -384,7 +384,7 @@ function BreakdownRow({ label, value }: { label: string; value?: number }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-sm">{label}</span>
-      <span className={`text-sm font-medium ${value !== undefined ? (value >= 0.7 ? "text-success" : value >= 0.4 ? "text-warning" : "text-destructive") : ""}`}>
+      <span className={`text-sm font-system-mono font-bold ${value !== undefined ? (value >= 0.7 ? "text-confidence-high" : value >= 0.4 ? "text-confidence-medium" : "text-confidence-low") : ""}`}>
         {value !== undefined ? `${(value * 100).toFixed(0)}%` : "--"}
       </span>
     </div>

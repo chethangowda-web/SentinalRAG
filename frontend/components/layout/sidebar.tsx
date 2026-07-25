@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/auth-context";
 import {
   LayoutDashboard,
   Upload,
@@ -14,7 +15,10 @@ import {
   Shield,
   Search,
   BookOpen,
+  User,
+  LogOut,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
@@ -24,11 +28,13 @@ const navItems = [
   { href: "/dashboard/search", label: "Search", icon: Search },
   { href: "/dashboard/evaluation", label: "Evaluation", icon: BarChart3 },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard/profile", label: "Profile", icon: User },
   { href: "/docs", label: "Documentation", icon: BookOpen },
 ];
 
 export function Sidebar({ open, onClose }: { open?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
+  const { user } = useAuth();
 
   return (
     <>
@@ -80,10 +86,14 @@ export function Sidebar({ open, onClose }: { open?: boolean; onClose?: () => voi
         <div className="border-t border-sidebar-border p-4">
           <div className="rounded-lg bg-sidebar-muted/50 p-3">
             <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-success animate-pulse-soft" />
-              <p className="text-xs font-medium">All Systems Operational</p>
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                {user?.name?.charAt(0)?.toUpperCase() || "U"}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium truncate">{user?.name || "User"}</p>
+                <p className="text-[10px] text-sidebar-muted-foreground truncate">{user?.email || ""}</p>
+              </div>
             </div>
-            <p className="mt-1 text-[10px] text-sidebar-muted-foreground">v1.0.0 · Self-Correcting RAG</p>
           </div>
         </div>
       </aside>

@@ -6,9 +6,13 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_session_maker
+from app.core.auth import get_current_user
+from app.core.database import get_db, get_session_maker
+from app.models.evaluation_run import EvaluationRun
+from app.models.user import User
 from evaluation.dataset import load_dataset, get_dataset_summary
 from evaluation.reports.report_generator import ReportGenerator
 from evaluation.reports.visualizer import Visualizer
@@ -87,10 +91,17 @@ async def _run_evaluation_background(eval_id: str, dataset_path: str, total: int
 
 
 @router.post("/evaluate")
-async def run_evaluation() -> dict[str, Any]:
+async def run_evaluation(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
     eval_id = str(uuid.uuid4())
     dataset_path = str(Path(__file__).resolve().parent.parent.parent.parent / "evaluation" / "datasets" / "benchmark.json")
     total_questions = _count_questions(dataset_path)
+
+    run = EvaluationRun(evaluation_id=eval_id, user_id=current_user.id, status="running")
+    db.add(run)
+    await db.commit()
 
     task = asyncio.create_task(_run_evaluation_background(eval_id, dataset_path, total_questions))
     _eval_tasks.add(task)
@@ -104,7 +115,10 @@ async def run_evaluation() -> dict[str, Any]:
 
 
 @router.get("/evaluation/status/{evaluation_id}")
-async def get_evaluation_status(evaluation_id: str) -> dict[str, Any]:
+async def get_evaluation_status(
+    evaluation_id: str,
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
     tasks = _load_tasks()
     task = tasks.get(evaluation_id)
     if task is None:
@@ -113,7 +127,9 @@ async def get_evaluation_status(evaluation_id: str) -> dict[str, Any]:
 
 
 @router.get("/evaluation/report")
-async def get_latest_report() -> dict[str, Any]:
+async def get_latest_report(
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
     result = _report_gen.load_latest_result()
     if result is None:
         raise HTTPException(status_code=404, detail="No evaluation results found. Run /api/v1/evaluate first.")
@@ -121,13 +137,27 @@ async def get_latest_report() -> dict[str, Any]:
 
 
 @router.get("/evaluation/history")
-async def get_evaluation_history() -> list[dict[str, Any]]:
+async def get_evaluation_history(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict[str, Any]]:
+    from sqlalchemy import select
+
+    result = await db.execute(
+        select(EvaluationRun.evaluation_id, EvaluationRun.status, EvaluationRun.created_at)
+        .where(EvaluationRun.user_id == current_user.id)
+        .order_by(EvaluationRun.created_at.desc())
+    )
+    runs = result.all()
+    user_eval_ids = {r.evaluation_id for r in runs}
     history = _report_gen.load_history()
-    return history
+    return [h for h in history if h.get("evaluation_id") in user_eval_ids]
 
 
 @router.get("/evaluation/dataset")
-async def get_dataset_info() -> dict[str, Any]:
+async def get_dataset_info(
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
     try:
         data = load_dataset()
         summary = get_dataset_summary(data)

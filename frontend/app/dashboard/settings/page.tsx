@@ -53,8 +53,8 @@ interface SystemHealth {
 }
 
 function StatusIndicator({ status }: { status: string }) {
-  if (status === "healthy" || status === "configured") return <CheckCircle2 className="h-4 w-4 text-success" />;
-  if (status === "unhealthy") return <XCircle className="h-4 w-4 text-destructive" />;
+  if (status === "healthy" || status === "configured") return <CheckCircle2 className="h-4 w-4 text-confidence-high" />;
+  if (status === "unhealthy") return <XCircle className="h-4 w-4 text-confidence-low" />;
   return <Minus className="h-4 w-4 text-muted-foreground" />;
 }
 
@@ -120,9 +120,9 @@ function StatusCard({ title, status, icon: Icon, details }: {
   details?: string;
 }) {
   const statusConfig: Record<string, { color: string; bg: string; label: string }> = {
-    healthy: { color: "text-success", bg: "bg-success/10", label: "Operational" },
-    configured: { color: "text-success", bg: "bg-success/10", label: "Configured" },
-    unhealthy: { color: "text-destructive", bg: "bg-destructive/10", label: "Unhealthy" },
+    healthy: { color: "text-confidence-high", bg: "bg-confidence-high-bg", label: "Operational" },
+    configured: { color: "text-confidence-high", bg: "bg-confidence-high-bg", label: "Configured" },
+    unhealthy: { color: "text-confidence-low", bg: "bg-confidence-low-bg", label: "Unhealthy" },
     unavailable: { color: "text-muted-foreground", bg: "bg-muted", label: "Unavailable" },
   };
   const cfg = statusConfig[status] ?? statusConfig.unavailable;

@@ -130,7 +130,7 @@ export function UploadDropzone({
               <div className="w-48 mt-4">
                 <Progress value={progress} className="h-1.5" />
               </div>
-              <p className="mt-2 text-[10px] text-muted-foreground tabular-nums">
+              <p className="mt-2 text-[10px] text-muted-foreground font-system-mono tabular-nums">
                 {progress}% complete
               </p>
             </motion.div>

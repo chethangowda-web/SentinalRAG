@@ -12,6 +12,7 @@ interface MetricCardProps {
   trend?: { value: number; positive: boolean };
   color?: string;
   className?: string;
+  mono?: boolean;
 }
 
 export function MetricCard({
@@ -22,13 +23,14 @@ export function MetricCard({
   trend,
   color,
   className,
+  mono,
 }: MetricCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "group relative overflow-hidden rounded-xl border bg-card p-6 transition-all duration-200 hover:shadow-md",
+        "group relative overflow-hidden rounded-xl border bg-card p-5 transition-all duration-200 hover:shadow-md",
         className
       )}
     >
@@ -40,12 +42,12 @@ export function MetricCard({
           }}
         />
       )}
-      <div className="flex items-start justify-between">
+      <div className="relative flex items-start justify-between">
         <div className="space-y-1">
-          <p className="text-sm text-muted-foreground">{title}</p>
-          <p className="text-2xl font-bold tracking-tight">{value}</p>
+          <p className="text-xs text-muted-foreground font-medium">{title}</p>
+          <p className={cn("text-2xl font-bold tracking-tight", mono && "font-system-mono tabular-nums")}>{value}</p>
           {subtitle && (
-            <p className="text-xs text-muted-foreground">{subtitle}</p>
+            <p className="text-[10px] text-muted-foreground">{subtitle}</p>
           )}
         </div>
         {Icon && (
@@ -67,13 +69,13 @@ export function MetricCard({
           <span
             className={cn(
               "text-xs font-medium",
-              trend.positive ? "text-success" : "text-destructive"
+              trend.positive ? "text-confidence-high" : "text-confidence-low"
             )}
           >
             {trend.positive ? "+" : ""}
             {trend.value}%
           </span>
-          <span className="text-xs text-muted-foreground">vs last period</span>
+          <span className="text-[10px] text-muted-foreground">vs last period</span>
         </div>
       )}
     </motion.div>

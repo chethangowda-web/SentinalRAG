@@ -21,7 +21,7 @@ export function StatusBadge({
 }) {
   const variant = statusColors[status.toLowerCase()] ?? "secondary";
   return (
-    <Badge variant={variant} className={cn("capitalize", className)}>
+    <Badge variant={variant} className={cn("text-[10px] h-5 px-1.5 capitalize font-medium", className)}>
       {status}
     </Badge>
   );

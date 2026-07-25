@@ -5,6 +5,8 @@ import { useUpload } from "@/hooks/use-upload";
 import { useDocuments } from "@/hooks/use-documents";
 import { UploadDropzone } from "@/components/shared/UploadDropzone";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
+import { PipelineStepTrail } from "@/components/shared/PipelineStepTrail";
+import type { PipelineStep } from "@/components/shared/PipelineStepTrail";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -35,7 +37,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-const pipelineSteps = [
+const pipelineSteps: readonly PipelineStep[] = [
   { key: "uploading", label: "Uploading", icon: Upload, description: "Transferring file to server" },
   { key: "ocr", label: "OCR Processing", icon: Scan, description: "Extracting text from document" },
   { key: "chunking", label: "Chunking", icon: Layers, description: "Splitting text into passages" },
@@ -43,64 +45,6 @@ const pipelineSteps = [
   { key: "evaluation", label: "Evaluation", icon: BarChart3, description: "Analyzing document quality" },
   { key: "ready", label: "Ready", icon: CheckCircle2, description: "Document is indexed and searchable" },
 ] as const;
-
-function PipelineStep({ step, index, currentIndex, isDone, isActive }: {
-  step: typeof pipelineSteps[number];
-  index: number;
-  currentIndex: number;
-  isDone: boolean;
-  isActive: boolean;
-}) {
-  const Icon = step.icon;
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.1 }}
-      className={`relative flex items-center gap-4 rounded-lg px-4 py-3 transition-all duration-300 ${
-        isActive
-          ? "bg-primary/10 border border-primary/20 shadow-sm"
-          : isDone
-          ? "bg-success/5 border border-success/10"
-          : "bg-muted/30 border border-transparent"
-      }`}
-    >
-      <div className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all duration-300 ${
-        isDone
-          ? "bg-success text-success-foreground"
-          : isActive
-          ? "bg-primary text-primary-foreground"
-          : "bg-muted text-muted-foreground"
-      }`}>
-        {isDone ? (
-          <Check className="h-4 w-4" />
-        ) : isActive ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Icon className="h-4 w-4" />
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium transition-colors ${
-          isDone ? "text-success" : isActive ? "text-foreground" : "text-muted-foreground"
-        }`}>
-          {step.label}
-        </p>
-        <p className="text-[10px] text-muted-foreground mt-0.5">{step.description}</p>
-      </div>
-      {isActive && (
-        <div className="flex gap-1">
-          <motion.span className="h-1.5 w-1.5 rounded-full bg-primary" animate={{ scale: [1, 1.5, 1] }} transition={{ duration: 1, repeat: Infinity, delay: 0 }} />
-          <motion.span className="h-1.5 w-1.5 rounded-full bg-primary" animate={{ scale: [1, 1.5, 1] }} transition={{ duration: 1, repeat: Infinity, delay: 0.2 }} />
-          <motion.span className="h-1.5 w-1.5 rounded-full bg-primary" animate={{ scale: [1, 1.5, 1] }} transition={{ duration: 1, repeat: Infinity, delay: 0.4 }} />
-        </div>
-      )}
-      {isDone && (
-        <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-      )}
-    </motion.div>
-  );
-}
 
 function SummaryMetric({ label, value, icon: Icon, color }: { label: string; value: string; icon: React.ElementType; color: string }) {
   return (
@@ -112,7 +56,7 @@ function SummaryMetric({ label, value, icon: Icon, color }: { label: string; val
         </div>
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-lg font-bold tracking-tight mt-0.5" style={{ color }}>{value}</p>
+          <p className="text-lg font-bold font-system-mono tabular-nums tracking-tight mt-0.5" style={{ color }}>{value}</p>
         </div>
       </div>
     </div>
@@ -171,43 +115,16 @@ export default function UploadPage() {
                 <CardContent className="space-y-4">
                   <div className="relative">
                     <Progress value={pipelineProgress} className="h-2" />
-                    <span className="absolute right-0 top-3 text-[10px] text-muted-foreground tabular-nums">
+                    <span className="absolute right-0 top-3 text-[10px] text-muted-foreground font-system-mono tabular-nums">
                       {Math.round(pipelineProgress)}%
                     </span>
                   </div>
-                  <div className="space-y-2">
-                    {pipelineSteps.map((s, i) => {
-                      const stepIdx = currentIndex;
-                      const isStepDone = isDone || (!isError && stepIdx >= 0 && i < stepIdx);
-                      const isStepActive = !isDone && !isError && stepIdx >= 0 && i === stepIdx;
-                      const isStepWaiting = !isDone && !isError && (stepIdx < 0 || i > stepIdx);
-
-                      if (isStepWaiting) {
-                        return (
-                          <div key={s.key} className="flex items-center gap-4 rounded-lg px-4 py-3 opacity-40">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                              <s.icon className="h-4 w-4" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-sm text-muted-foreground">{s.label}</p>
-                              <p className="text-[10px] text-muted-foreground">{s.description}</p>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <PipelineStep
-                          key={s.key}
-                          step={s}
-                          index={i}
-                          currentIndex={stepIdx}
-                          isDone={isStepDone}
-                          isActive={isStepActive}
-                        />
-                      );
-                    })}
-                  </div>
+                  <PipelineStepTrail
+                    steps={pipelineSteps}
+                    currentStep={step}
+                    isDone={isDone}
+                    isError={isError}
+                  />
                 </CardContent>
               </Card>
             </motion.div>

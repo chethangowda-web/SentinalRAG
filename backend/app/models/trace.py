@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text, func
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text, func
 
 from app.core.database import Base
 
@@ -9,6 +9,7 @@ class Trace(Base):
     __tablename__ = "traces"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
     timestamp = Column(DateTime, server_default=func.now(), nullable=False)
 
     original_query = Column(Text, nullable=False)

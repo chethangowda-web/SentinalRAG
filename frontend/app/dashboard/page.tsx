@@ -6,6 +6,8 @@ import { useEvaluationReport } from "@/hooks/use-evaluation";
 import { useDashboardStats } from "@/hooks/use-dashboard";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
+import { ConfidenceIndicator } from "@/components/shared/ConfidenceIndicator";
+import { ConfidenceBadge } from "@/components/shared/ConfidenceBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +33,8 @@ import {
   Minus,
   Zap,
   Brain,
+  HardDrive,
+  Database,
 } from "lucide-react";
 
 function StatCard({
@@ -40,6 +44,7 @@ function StatCard({
   icon: Icon,
   color,
   href,
+  mono,
 }: {
   title: string;
   value: string | number;
@@ -47,6 +52,7 @@ function StatCard({
   icon: React.ElementType;
   color: string;
   href?: string;
+  mono?: boolean;
 }) {
   const content = (
     <div className="group relative overflow-hidden rounded-xl border bg-card p-5 transition-all duration-200 hover:shadow-md hover:border-primary/20 h-full">
@@ -54,7 +60,7 @@ function StatCard({
       <div className="relative flex items-start justify-between">
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground font-medium">{title}</p>
-          <p className="text-2xl font-bold tracking-tight">{value}</p>
+          <p className={`text-2xl font-bold tracking-tight ${mono ? "font-system-mono tabular-nums" : ""}`}>{value}</p>
           {subtitle && (
             <p className="text-[10px] text-muted-foreground">{subtitle}</p>
           )}
@@ -79,9 +85,9 @@ function StatCard({
 }
 
 function HealthBadge({ status }: { status: string }) {
-  if (status === "healthy") return <Badge variant="success" className="gap-1.5 text-[10px]"><CheckCircle2 className="h-3 w-3" />Healthy</Badge>;
-  if (status === "degraded") return <Badge variant="warning" className="gap-1.5 text-[10px]"><AlertTriangle className="h-3 w-3" />Degraded</Badge>;
-  if (status === "unhealthy") return <Badge variant="destructive" className="gap-1.5 text-[10px]"><XCircle className="h-3 w-3" />Unhealthy</Badge>;
+  if (status === "healthy") return <Badge variant="outline" className="gap-1.5 text-[10px] border-confidence-high/30 bg-confidence-high-bg text-confidence-high"><CheckCircle2 className="h-3 w-3" />Healthy</Badge>;
+  if (status === "degraded") return <Badge variant="outline" className="gap-1.5 text-[10px] border-confidence-medium/30 bg-confidence-medium-bg text-confidence-medium"><AlertTriangle className="h-3 w-3" />Degraded</Badge>;
+  if (status === "unhealthy") return <Badge variant="outline" className="gap-1.5 text-[10px] border-confidence-low/30 bg-confidence-low-bg text-confidence-low"><XCircle className="h-3 w-3" />Unhealthy</Badge>;
   return <Badge variant="outline" className="gap-1.5 text-[10px]"><Minus className="h-3 w-3" />Unknown</Badge>;
 }
 
@@ -124,7 +130,7 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Real-time overview of your RAG system performance.
+              System vitals and confidence overview
             </p>
           </div>
           {!loading && (
@@ -144,6 +150,7 @@ export default function DashboardPage() {
                 icon={FileText}
                 color="hsl(var(--chart-1))"
                 href="/dashboard/documents"
+                mono
               />
               <StatCard
                 title="Questions Asked"
@@ -152,13 +159,15 @@ export default function DashboardPage() {
                 icon={MessageSquare}
                 color="hsl(var(--chart-2))"
                 href="/dashboard/chat"
+                mono
               />
               <StatCard
                 title="Average Confidence"
                 value={avgConfidence != null ? `${avgConfidence.toFixed(0)}%` : "--"}
                 subtitle={avgConfidence != null ? "across all evaluations" : "run evaluation"}
                 icon={Shield}
-                color={avgConfidence != null && avgConfidence >= 70 ? "hsl(var(--success))" : "hsl(var(--warning))"}
+                color={avgConfidence != null && avgConfidence >= 70 ? "hsl(var(--confidence-high))" : "hsl(var(--confidence-medium))"}
+                mono
               />
               <StatCard
                 title="Avg Response Time"
@@ -173,6 +182,7 @@ export default function DashboardPage() {
                 subtitle="query rewrite rate"
                 icon={RefreshCw}
                 color="hsl(var(--chart-4))"
+                mono
               />
               <StatCard
                 title="OCR Success Rate"
@@ -180,20 +190,22 @@ export default function DashboardPage() {
                 subtitle={ocrConfidence != null ? "avg OCR confidence" : "no OCR data"}
                 icon={Scan}
                 color="hsl(var(--chart-1))"
+                mono
               />
               <StatCard
                 title="Retrieval Accuracy"
                 value={retrievalAccuracy != null ? `${retrievalAccuracy.toFixed(0)}%` : "--"}
                 subtitle="context recall & precision"
                 icon={Target}
-                color={retrievalAccuracy != null && retrievalAccuracy >= 70 ? "hsl(var(--success))" : "hsl(var(--warning))"}
+                color={retrievalAccuracy != null && retrievalAccuracy >= 70 ? "hsl(var(--confidence-high))" : "hsl(var(--confidence-medium))"}
+                mono
               />
               <StatCard
                 title="System Health"
                 value={health?.status === "healthy" ? "Operational" : health?.status ?? "Unknown"}
                 subtitle={health?.version ? `v${health.version}` : ""}
                 icon={Activity}
-                color={health?.status === "healthy" ? "hsl(var(--success))" : "hsl(var(--destructive))"}
+                color={health?.status === "healthy" ? "hsl(var(--confidence-high))" : "hsl(var(--confidence-low))"}
               />
             </div>
 
@@ -207,12 +219,19 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   {s ? (
-                    <div className="space-y-3">
-                      <EvalRow label="Faithfulness" value={faithfulness} color="hsl(var(--success))" />
-                      <EvalRow label="Correctness" value={correctness} color="hsl(var(--chart-1))" />
-                      <EvalRow label="Answer Relevancy" value={relevancy} color="hsl(var(--chart-2))" />
-                      <EvalRow label="Context Recall" value={recall} color="hsl(var(--chart-3))" />
-                      <EvalRow label="Context Precision" value={precision} color="hsl(var(--chart-4))" />
+                    <div className="space-y-4">
+                      <div className="flex justify-center">
+                        <ConfidenceIndicator
+                          level={avgConfidence != null && avgConfidence >= 70 ? "HIGH" : avgConfidence != null && avgConfidence >= 40 ? "MEDIUM" : "LOW"}
+                          score={avgConfidence ?? 0}
+                          size="lg"
+                        />
+                      </div>
+                      <EvalRow label="Faithfulness" value={faithfulness} />
+                      <EvalRow label="Correctness" value={correctness} />
+                      <EvalRow label="Answer Relevancy" value={relevancy} />
+                      <EvalRow label="Context Recall" value={recall} />
+                      <EvalRow label="Context Precision" value={precision} />
                     </div>
                   ) : (
                     <div className="flex flex-col items-center py-8 text-center">
@@ -317,14 +336,15 @@ export default function DashboardPage() {
   );
 }
 
-function EvalRow({ label, value, color }: { label: string; value?: number; color: string }) {
+function EvalRow({ label, value }: { label: string; value?: number }) {
   if (value == null) return null;
   const pct = value * 100;
+  const color = pct >= 70 ? "var(--confidence-high)" : pct >= 40 ? "var(--confidence-medium)" : "var(--confidence-low)";
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-xs">
         <span className="text-muted-foreground">{label}</span>
-        <span className="font-semibold tabular-nums">{pct.toFixed(1)}%</span>
+        <span className="font-system-mono font-bold tabular-nums" style={{ color }}>{pct.toFixed(1)}%</span>
       </div>
       <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: color }} />

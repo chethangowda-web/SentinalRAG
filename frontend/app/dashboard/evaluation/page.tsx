@@ -42,12 +42,14 @@ import {
   RotateCw,
   Eye,
 } from "lucide-react";
+import { ConfidenceIndicator } from "@/components/shared/ConfidenceIndicator";
+import { ConfidenceBadge } from "@/components/shared/ConfidenceBadge";
 
 function CircularProgress({ value, size = 140, strokeWidth = 10 }: { value: number; size?: number; strokeWidth?: number }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (value / 100) * circumference;
-  const color = value >= 80 ? "hsl(var(--success))" : value >= 50 ? "hsl(var(--warning))" : "hsl(var(--destructive))";
+  const color = value >= 70 ? "hsl(var(--confidence-high))" : value >= 40 ? "hsl(var(--confidence-medium))" : "hsl(var(--confidence-low))";
 
   return (
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
@@ -86,7 +88,7 @@ function MetricBar({ value, label, icon: Icon, color, suffix = "%" }: { value: n
           </div>
           <span className="text-xs text-muted-foreground">{label}</span>
         </div>
-        <span className="text-xs font-semibold tabular-nums" style={{ color }}>{value.toFixed(1)}{suffix}</span>
+          <span className="text-xs font-semibold font-system-mono tabular-nums" style={{ color }}>{value.toFixed(1)}{suffix}</span>
       </div>
       <div className="h-2 rounded-full bg-secondary overflow-hidden">
         <motion.div
@@ -116,7 +118,7 @@ function KnowledgeCard({ label, value, icon: Icon, color, subtitle }: { label: s
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-xl font-bold tracking-tight mt-0.5">{value}</p>
+          <p className="text-xl font-bold font-system-mono tracking-tight mt-0.5">{value}</p>
           {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
         </div>
       </div>
@@ -276,8 +278,8 @@ export default function EvaluationPage() {
                 <KnowledgeCard label="Retrieval Accuracy" value={retrievalAccuracy != null ? `${retrievalAccuracy.toFixed(1)}%` : "N/A"} icon={Target} color="hsl(var(--chart-2))" subtitle="Recall & precision avg" />
                 <KnowledgeCard label="Chunk Coverage" value={recall != null ? `${(recall * 100).toFixed(0)}%` : "N/A"} icon={Layers} color="hsl(var(--chart-3))" subtitle="Context recall rate" />
                 <KnowledgeCard label="Embedding Status" value={totalChunks != null ? `${totalChunks} chunks` : "N/A"} icon={Zap} color="hsl(var(--chart-4))" subtitle={totalDocs > 0 ? `${totalDocs} docs embedded` : "No documents"} />
-                <KnowledgeCard label="Hallucination Risk" value={hallucinationRisk != null ? `${hallucinationRisk.toFixed(1)}%` : "N/A"} icon={AlertTriangle} color={hallucinationRisk != null && hallucinationRisk > 15 ? "hsl(var(--destructive))" : "hsl(var(--success))"} subtitle="Lower is better" />
-                <KnowledgeCard label="Average Confidence" value={avgConfidence != null ? `${avgConfidence.toFixed(1)}%` : "N/A"} icon={Shield} color={avgConfidence != null && avgConfidence >= 70 ? "hsl(var(--success))" : "hsl(var(--warning))"} subtitle="Across all metrics" />
+                <KnowledgeCard label="Hallucination Risk" value={hallucinationRisk != null ? `${hallucinationRisk.toFixed(1)}%` : "N/A"} icon={AlertTriangle} color={hallucinationRisk != null && hallucinationRisk > 15 ? "hsl(var(--confidence-low))" : "hsl(var(--confidence-high))"} subtitle="Lower is better" />
+                <KnowledgeCard label="Average Confidence" value={avgConfidence != null ? `${avgConfidence.toFixed(1)}%` : "N/A"} icon={Shield} color={avgConfidence != null && avgConfidence >= 70 ? "hsl(var(--confidence-high))" : "hsl(var(--confidence-medium))"} subtitle="Across all metrics" />
                 <KnowledgeCard label="Self-Corrections" value={selfCorrectionRate != null ? `${selfCorrectionRate.toFixed(0)}%` : "N/A"} icon={RefreshCw} color="hsl(var(--chart-1))" subtitle="Query rewrite rate" />
                 <KnowledgeCard label="Processing Time" value={report?.total_questions != null ? `${report.total_questions} questions` : "N/A"} icon={Clock} color="hsl(var(--chart-2))" subtitle="Evaluation dataset size" />
                 <KnowledgeCard label="Total Chunks" value={totalChunks?.toLocaleString() ?? "N/A"} icon={BookOpen} color="hsl(var(--chart-3))" subtitle="Indexed knowledge pieces" />
@@ -368,7 +370,7 @@ export default function EvaluationPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-[10px]">{item.total_questions ?? "?"} questions</Badge>
+                          <span className="inline-flex items-center gap-1 rounded-md border border-border/60 px-1.5 py-0.5 text-[10px] font-system-mono tabular-nums text-muted-foreground">{item.total_questions ?? "?"} questions</span>
                           <Badge variant="outline" className="text-[10px]">{item.dataset ?? "benchmark"}</Badge>
                         </div>
                       </div>

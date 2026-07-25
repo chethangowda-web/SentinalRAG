@@ -72,6 +72,7 @@ async def ingest_document(
     content_type: str,
     file_bytes: bytes,
     db: AsyncSession,
+    user_id: str | None = None,
 ) -> IngestResponse:
     file_size = len(file_bytes)
 
@@ -121,6 +122,7 @@ async def ingest_document(
 
     document = Document(
         id=doc_id,
+        user_id=user_id,
         filename=filename,
         file_type=ext.lstrip("."),
         status="processed",
