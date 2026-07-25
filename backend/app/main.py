@@ -19,13 +19,6 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-async def run_migrations() -> None:
-    from app.core.database import init_db
-
-    await init_db()
-    logger.info("Database schema up to date")
-
-
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     logger.info("Starting SentinelRAG backend...")
@@ -37,12 +30,20 @@ async def lifespan(application: FastAPI):
         logger.error("Service dependencies unavailable: %s", e)
         get_metrics_collector().record_error("dependency_startup_failure")
         raise
+
+    from app.core.database import get_engine, init_db
+    _ = get_engine()
+
     try:
-        await run_migrations()
+        await init_db()
+        logger.info("Database schema up to date")
     except Exception as e:
         logger.error("Database migration failed: %s", e)
         get_metrics_collector().record_error("database_migration_failure")
-        raise
+        if settings.is_sqlite:
+            logger.warning("SQLite migration failed — continuing anyway")
+        else:
+            raise
     try:
         from app.services.embedding_service import _load_model
         logger.info("Preloading embedding model...")

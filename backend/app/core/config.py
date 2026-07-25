@@ -18,8 +18,11 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
 
-    DATABASE_URL: str = "postgresql+asyncpg://sentinel:sentinel@localhost:5432/sentinelrag"
-    DATABASE_SSL: str = "require"
+    HOST: str = "0.0.0.0"
+    PORT: int = 8000
+
+    DATABASE_URL: str = ""
+    DATABASE_SSL: str = "disable"
     REDIS_URL: str = "redis://localhost:6379/0"
     QDRANT_URL: str = "http://localhost:6333"
     QDRANT_API_KEY: str = ""
@@ -85,24 +88,43 @@ class Settings(BaseSettings):
     def effective_llm_model(self) -> str:
         return self.FEATHERLESS_MODEL or self.LLM_MODEL
 
+    @property
+    def is_postgres(self) -> bool:
+        return self.DATABASE_URL.startswith("postgresql")
+
+    @property
+    def is_sqlite(self) -> bool:
+        return self.DATABASE_URL.startswith("sqlite") or not self.DATABASE_URL
+
+    @property
+    def database_display_url(self) -> str:
+        if not self.DATABASE_URL:
+            return "sqlite+aiosqlite:///./sentinelrag.db (default, no env override)"
+        import re as _re
+        return _re.sub(r"(://[^:]+:)[^@]+@", r"\1****@", self.DATABASE_URL)
+
     def validate(self) -> list[str]:
         errors: list[str] = []
         if not self.SECRET_KEY:
             errors.append("SECRET_KEY is required. Set it in .env or environment variables.")
         if not self.effective_llm_api_key:
             errors.append("No LLM API key configured (DEEPSEEK_API_KEY or FEATHERLESS_API_KEY). LLM features will not work.")
-        if not self.DATABASE_URL.startswith("postgresql") and not self.DATABASE_URL.startswith("sqlite"):
+        if self.DATABASE_URL and not self.is_postgres and not self.is_sqlite:
             errors.append("DATABASE_URL should use async PostgreSQL or SQLite.")
         return errors
 
 
 settings = Settings()
 
+if not settings.DATABASE_URL:
+    settings.DATABASE_URL = "sqlite+aiosqlite:///./sentinelrag.db"
+    logger.info("DATABASE_URL not set — defaulting to SQLite for local development")
+
 _validation_errors = settings.validate()
 for e in _validation_errors:
     logger.error("Configuration error: %s", e)
 if _validation_errors:
-    if settings.DEBUG or settings.DATABASE_URL.startswith("sqlite"):
+    if settings.DEBUG or settings.is_sqlite:
         logger.warning("Proceeding despite configuration errors (debug/dev mode)")
     else:
         raise SystemExit(

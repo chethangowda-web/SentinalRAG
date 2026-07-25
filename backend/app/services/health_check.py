@@ -15,19 +15,30 @@ BACKOFF_BASE = 0.5
 async def wait_for_postgres(
     max_retries: int = MAX_RETRIES,
     backoff_base: float = BACKOFF_BASE,
-) -> None:
-    url = settings.DATABASE_URL
-    if url.startswith("sqlite"):
-        logger.info("SQLite in use, skipping PostgreSQL health check")
-        return
+) -> bool:
+    if settings.is_sqlite:
+        logger.info("SQLite in use — skipping PostgreSQL health check")
+        return True
 
+    url = settings.DATABASE_URL
     if "+" not in url:
         url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
     kwargs = {"echo": False, "pool_size": 1, "max_overflow": 0}
+
+    from urllib.parse import parse_qs, urlparse
+    parsed = urlparse(url)
+    qs = parse_qs(parsed.query, keep_blank_values=True)
+    ssl_required = "ssl=require" in url or "sslmode=require" in url
+
     ssl_mode = settings.DATABASE_SSL
-    if ssl_mode and ssl_mode.lower() != "disable":
+    if ssl_required:
+        kwargs["connect_args"] = {"ssl": "require"}
+    elif ssl_mode and ssl_mode.lower() not in ("disable", ""):
         kwargs["connect_args"] = {"ssl": ssl_mode}
+    else:
+        kwargs["connect_args"] = {}
+
     engine = create_async_engine(url, **kwargs)
     last_exception = None
 
@@ -37,7 +48,7 @@ async def wait_for_postgres(
                 await conn.execute(text("SELECT 1"))
             logger.info("PostgreSQL ready after %d attempt(s)", attempt)
             await engine.dispose()
-            return
+            return True
         except Exception as e:
             last_exception = e
             if attempt < max_retries:
@@ -49,9 +60,19 @@ async def wait_for_postgres(
                 await asyncio.sleep(wait)
 
     await engine.dispose()
-    raise ConnectionError(
-        f"PostgreSQL not available after {max_retries} retries: {last_exception}"
+
+    if ssl_required or (ssl_mode and ssl_mode.lower() != "disable"):
+        logger.warning(
+            "PostgreSQL at %s rejected SSL — try setting DATABASE_SSL=disable or "
+            "check your server's SSL configuration",
+            settings.database_display_url,
+        )
+
+    logger.error(
+        "PostgreSQL not available after %d retries: %s",
+        max_retries, last_exception,
     )
+    return False
 
 
 async def wait_for_qdrant(
@@ -86,12 +107,27 @@ async def wait_for_qdrant(
 
 
 async def wait_for_dependencies() -> None:
-    await wait_for_postgres()
-    if settings.DATABASE_URL.startswith("sqlite"):
-        logger.info("SQLite in use, skipping Qdrant dependency check")
+    pg_ok = await wait_for_postgres()
+    if not pg_ok and settings.is_postgres:
+        if settings.DEBUG or settings.HOST in ("0.0.0.0", "127.0.0.1", "localhost"):
+            from app.core.database import switch_to_sqlite
+            logger.warning(
+                "PostgreSQL unavailable and running locally — "
+                "automatically falling back to SQLite"
+            )
+            switch_to_sqlite()
+        else:
+            raise ConnectionError(
+                f"PostgreSQL not available after {MAX_RETRIES} retries in "
+                f"non-local environment — cannot proceed"
+            )
+
+    if settings.is_sqlite:
+        logger.info("SQLite in use — skipping Qdrant dependency check")
     else:
         try:
             await wait_for_qdrant()
         except Exception as e:
             logger.warning("Qdrant not available at startup: %s (continuing anyway)", e)
+
     logger.info("All service dependencies ready")

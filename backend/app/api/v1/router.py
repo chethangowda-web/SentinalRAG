@@ -20,8 +20,9 @@ api_v1_router = APIRouter(prefix="/api/v1")
 # Auth routes (public)
 api_v1_router.include_router(auth_router, tags=["auth"])
 
+# Health routes (public — needed for Railway health checks)
+api_v1_router.include_router(health_router, tags=["health"])
 # Protected routes
-api_v1_router.include_router(health_router, tags=["health"], dependencies=[Depends(get_current_user)])
 api_v1_router.include_router(ingest_router, tags=["ingest"], dependencies=[Depends(get_current_user)])
 api_v1_router.include_router(embed_router, tags=["embed"], dependencies=[Depends(get_current_user)])
 api_v1_router.include_router(search_router, tags=["search"], dependencies=[Depends(get_current_user)])

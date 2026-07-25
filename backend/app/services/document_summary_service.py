@@ -34,7 +34,10 @@ async def generate_document_summary(text: str, filename: str) -> dict:
     )
 
     try:
-        response = await asyncio.to_thread(llm.invoke, prompt)
+        response = await asyncio.wait_for(
+            asyncio.to_thread(llm.invoke, prompt),
+            timeout=15.0,
+        )
         content = response.content.strip()
         content = content.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         result = json.loads(content)
@@ -44,6 +47,9 @@ async def generate_document_summary(text: str, filename: str) -> dict:
         result.setdefault("document_type", "other")
         result.setdefault("estimated_reading_time", max(len(text.split()) // 200, 1))
         return result
+    except asyncio.TimeoutError:
+        logger.warning("LLM summary timed out after 15s — using basic estimation")
+        return _estimate_basic(text, filename)
     except Exception as e:
         logger.warning("LLM summary failed: %s", e)
         return _estimate_basic(text, filename)
@@ -112,4 +118,6 @@ def _get_llm():
         base_url=settings.effective_llm_base_url,
         temperature=0.1,
         max_tokens=512,
+        timeout=15,
+        max_retries=1,
     )
