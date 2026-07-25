@@ -58,20 +58,30 @@ def search_vector(query_text: str, top_k: int = 20, user_id: str | None = None) 
             must=[FieldCondition(key="user_id", match=MatchValue(value=user_id))]
         )
 
+    results = []
     try:
-        results = client.search(
-            collection_name=settings.QDRANT_COLLECTION,
-            query_vector=vector,
-            limit=top_k,
-            with_payload=True,
-            query_filter=query_filter,
-        )
+        if hasattr(client, "query_points"):
+            resp = client.query_points(
+                collection_name=settings.QDRANT_COLLECTION,
+                query=vector,
+                query_filter=query_filter,
+                limit=top_k,
+                with_payload=True,
+            )
+            results = resp.points
+        elif hasattr(client, "search"):
+            results = client.search(
+                collection_name=settings.QDRANT_COLLECTION,
+                query_vector=vector,
+                limit=top_k,
+                with_payload=True,
+                query_filter=query_filter,
+            )
+        else:
+            logger.error("Qdrant client has no search or query_points method")
+            return []
     except UnexpectedResponse as e:
         logger.error("Qdrant search failed for query '%s': %s", query_text[:80], e)
-        return []
-    except AttributeError as e:
-        logger.error("Qdrant client search() missing (version mismatch): %s", e)
-        logger.error("Installed qdrant-client may not support search() - check version")
         return []
     except Exception as e:
         logger.exception("Unexpected Qdrant search error for query '%s': %s", query_text[:80], e)
