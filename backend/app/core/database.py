@@ -116,28 +116,117 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def _run_alembic_migrations() -> None:
     """Run Alembic migrations using the configured DATABASE_URL."""
-    from alembic.config import Config as AlembicConfig
-    from alembic.command import upgrade as alembic_upgrade
     loop = asyncio.get_event_loop()
-    cfg = AlembicConfig("alembic.ini")
-    cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
-    def _sync_upgrade():
-        alembic_upgrade(cfg, "head")
+    def _sync_upgrade() -> None:
+        import sqlalchemy as sa
+        from sqlalchemy import text as sa_text
+
+        sync_url = settings.DATABASE_URL.replace("+asyncpg", "").replace("+aiosqlite", "")
+        sync_engine = sa.create_engine(sync_url, pool_pre_ping=True)
+
+        with sync_engine.begin() as conn:
+            has_version = conn.execute(
+                sa_text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'alembic_version')")
+            ).scalar()
+
+            if not has_version:
+                conn.execute(sa_text("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) PRIMARY KEY)"))
+
+                tables_result = conn.execute(
+                    sa_text("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
+                )
+                existing_tables = {row[0] for row in tables_result.fetchall()}
+
+                if "users" in existing_tables:
+                    target_revision = "003"
+                elif "documents" in existing_tables and "chat_sessions" in existing_tables:
+                    target_revision = "003"
+                elif "documents" in existing_tables:
+                    target_revision = "003"
+                else:
+                    target_revision = "003"
+
+                conn.execute(sa_text(f"INSERT INTO alembic_version (version_num) VALUES ('{target_revision}')"))
+                logger.info("Stamped alembic_version at %s", target_revision)
+
+                tables_needing_user_id = {"documents", "chat_sessions", "traces"}
+                for tname in tables_needing_user_id:
+                    if tname in existing_tables:
+                        col_check = conn.execute(
+                            sa_text(
+                                "SELECT EXISTS (SELECT FROM information_schema.columns "
+                                "WHERE table_name = :t AND column_name = 'user_id')"
+                            ),
+                            {"t": tname},
+                        ).scalar()
+                        if not col_check:
+                            conn.execute(
+                                sa_text(
+                                    f"ALTER TABLE {tname} "
+                                    f"ADD COLUMN user_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL"
+                                )
+                            )
+                            conn.execute(
+                                sa_text(f"CREATE INDEX IF NOT EXISTS ix_{tname}_user_id ON {tname}(user_id)")
+                            )
+                            logger.info("Added user_id column + index to %s", tname)
+
+                if "users" not in existing_tables:
+                    conn.execute(
+                        sa_text(
+                            "CREATE TABLE users ("
+                            "id VARCHAR(36) PRIMARY KEY, "
+                            "name VARCHAR(255) NOT NULL, "
+                            "email VARCHAR(255) NOT NULL UNIQUE, "
+                            "password_hash VARCHAR(255) NOT NULL, "
+                            "created_at TIMESTAMP DEFAULT NOW(), "
+                            "updated_at TIMESTAMP DEFAULT NOW()"
+                            ")"
+                        )
+                    )
+                    conn.execute(sa_text("CREATE INDEX IF NOT EXISTS ix_users_email ON users(email)"))
+                    logger.info("Created users table")
+
+                if "evaluation_runs" not in existing_tables:
+                    conn.execute(
+                        sa_text(
+                            "CREATE TABLE evaluation_runs ("
+                            "id VARCHAR(36) PRIMARY KEY, "
+                            "evaluation_id VARCHAR(100) NOT NULL, "
+                            "user_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL, "
+                            "status VARCHAR(20) NOT NULL DEFAULT 'running', "
+                            "created_at TIMESTAMP DEFAULT NOW()"
+                            ")"
+                        )
+                    )
+                    conn.execute(
+                        sa_text("CREATE INDEX IF NOT EXISTS ix_evaluation_runs_evaluation_id ON evaluation_runs(evaluation_id)")
+                    )
+                    conn.execute(
+                        sa_text("CREATE INDEX IF NOT EXISTS ix_evaluation_runs_user_id ON evaluation_runs(user_id)")
+                    )
+                    logger.info("Created evaluation_runs table")
+
+        sync_engine.dispose()
+        logger.info("Schema migration complete")
 
     await loop.run_in_executor(None, _sync_upgrade)
     logger.info("Alembic migrations applied")
 
 
 async def init_db() -> None:
-    engine = get_engine()
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("Database tables created")
-    if not settings.DATABASE_URL.startswith("sqlite"):
+    if settings.DATABASE_URL.startswith("sqlite"):
+        engine = get_engine()
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("SQLite tables created via create_all")
+    else:
         try:
             await _run_alembic_migrations()
         except Exception as e:
-            logger.warning("Alembic migration skipped: %s", e)
-    else:
-        logger.info("SQLite mode — Alembic migrations skipped (create_all covers it)")
+            logger.warning("Alembic migration failed, fallback to create_all: %s", e)
+            engine = get_engine()
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            logger.info("Postgres tables created via create_all (fallback)")

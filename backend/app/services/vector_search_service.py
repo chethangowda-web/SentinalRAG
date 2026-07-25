@@ -5,6 +5,7 @@ from functools import partial
 from typing import Any
 
 from qdrant_client.http.exceptions import UnexpectedResponse
+from qdrant_client.http.models import FieldCondition, Filter, MatchValue
 
 from app.core.config import settings
 from app.core.qdrant import get_qdrant_client
@@ -35,7 +36,7 @@ class VectorSearchResult:
         self.chunk_index = chunk_index
 
 
-def search_vector(query_text: str, top_k: int = 20) -> list[VectorSearchResult]:
+def search_vector(query_text: str, top_k: int = 20, user_id: str | None = None) -> list[VectorSearchResult]:
     start = time.perf_counter()
 
     embed_start = time.perf_counter()
@@ -51,6 +52,12 @@ def search_vector(query_text: str, top_k: int = 20) -> list[VectorSearchResult]:
     search_start = time.perf_counter()
     client = get_qdrant_client()
 
+    query_filter = None
+    if user_id:
+        query_filter = Filter(
+            must=[FieldCondition(key="user_id", match=MatchValue(value=user_id))]
+        )
+
     try:
         results = client.search(
             collection_name=settings.QDRANT_COLLECTION,
@@ -58,6 +65,7 @@ def search_vector(query_text: str, top_k: int = 20) -> list[VectorSearchResult]:
             limit=top_k,
             with_payload=True,
             score_threshold=0.0,
+            query_filter=query_filter,
         )
     except UnexpectedResponse as e:
         logger.error("Qdrant search failed for query '%s': %s", query_text[:80], e)
@@ -91,6 +99,6 @@ def search_vector(query_text: str, top_k: int = 20) -> list[VectorSearchResult]:
     return parsed
 
 
-async def search_vector_async(query_text: str, top_k: int = 20) -> list[VectorSearchResult]:
+async def search_vector_async(query_text: str, top_k: int = 20, user_id: str | None = None) -> list[VectorSearchResult]:
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, partial(search_vector, query_text, top_k))
+    return await loop.run_in_executor(None, partial(search_vector, query_text, top_k, user_id=user_id))

@@ -87,6 +87,7 @@ async def embed_document(document_id: str, db: AsyncSession) -> EmbedResponse:
             "word_count": tc.word_count,
             "token_count": token_count,
             "text": tc.text,
+            "user_id": document.user_id or "",
         })
         chunk_refs.append(tc)
 

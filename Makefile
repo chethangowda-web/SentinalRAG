@@ -8,7 +8,7 @@ dev:
 
 dev-backend:
 	@echo "Starting backend..."
-	cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	cd backend && python run.py
 
 dev-frontend:
 	@echo "Starting frontend..."
