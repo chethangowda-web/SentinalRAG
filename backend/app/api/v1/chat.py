@@ -192,9 +192,9 @@ async def chat_endpoint(
     raw_conf = result.get("confidence_score", 0.0)
     confidence = _normalize_confidence(raw_conf)
     confidence_level = result.get("confidence_level", "LOW")
-    if confidence >= 80:
+    if confidence >= 65:
         confidence_level = "HIGH"
-    elif confidence >= 50:
+    elif confidence >= 40:
         confidence_level = "MEDIUM"
     else:
         confidence_level = "LOW"

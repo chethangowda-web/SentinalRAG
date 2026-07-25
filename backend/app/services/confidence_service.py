@@ -13,6 +13,16 @@ class ConfidenceResult:
         self.level = level
 
 
+def _normalize_scores(scores: list[float]) -> list[float]:
+    if not scores:
+        return []
+    mn = min(scores)
+    mx = max(scores)
+    if mx - mn < 1e-8:
+        return [0.7] * len(scores)
+    return [(s - mn) / (mx - mn) for s in scores]
+
+
 def _compute_weighted_confidence(
     vector_scores: list[float],
     rerank_scores: list[float],
@@ -21,14 +31,16 @@ def _compute_weighted_confidence(
 ) -> tuple[float, float, float, float, float]:
     weights = [1.0, 0.6, 0.4, 0.25, 0.15]
 
+    normalized_rerank = _normalize_scores(rerank_scores)
+
     weighted_vec_sum = 0.0
     weighted_rerank_sum = 0.0
     weight_sum = 0.0
 
-    for rank, (vec, rerank) in enumerate(zip(vector_scores, rerank_scores)):
+    for rank, (vec, rerank) in enumerate(zip(vector_scores, normalized_rerank)):
         w = weights[rank] if rank < len(weights) else weights[-1]
         weighted_vec_sum += w * max(vec, 0.0)
-        weighted_rerank_sum += w * max(rerank, 0.0)
+        weighted_rerank_sum += w * rerank
         weight_sum += w
 
     if weight_sum == 0:
@@ -67,9 +79,9 @@ def calculate_confidence(
 
     score_pct = round(score * 100, 1)
 
-    if score_pct >= 80.0:
+    if score_pct >= 65.0:
         level: ConfidenceLevel = "HIGH"
-    elif score_pct >= 50.0:
+    elif score_pct >= 40.0:
         level = "MEDIUM"
     else:
         level = "LOW"
@@ -115,9 +127,9 @@ def calculate_confidence_with_breakdown(
 
     contradiction_status = "detected" if contradiction_detected else "none"
 
-    if score_clamped >= 80.0:
+    if score_clamped >= 65.0:
         level: ConfidenceLevel = "HIGH"
-    elif score_clamped >= 50.0:
+    elif score_clamped >= 40.0:
         level = "MEDIUM"
     else:
         level = "LOW"
