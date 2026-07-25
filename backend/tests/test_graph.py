@@ -146,9 +146,15 @@ class TestRetryNode:
 
 class TestFallbackNode:
     def test_fallback_returns_low_confidence(self):
-        state: GraphState = _make_state()
+        state: GraphState = _make_state(chunks=[{"text": "some content"}])
         result = fallback_node(state)
         assert "don't have enough evidence" in result["answer"]
+        assert result["citations"] == []
+
+    def test_fallback_no_chunks(self):
+        state: GraphState = _make_state()
+        result = fallback_node(state)
+        assert "No relevant information" in result["answer"]
         assert result["citations"] == []
 
 

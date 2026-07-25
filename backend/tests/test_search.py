@@ -211,20 +211,20 @@ class TestConfidenceService:
 
     def test_medium_confidence(self):
         result = calculate_confidence(
-            vector_scores=[0.6, 0.55],
-            rerank_scores=[0.5, 0.45],
-            total_results=5,
+            vector_scores=[0.5, 0.45],
+            rerank_scores=[0.6, 0.55],
+            total_results=3,
         )
-        assert 50.0 <= result.score < 80.0
+        assert 40.0 <= result.score < 65.0
         assert result.level == "MEDIUM"
 
     def test_low_confidence(self):
         result = calculate_confidence(
-            vector_scores=[0.2, 0.15],
-            rerank_scores=[0.1, 0.05],
-            total_results=2,
+            vector_scores=[0.0],
+            rerank_scores=[0.0],
+            total_results=1,
         )
-        assert result.score < 50.0
+        assert result.score < 40.0
         assert result.level == "LOW"
 
     def test_no_results(self):
