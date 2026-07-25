@@ -114,8 +114,18 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
+async def run_alembic_migrations() -> None:
+    from migrations.env import run_async_migrations
+    await run_async_migrations()
+    logger.info("Alembic migrations applied")
+
+
 async def init_db() -> None:
     engine = get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables created")
+    try:
+        await run_alembic_migrations()
+    except Exception as e:
+        logger.warning("Alembic migration skipped: %s", e)
