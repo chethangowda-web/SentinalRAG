@@ -61,8 +61,8 @@ async def retry_node(state: GraphState, config: RunnableConfig) -> dict:
     reasoning_path = list(state.get("reasoning_path", []))
     reasoning_path.append(f"retry_retrieve(#{state.get('retry_count', 0)})")
 
-    vector_scores_r = [c.get("vector_score", 0) for c in chunks if c.get("vector_score")]
-    rerank_scores_r = [c.get("rerank_score", 0) for c in chunks if c.get("rerank_score")]
+    vector_scores_r = [c.get("vector_score", 0) for c in chunks]
+    rerank_scores_r = [c.get("rerank_score", 0) for c in chunks]
     _, retry_breakdown = calculate_confidence_with_breakdown(
         vector_scores=vector_scores_r,
         rerank_scores=rerank_scores_r,
@@ -98,10 +98,15 @@ async def retry_node(state: GraphState, config: RunnableConfig) -> dict:
         "retry_count": retry_count,
     })
 
-    logger.info(
-        "Retry node: %d chunks, confidence %.1f -> %.1f (improved=%s) %.1fms",
-        len(chunks), prev_score, search_response.confidence, improved, elapsed,
-    )
+    if not chunks:
+        logger.info("Retry found 0 chunks — preserving previously retrieved chunks")
+        chunks = state.get("retrieved_chunks", [])
+        retrieval_details = state.get("retrieval_details", [])
+    else:
+        logger.info(
+            "Retry node: %d chunks, confidence %.1f -> %.1f (improved=%s) %.1fms",
+            len(chunks), prev_score, search_response.confidence, improved, elapsed,
+        )
 
     return {
         "retrieved_chunks": chunks,

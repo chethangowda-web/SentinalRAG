@@ -35,8 +35,8 @@ def contradiction_node(state: GraphState) -> dict:
         "retry_count": state.get("retry_count", 0),
     })
 
-    vector_scores_c = [c.get("vector_score", 0) for c in chunks if c.get("vector_score")]
-    rerank_scores_c = [c.get("rerank_score", 0) for c in chunks if c.get("rerank_score")]
+    vector_scores_c = [c.get("vector_score", 0) for c in chunks]
+    rerank_scores_c = [c.get("rerank_score", 0) for c in chunks]
     retry_success_c = state.get("retry_count", 0) > 0 and state.get("confidence_improved", False)
     _, contradiction_breakdown = calculate_confidence_with_breakdown(
         vector_scores=vector_scores_c,

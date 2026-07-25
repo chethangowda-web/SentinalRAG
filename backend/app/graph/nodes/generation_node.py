@@ -43,8 +43,8 @@ async def generation_node(state: GraphState) -> dict:
         "retry_count": state.get("retry_count", 0),
     })
 
-    final_vector_scores = [c.get("vector_score", 0) for c in chunks if c.get("vector_score")]
-    final_rerank_scores = [c.get("rerank_score", 0) for c in chunks if c.get("rerank_score")]
+    final_vector_scores = [c.get("vector_score", 0) for c in chunks]
+    final_rerank_scores = [c.get("rerank_score", 0) for c in chunks]
     contradiction_detected_final = state.get("contradiction_detected", False)
     retry_success_final = state.get("retry_count", 0) > 0 and state.get("confidence_improved", False)
     _, final_breakdown = calculate_confidence_with_breakdown(

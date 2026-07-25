@@ -51,6 +51,12 @@ async def lifespan(application: FastAPI):
     except Exception as e:
         logger.warning("Model preloading failed (will load on demand): %s", e)
 
+    try:
+        import qdrant_client
+        logger.info("Qdrant client version: %s", qdrant_client.__version__)
+    except Exception:
+        pass
+
     logger.info("Resource tracking started")
     yield
     tracker.stop()

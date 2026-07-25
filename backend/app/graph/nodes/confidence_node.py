@@ -11,9 +11,8 @@ def confidence_node(state: GraphState) -> dict:
     start = time.perf_counter()
     chunks = state.get("retrieved_chunks", [])
 
-    vector_scores = [c.get("vector_score", 0) for c in chunks if c.get("vector_score")]
-    rerank_scores = [c.get("rerank_score", 0) for c in chunks if c.get("rerank_score")]
-    citation_count = state.get("retrieval_details", [])
+    vector_scores = [c.get("vector_score", 0) for c in chunks]
+    rerank_scores = [c.get("rerank_score", 0) for c in chunks]
     citation_count = len([c for c in chunks if c.get("chunk_id")])
     contradiction_detected = state.get("contradiction_detected", False)
     retry_success = state.get("retry_count", 0) > 0

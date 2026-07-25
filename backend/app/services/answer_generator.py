@@ -28,6 +28,12 @@ def _get_llm():
 
 
 def generate_answer(question: str, chunks: list[dict]) -> str:
+    if not chunks:
+        logger.info("No chunks to answer from")
+        return (
+            "No relevant information was found in the uploaded documents."
+        )
+
     llm = _get_llm()
     if llm is None:
         logger.warning("No LLM configured, returning chunk-based fallback")

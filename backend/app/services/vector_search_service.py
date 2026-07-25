@@ -64,11 +64,14 @@ def search_vector(query_text: str, top_k: int = 20, user_id: str | None = None) 
             query_vector=vector,
             limit=top_k,
             with_payload=True,
-            score_threshold=0.0,
             query_filter=query_filter,
         )
     except UnexpectedResponse as e:
         logger.error("Qdrant search failed for query '%s': %s", query_text[:80], e)
+        return []
+    except AttributeError as e:
+        logger.error("Qdrant client search() missing (version mismatch): %s", e)
+        logger.error("Installed qdrant-client may not support search() - check version")
         return []
     except Exception as e:
         logger.exception("Unexpected Qdrant search error for query '%s': %s", query_text[:80], e)
