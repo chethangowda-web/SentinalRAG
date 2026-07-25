@@ -1,0 +1,832 @@
+{
+  "evaluation_id": "7f7b9125-9bd1-4950-80d6-e1d19d3c3df6",
+  "timestamp": "2026-07-25T17:38:25.217332+00:00",
+  "dataset": "document_specific",
+  "total_questions": 8,
+  "summary": {
+    "baseline": {
+      "avg_faithfulness": {
+        "value": 0.0,
+        "success": true,
+        "error": null,
+        "details": null
+      },
+      "avg_answer_relevancy": {
+        "value": 0.0,
+        "success": true,
+        "error": null,
+        "details": null
+      },
+      "avg_context_precision": {
+        "value": 0.0,
+        "success": true,
+        "error": null,
+        "details": null
+      },
+      "avg_context_recall": {
+        "value": 0.0,
+        "success": true,
+        "error": null,
+        "details": null
+      },
+      "avg_hallucination": {
+        "value": 1.0,
+        "success": true,
+        "error": null,
+        "details": null
+      },
+      "avg_bias": {
+        "value": 1.0,
+        "success": true,
+        "error": null,
+        "details": null
+      },
+      "avg_toxicity": {
+        "value": 1.0,
+        "success": true,
+        "error": null,
+        "details": null
+      },
+      "avg_correctness": {
+        "value": 0.0,
+        "success": true,
+        "error": null,
+        "details": null
+      },
+      "avg_unsupported_answer_rate": {
+        "value": 1.0,
+        "success": true,
+        "error": null,
+        "details": null
+      },
+      "latency": {
+        "value": 3486.5,
+        "success": true,
+        "error": null,
+        "details": {
+          "average_ms": 3486.5,
+          "min_ms": 2745.6,
+          "max_ms": 4932.0,
+          "p50_ms": 3554.4,
+          "p95_ms": 4932.0,
+          "p99_ms": 4932.0,
+          "samples": 8
+        }
+      },
+      "confidence_calibration": {
+        "value": 1.0,
+        "success": true,
+        "error": null,
+        "details": {
+          "brier_score": 0.0,
+          "ece": 0.0,
+          "samples": 8,
+          "correct_count": 0,
+          "incorrect_count": 8
+        }
+      },
+      "contradiction_detection_rate": {
+        "value": 0.0,
+        "success": true,
+        "error": null,
+        "details": {
+          "true_positives": 0,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "true_negatives": 8,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      },
+      "clarification_rate": {
+        "value": 0.0,
+        "success": true,
+        "error": null,
+        "details": {
+          "true_positives": 0,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "true_negatives": 8,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      }
+    },
+    "sentinel": {
+      "avg_faithfulness": {
+        "value": 0.0,
+        "success": true,
+        "error": null,
+        "details": null
+      },
+      "avg_answer_relevancy": {
+        "value": 0.0417,
+        "success": true,
+        "error": null,
+        "details": null
+      },
+      "avg_context_precision": {
+        "value": 0.0,
+        "success": true,
+        "error": null,
+        "details": null
+      },
+      "avg_context_recall": {
+        "value": 0.0,
+        "success": true,
+        "error": null,
+        "details": null
+      },
+      "avg_hallucination": {
+        "value": 1.0,
+        "success": true,
+        "error": null,
+        "details": null
+      },
+      "avg_bias": {
+        "value": 1.0,
+        "success": true,
+        "error": null,
+        "details": null
+      },
+      "avg_toxicity": {
+        "value": 1.0,
+        "success": true,
+        "error": null,
+        "details": null
+      },
+      "avg_correctness": {
+        "value": 0.0,
+        "success": true,
+        "error": null,
+        "details": null
+      },
+      "avg_unsupported_answer_rate": {
+        "value": 1.0,
+        "success": true,
+        "error": null,
+        "details": null
+      },
+      "latency": {
+        "value": 10113.4,
+        "success": true,
+        "error": null,
+        "details": {
+          "average_ms": 10113.4,
+          "min_ms": 5646.0,
+          "max_ms": 26947.2,
+          "p50_ms": 8197.5,
+          "p95_ms": 26947.2,
+          "p99_ms": 26947.2,
+          "samples": 8
+        }
+      },
+      "confidence_calibration": {
+        "value": 1.0,
+        "success": true,
+        "error": null,
+        "details": {
+          "brier_score": 0.0,
+          "ece": 0.0,
+          "samples": 8,
+          "correct_count": 0,
+          "incorrect_count": 8
+        }
+      },
+      "contradiction_detection_rate": {
+        "value": 0.0,
+        "success": true,
+        "error": null,
+        "details": {
+          "true_positives": 0,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "true_negatives": 8,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      },
+      "clarification_rate": {
+        "value": 0.0,
+        "success": true,
+        "error": null,
+        "details": {
+          "true_positives": 0,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "true_negatives": 8,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      },
+      "retry_success_rate": {
+        "value": 0.0,
+        "success": true,
+        "error": null,
+        "details": {
+          "improved": 0,
+          "no_improvement": 8,
+          "total": 8,
+          "avg_improvement": 0.0,
+          "confidence_before": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "confidence_after": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    "comparison": {
+      "avg_faithfulness": {
+        "baseline": 0.0,
+        "sentinel": 0.0,
+        "absolute_change": 0.0,
+        "relative_change_pct": 0.0,
+        "direction": "up",
+        "improved": false
+      },
+      "avg_answer_relevancy": {
+        "baseline": 0.0,
+        "sentinel": 0.0417,
+        "absolute_change": 0.0417,
+        "relative_change_pct": 0.0,
+        "direction": "up",
+        "improved": true
+      },
+      "avg_context_precision": {
+        "baseline": 0.0,
+        "sentinel": 0.0,
+        "absolute_change": 0.0,
+        "relative_change_pct": 0.0,
+        "direction": "up",
+        "improved": false
+      },
+      "avg_context_recall": {
+        "baseline": 0.0,
+        "sentinel": 0.0,
+        "absolute_change": 0.0,
+        "relative_change_pct": 0.0,
+        "direction": "up",
+        "improved": false
+      },
+      "avg_hallucination": {
+        "baseline": 1.0,
+        "sentinel": 1.0,
+        "absolute_change": 0.0,
+        "relative_change_pct": 0.0,
+        "direction": "down",
+        "improved": false
+      },
+      "avg_bias": {
+        "baseline": 1.0,
+        "sentinel": 1.0,
+        "absolute_change": 0.0,
+        "relative_change_pct": 0.0,
+        "direction": "up",
+        "improved": false
+      },
+      "avg_toxicity": {
+        "baseline": 1.0,
+        "sentinel": 1.0,
+        "absolute_change": 0.0,
+        "relative_change_pct": 0.0,
+        "direction": "up",
+        "improved": false
+      },
+      "avg_correctness": {
+        "baseline": 0.0,
+        "sentinel": 0.0,
+        "absolute_change": 0.0,
+        "relative_change_pct": 0.0,
+        "direction": "up",
+        "improved": false
+      },
+      "avg_unsupported_answer_rate": {
+        "baseline": 1.0,
+        "sentinel": 1.0,
+        "absolute_change": 0.0,
+        "relative_change_pct": 0.0,
+        "direction": "up",
+        "improved": false
+      },
+      "latency": {
+        "baseline": 3486.5,
+        "sentinel": 10113.4,
+        "absolute_change": 6626.9,
+        "relative_change_pct": -190.1,
+        "direction": "down",
+        "improved": false
+      }
+    }
+  },
+  "per_question": [
+    {
+      "id": "doc-0",
+      "question": "What is the main topic of the document 'sample'?",
+      "ground_truth": "",
+      "category": "document_specific",
+      "has_contradiction": false,
+      "needs_clarification": false,
+      "has_context": true,
+      "baseline": {
+        "answer": "I don't have enough information to answer this question. Please upload relevant documents or rephrase your question.",
+        "confidence_score": 0.0,
+        "confidence_level": "LOW",
+        "latencies": {
+          "vector_search": 21.1,
+          "bm25_search": 2.5,
+          "fusion": 0.1,
+          "total": 2745.6
+        },
+        "citations": [],
+        "reasoning_path": [
+          "retrieve",
+          "generate_answer"
+        ],
+        "contradiction_detected": false,
+        "clarification_needed": false,
+        "clarification_question": null,
+        "retry_count": 0
+      },
+      "sentinel": {
+        "answer": "I don't have enough information to answer this question.",
+        "confidence_score": 0.0,
+        "confidence_level": "LOW",
+        "latencies": {
+          "vector_search": 30.4,
+          "bm25_search": 0.9,
+          "fusion": 0.1,
+          "retrieve_node": 31.7,
+          "confidence_node": 0.0,
+          "rewrite_node": 4034.6,
+          "retry_node": 28.3,
+          "contradiction_node": 0.0,
+          "generation_node": 3603.9,
+          "total": 26947.2
+        },
+        "citations": [],
+        "reasoning_path": [
+          "retrieve",
+          "confidence_evaluate",
+          "rewrite_query",
+          "retry_retrieve(#1)",
+          "contradiction_detect",
+          "generate_answer"
+        ],
+        "contradiction_detected": false,
+        "contradiction_reason": null,
+        "clarification_needed": false,
+        "clarification_question": null,
+        "retry_count": 1
+      }
+    },
+    {
+      "id": "doc-1",
+      "question": "Summarize the key points from the document titled 'sample'.",
+      "ground_truth": "",
+      "category": "document_specific",
+      "has_contradiction": false,
+      "needs_clarification": false,
+      "has_context": true,
+      "baseline": {
+        "answer": "I don't have enough information to answer this question.",
+        "confidence_score": 0.0,
+        "confidence_level": "LOW",
+        "latencies": {
+          "vector_search": 28.8,
+          "bm25_search": 1.1,
+          "fusion": 0.1,
+          "total": 3554.4
+        },
+        "citations": [],
+        "reasoning_path": [
+          "retrieve",
+          "generate_answer"
+        ],
+        "contradiction_detected": false,
+        "clarification_needed": false,
+        "clarification_question": null,
+        "retry_count": 0
+      },
+      "sentinel": {
+        "answer": "I don't have enough information to answer this question.",
+        "confidence_score": 0.0,
+        "confidence_level": "LOW",
+        "latencies": {
+          "vector_search": 29.0,
+          "bm25_search": 1.0,
+          "fusion": 0.1,
+          "retrieve_node": 30.2,
+          "confidence_node": 0.0,
+          "rewrite_node": 5063.3,
+          "retry_node": 63.0,
+          "contradiction_node": 0.0,
+          "generation_node": 3029.2,
+          "total": 8197.5
+        },
+        "citations": [],
+        "reasoning_path": [
+          "retrieve",
+          "confidence_evaluate",
+          "rewrite_query",
+          "retry_retrieve(#1)",
+          "contradiction_detect",
+          "generate_answer"
+        ],
+        "contradiction_detected": false,
+        "contradiction_reason": null,
+        "clarification_needed": false,
+        "clarification_question": null,
+        "retry_count": 1
+      }
+    },
+    {
+      "id": "doc-2",
+      "question": "What does the document say about revenue?",
+      "ground_truth": "",
+      "category": "document_specific",
+      "has_contradiction": false,
+      "needs_clarification": false,
+      "has_context": true,
+      "baseline": {
+        "answer": "I don't have enough information to answer this question.",
+        "confidence_score": 0.0,
+        "confidence_level": "LOW",
+        "latencies": {
+          "vector_search": 24.0,
+          "bm25_search": 1.0,
+          "fusion": 0.1,
+          "total": 3337.1
+        },
+        "citations": [],
+        "reasoning_path": [
+          "retrieve",
+          "generate_answer"
+        ],
+        "contradiction_detected": false,
+        "clarification_needed": false,
+        "clarification_question": null,
+        "retry_count": 0
+      },
+      "sentinel": {
+        "answer": "I don't have enough information to answer this question.",
+        "confidence_score": 0.0,
+        "confidence_level": "LOW",
+        "latencies": {
+          "vector_search": 28.2,
+          "bm25_search": 0.9,
+          "fusion": 0.1,
+          "retrieve_node": 29.4,
+          "confidence_node": 0.0,
+          "rewrite_node": 3792.1,
+          "retry_node": 30.0,
+          "contradiction_node": 0.0,
+          "generation_node": 2851.5,
+          "total": 6714.3
+        },
+        "citations": [],
+        "reasoning_path": [
+          "retrieve",
+          "confidence_evaluate",
+          "rewrite_query",
+          "retry_retrieve(#1)",
+          "contradiction_detect",
+          "generate_answer"
+        ],
+        "contradiction_detected": false,
+        "contradiction_reason": null,
+        "clarification_needed": false,
+        "clarification_question": null,
+        "retry_count": 1
+      }
+    },
+    {
+      "id": "doc-3",
+      "question": "How is revenue described in the document?",
+      "ground_truth": "",
+      "category": "document_specific",
+      "has_contradiction": false,
+      "needs_clarification": false,
+      "has_context": true,
+      "baseline": {
+        "answer": "I don't have enough information to answer this question.",
+        "confidence_score": 0.0,
+        "confidence_level": "LOW",
+        "latencies": {
+          "vector_search": 29.5,
+          "bm25_search": 1.0,
+          "fusion": 0.1,
+          "total": 4932.0
+        },
+        "citations": [],
+        "reasoning_path": [
+          "retrieve",
+          "generate_answer"
+        ],
+        "contradiction_detected": false,
+        "clarification_needed": false,
+        "clarification_question": null,
+        "retry_count": 0
+      },
+      "sentinel": {
+        "answer": "I don't have enough information to answer this question.",
+        "confidence_score": 0.0,
+        "confidence_level": "LOW",
+        "latencies": {
+          "vector_search": 27.1,
+          "bm25_search": 0.9,
+          "fusion": 0.1,
+          "retrieve_node": 28.2,
+          "confidence_node": 0.0,
+          "rewrite_node": 2407.8,
+          "retry_node": 29.1,
+          "contradiction_node": 0.0,
+          "generation_node": 3169.7,
+          "total": 5646.0
+        },
+        "citations": [],
+        "reasoning_path": [
+          "retrieve",
+          "confidence_evaluate",
+          "rewrite_query",
+          "retry_retrieve(#1)",
+          "contradiction_detect",
+          "generate_answer"
+        ],
+        "contradiction_detected": false,
+        "contradiction_reason": null,
+        "clarification_needed": false,
+        "clarification_question": null,
+        "retry_count": 1
+      }
+    },
+    {
+      "id": "doc-4",
+      "question": "What does the document say about million?",
+      "ground_truth": "",
+      "category": "document_specific",
+      "has_contradiction": false,
+      "needs_clarification": false,
+      "has_context": true,
+      "baseline": {
+        "answer": "I don't have enough information to answer this question.",
+        "confidence_score": 0.0,
+        "confidence_level": "LOW",
+        "latencies": {
+          "vector_search": 29.7,
+          "bm25_search": 1.1,
+          "fusion": 0.1,
+          "total": 2815.0
+        },
+        "citations": [],
+        "reasoning_path": [
+          "retrieve",
+          "generate_answer"
+        ],
+        "contradiction_detected": false,
+        "clarification_needed": false,
+        "clarification_question": null,
+        "retry_count": 0
+      },
+      "sentinel": {
+        "answer": "I don't have enough information to answer this question.",
+        "confidence_score": 0.0,
+        "confidence_level": "LOW",
+        "latencies": {
+          "vector_search": 28.1,
+          "bm25_search": 1.0,
+          "fusion": 0.1,
+          "retrieve_node": 29.4,
+          "confidence_node": 0.0,
+          "rewrite_node": 8085.4,
+          "retry_node": 34.0,
+          "contradiction_node": 0.0,
+          "generation_node": 3493.7,
+          "total": 11653.3
+        },
+        "citations": [],
+        "reasoning_path": [
+          "retrieve",
+          "confidence_evaluate",
+          "rewrite_query",
+          "retry_retrieve(#1)",
+          "contradiction_detect",
+          "generate_answer"
+        ],
+        "contradiction_detected": false,
+        "contradiction_reason": null,
+        "clarification_needed": false,
+        "clarification_question": null,
+        "retry_count": 1
+      }
+    },
+    {
+      "id": "doc-5",
+      "question": "How is million described in the document?",
+      "ground_truth": "",
+      "category": "document_specific",
+      "has_contradiction": false,
+      "needs_clarification": false,
+      "has_context": true,
+      "baseline": {
+        "answer": "I don't have enough information to answer this question.",
+        "confidence_score": 0.0,
+        "confidence_level": "LOW",
+        "latencies": {
+          "vector_search": 22.9,
+          "bm25_search": 1.0,
+          "fusion": 0.1,
+          "total": 2766.4
+        },
+        "citations": [],
+        "reasoning_path": [
+          "retrieve",
+          "generate_answer"
+        ],
+        "contradiction_detected": false,
+        "clarification_needed": false,
+        "clarification_question": null,
+        "retry_count": 0
+      },
+      "sentinel": {
+        "answer": "The document does not provide a description of \"million.\" I don't have enough information to answer this question.",
+        "confidence_score": 0.0,
+        "confidence_level": "LOW",
+        "latencies": {
+          "vector_search": 29.8,
+          "bm25_search": 1.3,
+          "fusion": 0.1,
+          "retrieve_node": 31.4,
+          "confidence_node": 0.0,
+          "rewrite_node": 2710.1,
+          "retry_node": 33.5,
+          "contradiction_node": 0.0,
+          "generation_node": 3753.6,
+          "total": 6539.2
+        },
+        "citations": [],
+        "reasoning_path": [
+          "retrieve",
+          "confidence_evaluate",
+          "rewrite_query",
+          "retry_retrieve(#1)",
+          "contradiction_detect",
+          "generate_answer"
+        ],
+        "contradiction_detected": false,
+        "contradiction_reason": null,
+        "clarification_needed": false,
+        "clarification_question": null,
+        "retry_count": 1
+      }
+    },
+    {
+      "id": "doc-6",
+      "question": "What does the document say about operating?",
+      "ground_truth": "",
+      "category": "document_specific",
+      "has_contradiction": false,
+      "needs_clarification": false,
+      "has_context": true,
+      "baseline": {
+        "answer": "I don't have enough information to answer this question.",
+        "confidence_score": 0.0,
+        "confidence_level": "LOW",
+        "latencies": {
+          "vector_search": 22.3,
+          "bm25_search": 1.1,
+          "fusion": 0.1,
+          "total": 3625.4
+        },
+        "citations": [],
+        "reasoning_path": [
+          "retrieve",
+          "generate_answer"
+        ],
+        "contradiction_detected": false,
+        "clarification_needed": false,
+        "clarification_question": null,
+        "retry_count": 0
+      },
+      "sentinel": {
+        "answer": "I don't have enough information to answer this question.",
+        "confidence_score": 0.0,
+        "confidence_level": "LOW",
+        "latencies": {
+          "vector_search": 28.3,
+          "bm25_search": 0.9,
+          "fusion": 0.1,
+          "retrieve_node": 29.5,
+          "confidence_node": 0.0,
+          "rewrite_node": 6104.5,
+          "retry_node": 30.3,
+          "contradiction_node": 0.0,
+          "generation_node": 2839.9,
+          "total": 9015.0
+        },
+        "citations": [],
+        "reasoning_path": [
+          "retrieve",
+          "confidence_evaluate",
+          "rewrite_query",
+          "retry_retrieve(#1)",
+          "contradiction_detect",
+          "generate_answer"
+        ],
+        "contradiction_detected": false,
+        "contradiction_reason": null,
+        "clarification_needed": false,
+        "clarification_question": null,
+        "retry_count": 1
+      }
+    },
+    {
+      "id": "doc-7",
+      "question": "How is operating described in the document?",
+      "ground_truth": "",
+      "category": "document_specific",
+      "has_contradiction": false,
+      "needs_clarification": false,
+      "has_context": true,
+      "baseline": {
+        "answer": "I don't have enough information to answer this question.",
+        "confidence_score": 0.0,
+        "confidence_level": "LOW",
+        "latencies": {
+          "vector_search": 24.1,
+          "bm25_search": 1.0,
+          "fusion": 0.0,
+          "total": 4116.4
+        },
+        "citations": [],
+        "reasoning_path": [
+          "retrieve",
+          "generate_answer"
+        ],
+        "contradiction_detected": false,
+        "clarification_needed": false,
+        "clarification_question": null,
+        "retry_count": 0
+      },
+      "sentinel": {
+        "answer": "I don't have enough information to answer this question.",
+        "confidence_score": 0.0,
+        "confidence_level": "LOW",
+        "latencies": {
+          "vector_search": 25.7,
+          "bm25_search": 0.9,
+          "fusion": 0.1,
+          "retrieve_node": 26.9,
+          "confidence_node": 0.0,
+          "rewrite_node": 3299.0,
+          "retry_node": 28.8,
+          "contradiction_node": 0.0,
+          "generation_node": 2828.6,
+          "total": 6194.4
+        },
+        "citations": [],
+        "reasoning_path": [
+          "retrieve",
+          "confidence_evaluate",
+          "rewrite_query",
+          "retry_retrieve(#1)",
+          "contradiction_detect",
+          "generate_answer"
+        ],
+        "contradiction_detected": false,
+        "contradiction_reason": null,
+        "clarification_needed": false,
+        "clarification_question": null,
+        "retry_count": 1
+      }
+    }
+  ],
+  "failure_modes": {
+    "document_missing": 0,
+    "conflicting_documents": 0,
+    "empty_retrieval": 0,
+    "low_confidence": 8,
+    "clarification_needed": 0,
+    "contradiction_detected": 0,
+    "errors": 0
+  }
+}
