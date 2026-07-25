@@ -115,104 +115,79 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def _run_alembic_migrations() -> None:
-    """Run Alembic migrations using the configured DATABASE_URL."""
-    loop = asyncio.get_event_loop()
+    """Add missing columns and tables for auth support (safe, idempotent)."""
+    from sqlalchemy import text as sa_text
 
-    def _sync_upgrade() -> None:
-        import sqlalchemy as sa
-        from sqlalchemy import text as sa_text
+    engine = get_engine()
+    async with engine.connect() as conn:
+        await conn.execute(sa_text("SELECT 1"))
+        tables_result = await conn.execute(
+            sa_text("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
+        )
+        existing_tables = {row[0] for row in tables_result.fetchall()}
+        logger.info("Existing tables: %s", sorted(existing_tables))
 
-        sync_url = settings.DATABASE_URL.replace("+asyncpg", "").replace("+aiosqlite", "")
-        sync_engine = sa.create_engine(sync_url, pool_pre_ping=True)
+        if "users" not in existing_tables:
+            await conn.execute(sa_text(
+                "CREATE TABLE users ("
+                "id VARCHAR(36) PRIMARY KEY, "
+                "name VARCHAR(255) NOT NULL, "
+                "email VARCHAR(255) NOT NULL UNIQUE, "
+                "password_hash VARCHAR(255) NOT NULL, "
+                "created_at TIMESTAMP DEFAULT NOW(), "
+                "updated_at TIMESTAMP DEFAULT NOW()"
+                ")"
+            ))
+            await conn.execute(sa_text("CREATE INDEX IF NOT EXISTS ix_users_email ON users(email)"))
+            logger.info("Created users table")
 
-        with sync_engine.begin() as conn:
-            has_version = conn.execute(
-                sa_text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'alembic_version')")
-            ).scalar()
+        if "evaluation_runs" not in existing_tables:
+            await conn.execute(sa_text(
+                "CREATE TABLE evaluation_runs ("
+                "id VARCHAR(36) PRIMARY KEY, "
+                "evaluation_id VARCHAR(100) NOT NULL, "
+                "user_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL, "
+                "status VARCHAR(20) NOT NULL DEFAULT 'running', "
+                "created_at TIMESTAMP DEFAULT NOW()"
+                ")"
+            ))
+            await conn.execute(sa_text(
+                "CREATE INDEX IF NOT EXISTS ix_evaluation_runs_evaluation_id ON evaluation_runs(evaluation_id)")
+            )
+            await conn.execute(sa_text(
+                "CREATE INDEX IF NOT EXISTS ix_evaluation_runs_user_id ON evaluation_runs(user_id)")
+            )
+            logger.info("Created evaluation_runs table")
 
-            if not has_version:
-                conn.execute(sa_text("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) PRIMARY KEY)"))
-
-                tables_result = conn.execute(
-                    sa_text("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
+        for tname in ("documents", "chat_sessions", "traces"):
+            if tname in existing_tables:
+                col_check = await conn.execute(
+                    sa_text(
+                        "SELECT EXISTS (SELECT FROM information_schema.columns "
+                        "WHERE table_name = :t AND column_name = 'user_id')"
+                    ),
+                    {"t": tname},
                 )
-                existing_tables = {row[0] for row in tables_result.fetchall()}
+                has_col = col_check.scalar()
+                if not has_col:
+                    await conn.execute(sa_text(
+                        f"ALTER TABLE {tname} ADD COLUMN user_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL"
+                    ))
+                    await conn.execute(sa_text(f"CREATE INDEX IF NOT EXISTS ix_{tname}_user_id ON {tname}(user_id)"))
+                    logger.info("Added user_id column + index to %s", tname)
 
-                if "users" in existing_tables:
-                    target_revision = "003"
-                elif "documents" in existing_tables and "chat_sessions" in existing_tables:
-                    target_revision = "003"
-                elif "documents" in existing_tables:
-                    target_revision = "003"
-                else:
-                    target_revision = "003"
+        await conn.execute(sa_text(
+            "CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) PRIMARY KEY)"
+        ))
+        version_check = await conn.execute(sa_text("SELECT version_num FROM alembic_version"))
+        row = version_check.fetchone()
+        if not row:
+            await conn.execute(sa_text("INSERT INTO alembic_version (version_num) VALUES ('003')"))
+            logger.info("Stamped alembic_version at 003")
 
-                conn.execute(sa_text(f"INSERT INTO alembic_version (version_num) VALUES ('{target_revision}')"))
-                logger.info("Stamped alembic_version at %s", target_revision)
+        await conn.commit()
 
-                tables_needing_user_id = {"documents", "chat_sessions", "traces"}
-                for tname in tables_needing_user_id:
-                    if tname in existing_tables:
-                        col_check = conn.execute(
-                            sa_text(
-                                "SELECT EXISTS (SELECT FROM information_schema.columns "
-                                "WHERE table_name = :t AND column_name = 'user_id')"
-                            ),
-                            {"t": tname},
-                        ).scalar()
-                        if not col_check:
-                            conn.execute(
-                                sa_text(
-                                    f"ALTER TABLE {tname} "
-                                    f"ADD COLUMN user_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL"
-                                )
-                            )
-                            conn.execute(
-                                sa_text(f"CREATE INDEX IF NOT EXISTS ix_{tname}_user_id ON {tname}(user_id)")
-                            )
-                            logger.info("Added user_id column + index to %s", tname)
-
-                if "users" not in existing_tables:
-                    conn.execute(
-                        sa_text(
-                            "CREATE TABLE users ("
-                            "id VARCHAR(36) PRIMARY KEY, "
-                            "name VARCHAR(255) NOT NULL, "
-                            "email VARCHAR(255) NOT NULL UNIQUE, "
-                            "password_hash VARCHAR(255) NOT NULL, "
-                            "created_at TIMESTAMP DEFAULT NOW(), "
-                            "updated_at TIMESTAMP DEFAULT NOW()"
-                            ")"
-                        )
-                    )
-                    conn.execute(sa_text("CREATE INDEX IF NOT EXISTS ix_users_email ON users(email)"))
-                    logger.info("Created users table")
-
-                if "evaluation_runs" not in existing_tables:
-                    conn.execute(
-                        sa_text(
-                            "CREATE TABLE evaluation_runs ("
-                            "id VARCHAR(36) PRIMARY KEY, "
-                            "evaluation_id VARCHAR(100) NOT NULL, "
-                            "user_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL, "
-                            "status VARCHAR(20) NOT NULL DEFAULT 'running', "
-                            "created_at TIMESTAMP DEFAULT NOW()"
-                            ")"
-                        )
-                    )
-                    conn.execute(
-                        sa_text("CREATE INDEX IF NOT EXISTS ix_evaluation_runs_evaluation_id ON evaluation_runs(evaluation_id)")
-                    )
-                    conn.execute(
-                        sa_text("CREATE INDEX IF NOT EXISTS ix_evaluation_runs_user_id ON evaluation_runs(user_id)")
-                    )
-                    logger.info("Created evaluation_runs table")
-
-        sync_engine.dispose()
-        logger.info("Schema migration complete")
-
-    await loop.run_in_executor(None, _sync_upgrade)
-    logger.info("Alembic migrations applied")
+    logger.info("Schema migration applied successfully")
 
 
 async def init_db() -> None:
