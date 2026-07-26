@@ -53,7 +53,7 @@ async def upload_document(
 
     upload_path, doc_id = get_upload_path(filename)
     total_bytes = await save_upload_stream(file.read, upload_path, file_size_limit)
-    file.file = None
+    await file.close()
 
     logger.info("Ingest request: filename=%s content_type=%s size=%d", filename, content_type, total_bytes)
     log_memory_usage("upload_read", mem_before)
