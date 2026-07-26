@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 def setup_cors(app: FastAPI) -> None:
     origins = list(settings.BACKEND_CORS_ORIGINS) if settings.BACKEND_CORS_ORIGINS else ["*"]
     origins.append("https://sentinalrag-production.up.railway.app")
+    origins.append("https://frontend-production-10b2.up.railway.app")
 
     app.add_middleware(
         CORSMiddleware,
