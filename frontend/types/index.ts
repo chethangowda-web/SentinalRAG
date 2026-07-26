@@ -7,6 +7,7 @@ export interface HealthResponse {
 export interface ChatRequest {
   question: string;
   session_id?: string | null;
+  document_id?: string | null;
 }
 
 export interface CitationItem {

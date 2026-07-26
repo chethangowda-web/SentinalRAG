@@ -43,6 +43,7 @@ import {
   Percent,
   RotateCw,
   Eye,
+  Database,
 } from "lucide-react";
 import { ConfidenceIndicator } from "@/components/shared/ConfidenceIndicator";
 import { ConfidenceBadge } from "@/components/shared/ConfidenceBadge";
