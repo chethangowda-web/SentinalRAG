@@ -14,7 +14,7 @@ interface UploadDropzoneProps {
 }
 
 const ALLOWED_TYPES = [".pdf", ".png", ".jpg", ".jpeg"];
-const MAX_SIZE = 50 * 1024 * 1024;
+const MAX_SIZE = 100 * 1024 * 1024;
 
 export function UploadDropzone({
   onUpload,
@@ -33,7 +33,7 @@ export function UploadDropzone({
       return `Invalid file type. Allowed: ${ALLOWED_TYPES.join(", ")}`;
     }
     if (file.size > MAX_SIZE) {
-      return `File too large. Maximum size is 50MB.`;
+      return `File too large. Maximum size is 100MB.`;
     }
     if (file.size === 0) {
       return "File is empty.";
@@ -173,7 +173,7 @@ export function UploadDropzone({
                 Drop your file here
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                or click to browse (PDF, PNG, JPG — up to 50MB)
+                or click to browse (PDF, PNG, JPG — up to 100MB)
               </p>
             </motion.div>
           )}

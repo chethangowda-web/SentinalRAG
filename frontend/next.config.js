@@ -4,6 +4,7 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   reactStrictMode: true,
+  middlewareClientMaxBodySize: "100MB",
 
   async rewrites() {
     return [
