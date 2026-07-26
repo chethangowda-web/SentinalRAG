@@ -1,6 +1,6 @@
 import axios from "axios";
 import type { IngestResponse } from "@/types";
-import { getStoredToken } from "./api";
+import { api, getStoredToken } from "./api";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "https://sentinalrag-production.up.railway.app";
 
