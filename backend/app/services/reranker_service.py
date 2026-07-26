@@ -11,6 +11,9 @@ _RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 def _load_reranker():
     global _model, _model_name
     if _model is None or _model_name != _RERANKER_MODEL:
+        import torch
+        torch.set_num_threads(1)
+
         from sentence_transformers import CrossEncoder
 
         logger.info("Loading cross-encoder model: %s", _RERANKER_MODEL)

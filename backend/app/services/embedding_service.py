@@ -18,6 +18,9 @@ _model_name = None
 def _load_model():
     global _model, _model_name
     if _model is None or _model_name != settings.EMBEDDING_MODEL:
+        import torch
+        torch.set_num_threads(1)
+
         from sentence_transformers import SentenceTransformer
 
         logger.info("Loading embedding model: %s", settings.EMBEDDING_MODEL)

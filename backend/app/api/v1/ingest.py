@@ -59,15 +59,13 @@ async def upload_document(
     log_memory_usage("upload_read", mem_before)
 
     try:
-        file_bytes = upload_path.read_bytes()
-        result = await ingest_document(filename, content_type, file_bytes, db, user_id=current_user.id)
+        result = await ingest_document(filename, content_type, upload_path, total_bytes, db, user_id=current_user.id)
     except AppException:
         raise
     except Exception as exc:
         logger.exception("Unhandled error in upload_document")
         raise AppException(status_code=500, detail=f"Unhandled error: {exc}")
     finally:
-        file_bytes = None
         gc.collect()
 
     return result

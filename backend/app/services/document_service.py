@@ -11,12 +11,12 @@ from app.models.document import Document
 from app.schemas.document import IngestResponse
 from app.services.document_summary_service import generate_document_summary
 from app.services.duplicate_detection_service import check_duplicate
-from app.services.file_service import save_upload, validate_file
+from app.services.file_service import validate_file
 from app.services.ocr_quality_service import analyze_ocr_quality
 from app.services.ocr_service import ocr_image, ocr_pdf
 from app.services.text_cleaning import clean_text
-from app.utils.file_utils import get_processed_path, get_upload_path
-from app.utils.memory import force_gc, log_memory_usage
+from app.utils.file_utils import get_processed_path
+from app.utils.memory import log_memory_usage
 
 try:
     import fitz
@@ -72,22 +72,20 @@ def _process_image(image_path: Path) -> tuple[str, int, bool]:
 async def ingest_document(
     filename: str,
     content_type: str,
-    file_bytes: bytes,
+    upload_path: Path,
+    file_size: int,
     db: AsyncSession,
     user_id: str | None = None,
 ) -> IngestResponse:
     mem_before = log_memory_usage("upload_received")
 
-    file_size = len(file_bytes)
-
-    validate_file(filename, content_type, file_size, file_bytes)
-
     ext = Path(filename).suffix.lower()
-    upload_path, doc_id = get_upload_path(filename)
-    processed_path = get_processed_path(doc_id)
+    processed_path = get_processed_path(upload_path.stem)
 
-    await save_upload(file_bytes, upload_path)
-    log_memory_usage("file_saved", mem_before)
+    with open(upload_path, "rb") as f:
+        header = f.read(4096)
+    validate_file(filename, content_type, file_size, header)
+    del header
 
     strategy = _determine_strategy(ext)
     logger.info("Processing strategy: %s for %s", strategy, filename)
@@ -124,15 +122,15 @@ async def ingest_document(
     log_memory_usage("ocr_done", mem_before)
 
     summary_result = await generate_document_summary(cleaned, filename)
-    logger.info("Summary generated for %s: type=%s topics=%d", doc_id, summary_result["document_type"], len(summary_result["key_topics"]))
+    logger.info("Summary generated for %s: type=%s topics=%d", upload_path.stem, summary_result["document_type"], len(summary_result["key_topics"]))
 
     log_memory_usage("summary_done", mem_before)
 
-    duplicate_result = await check_duplicate(file_bytes, filename, db, cleaned[:200])
-    file_bytes = None
+    duplicate_result = await check_duplicate(open(upload_path, "rb").read(), filename, db, cleaned[:200])
     if duplicate_result:
         logger.warning("Duplicate detected: %s matches %s (method=%s, sim=%.1f%%)", filename, duplicate_result.get("existing_filename", ""), duplicate_result["method"], duplicate_result["similarity"])
 
+    doc_id = upload_path.stem
     document = Document(
         id=doc_id,
         user_id=user_id,
@@ -164,6 +162,7 @@ async def ingest_document(
         db.add(document)
         await db.commit()
         await db.refresh(document)
+        db.expunge(document)
     except Exception as exc:
         logger.exception("Database error while saving document %s", doc_id)
         raise AppException(status_code=500, detail=f"Failed to save document to database: {exc}")
@@ -173,7 +172,7 @@ async def ingest_document(
         doc_id, pages, word_count, ocr_used, elapsed,
     )
 
-    force_gc()
+    gc.collect()
     log_memory_usage("ingest_done", mem_before)
 
     return IngestResponse(
