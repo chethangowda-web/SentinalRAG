@@ -159,6 +159,38 @@ async def _run_alembic_migrations() -> None:
             )
             logger.info("Created evaluation_runs table")
 
+        if "document_evaluations" not in existing_tables:
+            await conn.execute(sa_text(
+                "CREATE TABLE document_evaluations ("
+                "id VARCHAR(36) PRIMARY KEY, "
+                "document_id VARCHAR(36) NOT NULL REFERENCES documents(id) ON DELETE CASCADE, "
+                "user_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL, "
+                "overall_score FLOAT DEFAULT 0, "
+                "faithfulness FLOAT DEFAULT 0, "
+                "correctness FLOAT DEFAULT 0, "
+                "answer_relevancy FLOAT DEFAULT 0, "
+                "context_recall FLOAT DEFAULT 0, "
+                "precision FLOAT DEFAULT 0, "
+                "hallucination_rate FLOAT DEFAULT 0, "
+                "retrieval_score FLOAT DEFAULT 0, "
+                "ocr_confidence FLOAT, "
+                "processing_time FLOAT DEFAULT 0, "
+                "total_questions INTEGER DEFAULT 0, "
+                "eval_data TEXT, "
+                "status VARCHAR(20) DEFAULT 'running', "
+                "error TEXT, "
+                "created_at TIMESTAMP DEFAULT NOW(), "
+                "updated_at TIMESTAMP DEFAULT NOW()"
+                ")"
+            ))
+            await conn.execute(sa_text(
+                "CREATE INDEX IF NOT EXISTS ix_document_evaluations_document_id ON document_evaluations(document_id)")
+            )
+            await conn.execute(sa_text(
+                "CREATE INDEX IF NOT EXISTS ix_document_evaluations_user_id ON document_evaluations(user_id)")
+            )
+            logger.info("Created document_evaluations table")
+
         for tname in ("documents", "chat_sessions", "traces"):
             if tname in existing_tables:
                 col_check = await conn.execute(
@@ -182,8 +214,8 @@ async def _run_alembic_migrations() -> None:
         version_check = await conn.execute(sa_text("SELECT version_num FROM alembic_version"))
         row = version_check.fetchone()
         if not row:
-            await conn.execute(sa_text("INSERT INTO alembic_version (version_num) VALUES ('003')"))
-            logger.info("Stamped alembic_version at 003")
+            await conn.execute(sa_text("INSERT INTO alembic_version (version_num) VALUES ('902bc76d113c')"))
+            logger.info("Stamped alembic_version at 902bc76d113c")
 
         await conn.commit()
 
