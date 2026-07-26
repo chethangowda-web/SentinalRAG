@@ -11,8 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
 from app.core.database import get_db, get_session_maker
+from app.core.exceptions import AppException
+from app.models.document import Document
 from app.models.evaluation_run import EvaluationRun
 from app.models.user import User
+from app.services.document_evaluation_service import evaluate_document
 from evaluation.dataset import load_dataset, get_dataset_summary
 from evaluation.reports.report_generator import ReportGenerator
 from evaluation.reports.visualizer import Visualizer
@@ -152,6 +155,35 @@ async def get_evaluation_history(
     user_eval_ids = {r.evaluation_id for r in runs}
     history = _report_gen.load_history()
     return [h for h in history if h.get("evaluation_id") in user_eval_ids]
+
+
+@router.post("/evaluate/document/{document_id}")
+async def evaluate_single_document(
+    document_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    logger.info("Per-document evaluation request: document=%s user=%s", document_id, current_user.id)
+
+    result = await db.execute(
+        select(Document).where(Document.id == document_id, Document.user_id == current_user.id)
+    )
+    document = result.scalar_one_or_none()
+    if document is None:
+        raise HTTPException(status_code=404, detail=f"Document {document_id} not found")
+
+    if document.status != "embedded":
+        raise AppException(
+            status_code=400,
+            detail=f"Document {document_id} has status '{document.status}'. Must be 'embedded' first.",
+        )
+
+    try:
+        eval_result = await evaluate_document(document_id, db, user_id=current_user.id)
+        return eval_result
+    except Exception as e:
+        logger.exception("Per-document evaluation failed for %s", document_id)
+        raise AppException(status_code=500, detail=f"Document evaluation failed: {e}")
 
 
 @router.get("/evaluation/dataset")
