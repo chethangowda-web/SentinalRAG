@@ -15,6 +15,7 @@ import app.models.chunk
 import app.models.trace
 import app.models.user
 import app.models.evaluation_run
+import app.models.document_evaluation
 
 config = context.config
 
