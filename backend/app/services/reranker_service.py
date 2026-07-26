@@ -34,7 +34,10 @@ def rerank(
     model = _load_reranker()
 
     pairs = [[query, text] for text in texts]
-    scores = model.predict(pairs, show_progress_bar=False)
+
+    import torch
+    with torch.no_grad():
+        scores = model.predict(pairs, show_progress_bar=False)
 
     scored: list[tuple[int, float]] = [
         (i, round(float(score), 4)) for i, score in enumerate(scores)

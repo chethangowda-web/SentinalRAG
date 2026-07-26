@@ -1,3 +1,4 @@
+import gc
 import logging
 import time
 from contextlib import asynccontextmanager
@@ -14,6 +15,7 @@ from app.core.metrics import get_metrics_collector
 from app.core.middleware import setup_middleware
 from app.core.resource_tracker import get_resource_tracker
 from app.services.health_check import wait_for_dependencies
+from app.utils.memory import log_memory_usage
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -44,12 +46,6 @@ async def lifespan(application: FastAPI):
             logger.warning("SQLite migration failed — continuing anyway")
         else:
             raise
-    try:
-        from app.services.embedding_service import _load_model
-        logger.info("Preloading embedding model...")
-        _load_model()
-    except Exception as e:
-        logger.warning("Model preloading failed (will load on demand): %s", e)
 
     try:
         import qdrant_client
@@ -62,6 +58,8 @@ async def lifespan(application: FastAPI):
     tracker.stop()
     collector = get_metrics_collector()
     summary = tracker.summarize()
+    gc.collect()
+    log_memory_usage("shutdown")
     logger.info(
         "Shutdown summary: %.1fs uptime, %d resource samples, CPU avg=%.1f%%, mem avg=%.1fMB, %d errors recorded",
         summary.duration_seconds, summary.samples, summary.cpu_avg, summary.memory_avg_mb,

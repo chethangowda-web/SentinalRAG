@@ -1,3 +1,4 @@
+import gc
 import logging
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from app.core.exceptions import AppException
 from app.models.user import User
 from app.schemas.document import IngestResponse
 from app.services.document_service import ingest_document
+from app.utils.memory import log_memory_usage
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +29,8 @@ async def upload_document(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    mem_before = log_memory_usage("upload_start")
+
     if file is None:
         raise AppException(status_code=400, detail="No file provided. Send a file as multipart/form-data.")
 
@@ -39,6 +43,7 @@ async def upload_document(
     file_bytes = await file.read()
 
     logger.info("Ingest request: filename=%s content_type=%s size=%d", filename, content_type, len(file_bytes))
+    log_memory_usage("upload_read", mem_before)
 
     try:
         result = await ingest_document(filename, content_type, file_bytes, db, user_id=current_user.id)
@@ -47,5 +52,8 @@ async def upload_document(
     except Exception as exc:
         logger.exception("Unhandled error in upload_document")
         raise AppException(status_code=500, detail=f"Unhandled error: {exc}")
+    finally:
+        file_bytes = None
+        gc.collect()
 
     return result

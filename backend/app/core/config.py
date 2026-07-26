@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     CHUNK_OVERLAP: int = 100
     EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
     EMBEDDING_DIMENSION: int = 384
-    EMBEDDING_BATCH_SIZE: int = 12
+    EMBEDDING_BATCH_SIZE: int = 24
     QDRANT_COLLECTION: str = "documents"
 
     # DeepSeek (primary LLM provider)

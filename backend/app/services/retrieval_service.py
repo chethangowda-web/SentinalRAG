@@ -12,6 +12,7 @@ from app.services import (
     reranker_service,
     vector_search_service,
 )
+from app.utils.memory import log_memory_usage
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,7 @@ async def retrieve(
     db: AsyncSession,
     user_id: str | None = None,
 ) -> SearchResponse:
+    mem_before = log_memory_usage("retrieval_start")
     total_start = time.perf_counter()
     latencies: dict[str, float] = {}
 
@@ -137,6 +139,8 @@ async def retrieve(
         total_elapsed, len(results), conf.score, conf.level, raw_query[:60],
     )
     logger.debug("Retrieval latency breakdown: %s query='%s'", latencies, raw_query[:60])
+
+    log_memory_usage("retrieval_done", mem_before)
 
     return SearchResponse(
         query=normalized,

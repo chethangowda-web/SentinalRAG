@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import json
 import logging
 import os
@@ -14,6 +15,7 @@ from evaluation.metrics.collector import MetricsCollector
 from evaluation.metrics.base import MetricCollection, MetricResult
 from evaluation.services.baseline_rag import BaselineRAG
 from evaluation.services.sentinel_rag import SentinelRAG
+from app.utils.memory import force_gc, log_memory_usage
 
 logger = logging.getLogger(__name__)
 
@@ -153,12 +155,18 @@ class EvaluationRunner:
                 "retrieved_chunks": [],
             })
 
+        force_gc()
+        log_memory_usage("evaluation_metrics_start")
+
         logger.info("Computing metrics for %d questions...", len(questions))
 
         baseline_metrics = self._compute_metrics(questions, baseline_results)
         sentinel_metrics = self._compute_metrics(questions, sentinel_results)
 
         comparison = self._compute_comparison(baseline_metrics, sentinel_metrics)
+
+        force_gc()
+        log_memory_usage("evaluation_metrics_done")
 
         dataset_label = os.path.basename(dataset_path) if dataset_path else "document_specific"
         result = {

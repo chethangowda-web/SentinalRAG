@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import logging
 import time
 from functools import partial
@@ -6,6 +7,7 @@ from functools import partial
 import numpy as np
 
 from app.core.config import settings
+from app.utils.memory import force_gc, log_memory_usage
 
 logger = logging.getLogger(__name__)
 
@@ -43,16 +45,20 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
     if not texts:
         return []
 
+    mem_before = log_memory_usage("embedding_start")
     model = _load_model()
     batch_size = settings.EMBEDDING_BATCH_SIZE
     all_embeddings: list[list[float]] = []
     total_start = time.perf_counter()
 
+    import torch
+
     for i in range(0, len(texts), batch_size):
         batch = texts[i : i + batch_size]
         batch_start = time.perf_counter()
 
-        raw = model.encode(batch, show_progress_bar=False)
+        with torch.no_grad():
+            raw = model.encode(batch, show_progress_bar=False)
         normalized = [normalize_embedding(vec.tolist()) for vec in raw]
 
         batch_elapsed = round(time.perf_counter() - batch_start, 3)
@@ -66,8 +72,14 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
         )
         all_embeddings.extend(normalized)
 
+        if i > 0 and i % (batch_size * 2) == 0:
+            gc.collect()
+
     total_elapsed = round(time.perf_counter() - total_start, 2)
     logger.info("Embedding complete: %d vectors in %.2fs", len(all_embeddings), total_elapsed)
+
+    force_gc()
+    log_memory_usage("embedding_done", mem_before)
     return all_embeddings
 
 

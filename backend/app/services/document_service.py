@@ -1,3 +1,4 @@
+import gc
 import logging
 import time
 from pathlib import Path
@@ -15,6 +16,7 @@ from app.services.ocr_quality_service import analyze_ocr_quality
 from app.services.ocr_service import ocr_image, ocr_pdf
 from app.services.text_cleaning import clean_text
 from app.utils.file_utils import get_processed_path, get_upload_path
+from app.utils.memory import force_gc, log_memory_usage
 
 try:
     import fitz
@@ -74,6 +76,8 @@ async def ingest_document(
     db: AsyncSession,
     user_id: str | None = None,
 ) -> IngestResponse:
+    mem_before = log_memory_usage("upload_received")
+
     file_size = len(file_bytes)
 
     validate_file(filename, content_type, file_size, file_bytes)
@@ -83,6 +87,7 @@ async def ingest_document(
     processed_path = get_processed_path(doc_id)
 
     await save_upload(file_bytes, upload_path)
+    log_memory_usage("file_saved", mem_before)
 
     strategy = _determine_strategy(ext)
     logger.info("Processing strategy: %s for %s", strategy, filename)
@@ -99,7 +104,10 @@ async def ingest_document(
     except Exception as exc:
         raise AppException(status_code=500, detail=f"Processing failed: {exc}")
 
+    log_memory_usage("text_extracted", mem_before)
+
     cleaned = clean_text(raw_text)
+    raw_text = None
 
     with open(processed_path, "w", encoding="utf-8") as f:
         f.write(cleaned)
@@ -113,10 +121,15 @@ async def ingest_document(
         ocr_result = analyze_ocr_quality(cleaned, pages)
         logger.info("OCR quality: %s (confidence=%.1f)", ocr_result["quality"], ocr_result["confidence"])
 
+    log_memory_usage("ocr_done", mem_before)
+
     summary_result = await generate_document_summary(cleaned, filename)
     logger.info("Summary generated for %s: type=%s topics=%d", doc_id, summary_result["document_type"], len(summary_result["key_topics"]))
 
+    log_memory_usage("summary_done", mem_before)
+
     duplicate_result = await check_duplicate(file_bytes, filename, db, cleaned[:200])
+    file_bytes = None
     if duplicate_result:
         logger.warning("Duplicate detected: %s matches %s (method=%s, sim=%.1f%%)", filename, duplicate_result.get("existing_filename", ""), duplicate_result["method"], duplicate_result["similarity"])
 
@@ -145,6 +158,7 @@ async def ingest_document(
         sha256_hash=duplicate_result["sha256"] if duplicate_result else None,
         duplicate_of=duplicate_result["existing_id"] if duplicate_result and duplicate_result["similarity"] > 90 else None,
     )
+    cleaned = None
 
     try:
         db.add(document)
@@ -158,6 +172,9 @@ async def ingest_document(
         "Document ingested: id=%s pages=%d words=%d ocr=%s time=%.2fs",
         doc_id, pages, word_count, ocr_used, elapsed,
     )
+
+    force_gc()
+    log_memory_usage("ingest_done", mem_before)
 
     return IngestResponse(
         document_id=doc_id,
