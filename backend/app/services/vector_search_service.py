@@ -36,7 +36,7 @@ class VectorSearchResult:
         self.chunk_index = chunk_index
 
 
-def search_vector(query_text: str, top_k: int = 20, user_id: str | None = None) -> list[VectorSearchResult]:
+def search_vector(query_text: str, top_k: int = 20, user_id: str | None = None, document_id: str | None = None) -> list[VectorSearchResult]:
     start = time.perf_counter()
 
     embed_start = time.perf_counter()
@@ -52,11 +52,13 @@ def search_vector(query_text: str, top_k: int = 20, user_id: str | None = None) 
     search_start = time.perf_counter()
     client = get_qdrant_client()
 
-    query_filter = None
+    conditions = []
     if user_id:
-        query_filter = Filter(
-            must=[FieldCondition(key="user_id", match=MatchValue(value=user_id))]
-        )
+        conditions.append(FieldCondition(key="user_id", match=MatchValue(value=user_id)))
+    if document_id:
+        conditions.append(FieldCondition(key="document_id", match=MatchValue(value=document_id)))
+
+    query_filter = Filter(must=conditions) if conditions else None
 
     results = []
     try:
@@ -112,6 +114,6 @@ def search_vector(query_text: str, top_k: int = 20, user_id: str | None = None) 
     return parsed
 
 
-async def search_vector_async(query_text: str, top_k: int = 20, user_id: str | None = None) -> list[VectorSearchResult]:
+async def search_vector_async(query_text: str, top_k: int = 20, user_id: str | None = None, document_id: str | None = None) -> list[VectorSearchResult]:
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, partial(search_vector, query_text, top_k, user_id=user_id))
+    return await loop.run_in_executor(None, partial(search_vector, query_text, top_k, user_id=user_id, document_id=document_id))

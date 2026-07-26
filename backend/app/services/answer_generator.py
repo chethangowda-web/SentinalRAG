@@ -42,7 +42,7 @@ def generate_answer(question: str, chunks: list[dict]) -> str:
     start = time.perf_counter()
 
     context_parts = []
-    for i, chunk in enumerate(chunks[:5]):
+    for i, chunk in enumerate(chunks[:8]):
         doc_id = chunk.get("document_id", "?")
         text = (chunk.get("text", "") or "")[:2000]
         context_parts.append(f"[Source {i+1}] (Document: {doc_id})\n{text}")
@@ -51,14 +51,17 @@ def generate_answer(question: str, chunks: list[dict]) -> str:
 
     prompt = (
         "You are a precise RAG answer generator. Answer the question "
-        "using ONLY the provided context.\n\n"
-        "Rules:\n"
-        "- If the context does not contain enough information, say "
-        "'I don't have enough information to answer this question.'\n"
-        "- Never invent information or hallucinate\n"
-        "- Cite sources using [Source N] markers\n"
-        "- Be concise and direct\n"
-        "- If there are contradictions in the context, mention them\n\n"
+        "using ONLY the provided context below.\n\n"
+        "STRICT RULES:\n"
+        "1. Answer ONLY from the provided context. Never use your own knowledge.\n"
+        "2. If the context does not contain enough information to answer, "
+        "say exactly: 'I don't have enough information to answer this question.'\n"
+        "3. Never invent, guess, or hallucinate any information.\n"
+        "4. Cite sources using [Source N] markers for every factual claim.\n"
+        "5. Be concise and direct. Do not add introductory phrases.\n"
+        "6. If different sources provide conflicting information, mention the contradiction.\n"
+        "7. If the question has nothing to do with the provided context, "
+        "say 'I don't have enough information to answer this question.'\n\n"
         f"Context:\n{context}\n\n"
         f"Question: {question}\n\n"
         "Answer:"

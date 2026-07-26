@@ -16,8 +16,8 @@ from app.utils.memory import log_memory_usage
 
 logger = logging.getLogger(__name__)
 
-RERANK_TOP_K = 10
-FINAL_TOP_K = 5
+RERANK_TOP_K = 15
+FINAL_TOP_K = 8
 
 
 class SearchResultItem:
@@ -66,6 +66,7 @@ async def retrieve(
     raw_query: str,
     db: AsyncSession,
     user_id: str | None = None,
+    document_id: str | None = None,
 ) -> SearchResponse:
     mem_before = log_memory_usage("retrieval_start")
     total_start = time.perf_counter()
@@ -76,15 +77,15 @@ async def retrieve(
         raise AppException(status_code=400, detail="Query cannot be empty after preprocessing")
 
     embed_start = time.perf_counter()
-    vector_results = await vector_search_service.search_vector_async(normalized, top_k=20, user_id=user_id)
+    vector_results = await vector_search_service.search_vector_async(normalized, top_k=30, user_id=user_id, document_id=document_id)
     latencies["vector_search"] = round((time.perf_counter() - embed_start) * 1000, 1)
 
     bm25_start = time.perf_counter()
-    bm25_results = await bm25_service.search_bm25(normalized, db, top_k=20, user_id=user_id)
+    bm25_results = await bm25_service.search_bm25(normalized, db, top_k=30, user_id=user_id, document_id=document_id)
     latencies["bm25_search"] = round((time.perf_counter() - bm25_start) * 1000, 1)
 
     fusion_start = time.perf_counter()
-    hybrid_results: list[hybrid_search_service.HybridResult] = hybrid_search_service.fuse_results(vector_results, bm25_results, top_k=20)
+    hybrid_results: list[hybrid_search_service.HybridResult] = hybrid_search_service.fuse_results(vector_results, bm25_results, top_k=30)
     latencies["fusion"] = round((time.perf_counter() - fusion_start) * 1000, 1)
 
     if not hybrid_results:

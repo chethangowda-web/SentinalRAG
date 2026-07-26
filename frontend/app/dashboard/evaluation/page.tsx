@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSearchParams } from "next/navigation";
 import { useEvaluationReport, useEvaluationHistory, useRunEvaluation } from "@/hooks/use-evaluation";
 import { useDocuments } from "@/hooks/use-documents";
+import { getDocumentEvaluation } from "@/services/evaluation";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -171,10 +173,28 @@ function exportEvalReport(report: any) {
 }
 
 export default function EvaluationPage() {
+  const searchParams = useSearchParams();
+  const docIdFromUrl = searchParams.get("document_id");
+
   const { data: report, isLoading: reportLoading } = useEvaluationReport();
   const { data: history, isLoading: historyLoading } = useEvaluationHistory();
   const { data: documents } = useDocuments();
   const runEval = useRunEvaluation();
+
+  const [docEval, setDocEval] = useState<any | null>(null);
+  const [docEvalLoading, setDocEvalLoading] = useState(false);
+
+  useEffect(() => {
+    if (docIdFromUrl) {
+      setDocEvalLoading(true);
+      getDocumentEvaluation(docIdFromUrl)
+        .then((data) => setDocEval(data))
+        .catch(() => setDocEval(null))
+        .finally(() => setDocEvalLoading(false));
+    } else {
+      setDocEval(null);
+    }
+  }, [docIdFromUrl]);
 
   const handleRun = async () => {
     try {
@@ -209,9 +229,49 @@ export default function EvaluationPage() {
   const totalPages = documents?.reduce((sum, d) => sum + (d.pages || 0), 0) ?? null;
   const totalDocs = documents?.length ?? 0;
 
+  const docEvalOverall = docEval?.overall_score != null ? docEval.overall_score * 100 : null;
+
   return (
     <ErrorBoundary>
       <div className="space-y-6">
+        {docIdFromUrl && (
+          <div className="rounded-xl border bg-card p-6">
+            {docEvalLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading document evaluation...
+              </div>
+            ) : docEval ? (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-semibold">Document Evaluation</h2>
+                    <p className="text-sm text-muted-foreground">Document {docIdFromUrl.slice(0, 8)}...</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CircularProgress value={docEvalOverall ?? 0} size={80} strokeWidth={8} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <MetricBar value={(docEval.faithfulness ?? 0) * 100} label="Faithfulness" icon={Shield} color="hsl(var(--chart-1))" />
+                  <MetricBar value={(docEval.correctness ?? 0) * 100} label="Correctness" icon={CheckCircle2} color="hsl(var(--chart-2))" />
+                  <MetricBar value={(docEval.hallucination_rate ?? 0) * 100} label="Hallucination" icon={AlertTriangle} color="hsl(var(--confidence-low))" />
+                  <MetricBar value={(docEval.answer_relevancy ?? 0) * 100} label="Answer Relevancy" icon={Target} color="hsl(var(--chart-3))" />
+                  <MetricBar value={(docEval.context_recall ?? 0) * 100} label="Context Recall" icon={BookOpen} color="hsl(var(--chart-4))" />
+                  <MetricBar value={(docEval.precision ?? 0) * 100} label="Precision" icon={Gauge} color="hsl(var(--chart-1))" />
+                  <MetricBar value={(docEval.retrieval_score ?? 0) * 100} label="Retrieval Score" icon={Database} color="hsl(var(--chart-2))" />
+                  <MetricBar value={(docEval.ocr_confidence ?? 0) * 100} label="OCR Quality" icon={Scan} color="hsl(var(--chart-3))" />
+                </div>
+                <div className="mt-3 text-xs text-muted-foreground">
+                  {docEval.total_questions} questions · {docEval.processing_time?.toFixed(1)}s processing time
+                  {docEval.created_at && ` · ${new Date(docEval.created_at).toLocaleDateString()}`}
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">No evaluation found for this document.</div>
+            )}
+          </div>
+        )}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Evaluation Report</h1>

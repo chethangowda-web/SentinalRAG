@@ -1,5 +1,5 @@
 import { api } from "./api";
-import type { EvaluationResult, EvaluationHistoryItem } from "@/types";
+import type { EvaluationResult, EvaluationHistoryItem, DocumentEvaluation, DocumentEvaluationDetail, DocumentComparison, EvaluationDashboard } from "@/types";
 
 export interface EvalTaskResponse {
   evaluation_id: string;
@@ -32,5 +32,25 @@ export async function getEvaluationReport(): Promise<EvaluationResult> {
 
 export async function getEvaluationHistory(): Promise<EvaluationHistoryItem[]> {
   const { data } = await api.get<EvaluationHistoryItem[]>("/api/v1/evaluation/history");
+  return data;
+}
+
+export async function getDocumentEvaluations(): Promise<DocumentEvaluation[]> {
+  const { data } = await api.get<DocumentEvaluation[]>("/api/v1/evaluations/documents");
+  return data;
+}
+
+export async function getDocumentEvaluation(documentId: string): Promise<DocumentEvaluationDetail> {
+  const { data } = await api.get<DocumentEvaluationDetail>(`/api/v1/evaluations/documents/${documentId}`);
+  return data;
+}
+
+export async function compareDocumentEvaluations(doc1: string, doc2: string): Promise<DocumentComparison> {
+  const { data } = await api.get<DocumentComparison>(`/api/v1/evaluations/documents/compare/${doc1}/${doc2}`);
+  return data;
+}
+
+export async function getEvaluationDashboard(): Promise<EvaluationDashboard> {
+  const { data } = await api.get<EvaluationDashboard>("/api/v1/evaluations/dashboard");
   return data;
 }

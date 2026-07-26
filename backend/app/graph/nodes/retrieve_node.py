@@ -16,9 +16,10 @@ async def retrieve_node(state: GraphState, config: RunnableConfig) -> dict:
     question = state.get("rewritten_question") or state["question"]
     db = config["configurable"]["db"]
     user_id = config["configurable"].get("user_id")
+    document_id = config["configurable"].get("document_id") or state.get("document_id")
 
-    logger.info("Retrieve node: query='%s' user_id=%s", question[:80], user_id)
-    search_response = await retrieve(question, db, user_id=user_id)
+    logger.info("Retrieve node: query='%s' user_id=%s document_id=%s", question[:80], user_id, document_id)
+    search_response = await retrieve(question, db, user_id=user_id, document_id=document_id)
 
     chunks = []
     retrieval_details = []

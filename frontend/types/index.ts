@@ -357,5 +357,48 @@ export interface TraceListResponse {
   traces: Trace[];
 }
 
+export interface DocumentEvaluation {
+  id: string;
+  document_id: string;
+  overall_score: number;
+  faithfulness: number;
+  correctness: number;
+  answer_relevancy: number;
+  context_recall: number;
+  precision: number;
+  hallucination_rate: number;
+  retrieval_score: number;
+  ocr_confidence: number | null;
+  processing_time: number;
+  total_questions: number;
+  status: string;
+  created_at: string | null;
+}
+
+export interface DocumentEvaluationDetail extends DocumentEvaluation {
+  error: string | null;
+  detail: Record<string, unknown>;
+}
+
+export interface EvaluationDashboard {
+  total_evaluated: number;
+  avg_overall_score: number;
+  avg_faithfulness: number;
+  avg_correctness: number;
+  avg_answer_relevancy: number;
+  avg_context_recall: number;
+  avg_precision: number;
+  avg_hallucination_rate: number;
+  avg_retrieval_score: number;
+  avg_processing_time: number;
+  total_questions: number;
+}
+
+export interface DocumentComparison {
+  document1: { document_id: string; overall_score: number };
+  document2: { document_id: string; overall_score: number };
+  comparison: Record<string, { document1: number; document2: number; difference: number; better: string }>;
+}
+
 export type ConfidenceLevel = "HIGH" | "MEDIUM" | "LOW";
 export type ProcessingStatus = "pending" | "processing" | "completed" | "failed";

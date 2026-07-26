@@ -180,11 +180,11 @@ export default function DocumentsPage() {
   };
 
   const getEvalRoute = (doc: Document) => {
-    return `/dashboard/evaluation`;
+    return `/dashboard/evaluation?document_id=${doc.id}`;
   };
 
   const getChatRoute = (doc: Document) => {
-    return `/dashboard/chat`;
+    return `/dashboard/chat?document_id=${doc.id}`;
   };
 
   return (

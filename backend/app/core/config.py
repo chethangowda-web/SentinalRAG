@@ -34,7 +34,7 @@ class Settings(BaseSettings):
 
     UPLOAD_DIR: Path = Path("uploads")
     PROCESSED_DIR: Path = Path("processed")
-    MAX_FILE_SIZE: int = 50 * 1024 * 1024
+    MAX_FILE_SIZE: int = 100 * 1024 * 1024
     ALLOWED_EXTENSIONS: set[str] = {".pdf", ".png", ".jpg", ".jpeg"}
     ALLOWED_CONTENT_TYPES: set[str] = {
         "application/pdf",
@@ -44,8 +44,8 @@ class Settings(BaseSettings):
     OCR_LANGUAGE: str = "eng"
     TEXT_MIN_LENGTH_FOR_PDF: int = 50
 
-    CHUNK_SIZE: int = 500
-    CHUNK_OVERLAP: int = 100
+    CHUNK_SIZE: int = 300
+    CHUNK_OVERLAP: int = 50
     EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
     EMBEDDING_DIMENSION: int = 384
     EMBEDDING_BATCH_SIZE: int = 24

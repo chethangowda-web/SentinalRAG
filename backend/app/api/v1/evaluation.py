@@ -14,6 +14,7 @@ from app.core.auth import get_current_user
 from app.core.database import get_db, get_session_maker
 from app.core.exceptions import AppException
 from app.models.document import Document
+from app.models.document_evaluation import DocumentEvaluation
 from app.models.evaluation_run import EvaluationRun
 from app.models.user import User
 from app.services.document_evaluation_service import evaluate_document
@@ -203,3 +204,177 @@ async def get_dataset_info(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/evaluations/documents")
+async def list_document_evaluations(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict[str, Any]]:
+    result = await db.execute(
+        select(DocumentEvaluation)
+        .where(DocumentEvaluation.user_id == current_user.id)
+        .order_by(DocumentEvaluation.created_at.desc())
+    )
+    evals = result.scalars().all()
+    return [
+        {
+            "id": e.id,
+            "document_id": e.document_id,
+            "overall_score": e.overall_score,
+            "faithfulness": e.faithfulness,
+            "correctness": e.correctness,
+            "answer_relevancy": e.answer_relevancy,
+            "context_recall": e.context_recall,
+            "precision": e.precision,
+            "hallucination_rate": e.hallucination_rate,
+            "retrieval_score": e.retrieval_score,
+            "ocr_confidence": e.ocr_confidence,
+            "processing_time": e.processing_time,
+            "total_questions": e.total_questions,
+            "status": e.status,
+            "created_at": e.created_at.isoformat() if e.created_at else None,
+        }
+        for e in evals
+    ]
+
+
+@router.get("/evaluations/documents/{document_id}")
+async def get_document_evaluation(
+    document_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    result = await db.execute(
+        select(DocumentEvaluation)
+        .where(
+            DocumentEvaluation.document_id == document_id,
+            DocumentEvaluation.user_id == current_user.id,
+        )
+    )
+    evaluation = result.scalar_one_or_none()
+    if evaluation is None:
+        raise HTTPException(status_code=404, detail=f"No evaluation found for document {document_id}")
+
+    detail = {}
+    if evaluation.eval_data:
+        try:
+            detail = json.loads(evaluation.eval_data)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    return {
+        "id": evaluation.id,
+        "document_id": evaluation.document_id,
+        "overall_score": evaluation.overall_score,
+        "faithfulness": evaluation.faithfulness,
+        "correctness": evaluation.correctness,
+        "answer_relevancy": evaluation.answer_relevancy,
+        "context_recall": evaluation.context_recall,
+        "precision": evaluation.precision,
+        "hallucination_rate": evaluation.hallucination_rate,
+        "retrieval_score": evaluation.retrieval_score,
+        "ocr_confidence": evaluation.ocr_confidence,
+        "processing_time": evaluation.processing_time,
+        "total_questions": evaluation.total_questions,
+        "status": evaluation.status,
+        "error": evaluation.error,
+        "created_at": evaluation.created_at.isoformat() if evaluation.created_at else None,
+        "detail": detail,
+    }
+
+
+@router.get("/evaluations/documents/compare/{document_id1}/{document_id2}")
+async def compare_document_evaluations(
+    document_id1: str,
+    document_id2: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    result = await db.execute(
+        select(DocumentEvaluation).where(
+            DocumentEvaluation.document_id.in_([document_id1, document_id2]),
+            DocumentEvaluation.user_id == current_user.id,
+        )
+    )
+    evaluations = result.scalars().all()
+    if len(evaluations) != 2:
+        raise HTTPException(status_code=404, detail="Could not find evaluations for both documents")
+
+    eval_map = {e.document_id: e for e in evaluations}
+    doc1 = eval_map.get(document_id1)
+    doc2 = eval_map.get(document_id2)
+    if not doc1 or not doc2:
+        raise HTTPException(status_code=404, detail="Could not find evaluations for both documents")
+
+    metrics = ["overall_score", "faithfulness", "correctness", "answer_relevancy",
+               "context_recall", "precision", "hallucination_rate", "retrieval_score"]
+
+    comparison = {}
+    for m in metrics:
+        v1 = getattr(doc1, m, 0) or 0
+        v2 = getattr(doc2, m, 0) or 0
+        diff = v1 - v2
+        comparison[m] = {
+            "document1": v1,
+            "document2": v2,
+            "difference": round(diff, 4),
+            "better": "document1" if diff > 0 else ("document2" if diff < 0 else "tie"),
+        }
+
+    return {
+        "document1": {
+            "document_id": doc1.document_id,
+            "overall_score": doc1.overall_score,
+        },
+        "document2": {
+            "document_id": doc2.document_id,
+            "overall_score": doc2.overall_score,
+        },
+        "comparison": comparison,
+    }
+
+
+@router.get("/evaluations/dashboard")
+async def get_evaluation_dashboard(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    result = await db.execute(
+        select(DocumentEvaluation)
+        .where(
+            DocumentEvaluation.user_id == current_user.id,
+            DocumentEvaluation.status == "completed",
+        )
+    )
+    evals = result.scalars().all()
+
+    if not evals:
+        return {
+            "total_evaluated": 0,
+            "avg_overall_score": 0,
+            "avg_faithfulness": 0,
+            "avg_correctness": 0,
+            "avg_answer_relevancy": 0,
+            "avg_context_recall": 0,
+            "avg_precision": 0,
+            "avg_hallucination_rate": 0,
+            "avg_retrieval_score": 0,
+            "avg_processing_time": 0,
+            "total_questions": 0,
+        }
+
+    n = len(evals)
+    return {
+        "total_evaluated": n,
+        "avg_overall_score": round(sum(e.overall_score or 0 for e in evals) / n, 4),
+        "avg_faithfulness": round(sum(e.faithfulness or 0 for e in evals) / n, 4),
+        "avg_correctness": round(sum(e.correctness or 0 for e in evals) / n, 4),
+        "avg_answer_relevancy": round(sum(e.answer_relevancy or 0 for e in evals) / n, 4),
+        "avg_context_recall": round(sum(e.context_recall or 0 for e in evals) / n, 4),
+        "avg_precision": round(sum(e.precision or 0 for e in evals) / n, 4),
+        "avg_hallucination_rate": round(sum(e.hallucination_rate or 0 for e in evals) / n, 4),
+        "avg_retrieval_score": round(sum(e.retrieval_score or 0 for e in evals) / n, 4),
+        "avg_processing_time": round(sum(e.processing_time or 0 for e in evals) / n, 2),
+        "total_questions": sum(e.total_questions or 0 for e in evals),
+    }

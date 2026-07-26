@@ -46,3 +46,23 @@ async def save_upload(file_bytes: bytes, dest_path: Path) -> None:
     with open(dest_path, "wb") as f:
         f.write(file_bytes)
     logger.info("File saved to %s (%d bytes)", dest_path, len(file_bytes))
+
+
+async def save_upload_stream(reader, dest_path: Path, max_size: int) -> int:
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    total = 0
+    with open(dest_path, "wb") as f:
+        while True:
+            chunk = await reader(64 * 1024)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > max_size:
+                dest_path.unlink(missing_ok=True)
+                raise AppException(
+                    status_code=413,
+                    detail=f"File too large. Maximum allowed size is {max_size // (1024 * 1024)} MB.",
+                )
+            f.write(chunk)
+    logger.info("Stream saved to %s (%d bytes)", dest_path, total)
+    return total

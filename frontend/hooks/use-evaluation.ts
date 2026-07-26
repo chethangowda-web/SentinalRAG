@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { runEvaluation, getEvaluationStatus, getEvaluationReport, getEvaluationHistory } from "@/services/evaluation";
+import { runEvaluation, getEvaluationStatus, getEvaluationReport, getEvaluationHistory, getEvaluationDashboard } from "@/services/evaluation";
 import type { EvalStatusResponse } from "@/services/evaluation";
 
 export function useEvaluationReport() {
@@ -61,4 +61,12 @@ export function useRunEvaluation() {
   }, []);
 
   return { ...mutation, evalStatus: status, resetStatus };
+}
+
+export function useEvaluationDashboard() {
+  return useQuery({
+    queryKey: ["evaluation-dashboard"],
+    queryFn: getEvaluationDashboard,
+    retry: 1,
+  });
 }

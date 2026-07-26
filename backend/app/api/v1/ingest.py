@@ -11,6 +11,8 @@ from app.core.exceptions import AppException
 from app.models.user import User
 from app.schemas.document import IngestResponse
 from app.services.document_service import ingest_document
+from app.services.file_service import save_upload_stream
+from app.utils.file_utils import get_upload_path
 from app.utils.memory import log_memory_usage
 
 logger = logging.getLogger(__name__)
@@ -40,12 +42,24 @@ async def upload_document(
     filename = file.filename
     ext = Path(filename).suffix.lower()
     content_type = file.content_type or _content_type_from_ext(ext)
-    file_bytes = await file.read()
 
-    logger.info("Ingest request: filename=%s content_type=%s size=%d", filename, content_type, len(file_bytes))
+    file_size_limit = 100 * 1024 * 1024
+
+    if file.size and file.size > file_size_limit:
+        raise AppException(
+            status_code=413,
+            detail=f"File too large. Maximum allowed size is {file_size_limit // (1024 * 1024)} MB.",
+        )
+
+    upload_path, doc_id = get_upload_path(filename)
+    total_bytes = await save_upload_stream(file.read, upload_path, file_size_limit)
+    file.file = None
+
+    logger.info("Ingest request: filename=%s content_type=%s size=%d", filename, content_type, total_bytes)
     log_memory_usage("upload_read", mem_before)
 
     try:
+        file_bytes = upload_path.read_bytes()
         result = await ingest_document(filename, content_type, file_bytes, db, user_id=current_user.id)
     except AppException:
         raise

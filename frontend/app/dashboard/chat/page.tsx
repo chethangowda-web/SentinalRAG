@@ -7,6 +7,7 @@ import {
   useCallback,
   useMemo,
 } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -586,6 +587,8 @@ function ActionButtons({
 
 export default function ChatPage() {
   const qc = useQueryClient();
+  const searchParams = useSearchParams();
+  const chatDocumentId = searchParams.get("document_id");
 
   /* state */
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -668,6 +671,7 @@ export default function ChatPage() {
       const response = await sendChatMessage({
         question,
         session_id: activeSessionId,
+        document_id: chatDocumentId || undefined,
       });
 
       const assistantMsg: Message = {

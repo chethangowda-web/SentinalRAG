@@ -2,7 +2,7 @@
 
 import { useHealth } from "@/hooks/use-health";
 import { useDocuments } from "@/hooks/use-documents";
-import { useEvaluationReport } from "@/hooks/use-evaluation";
+import { useEvaluationReport, useEvaluationDashboard } from "@/hooks/use-evaluation";
 import { useDashboardStats } from "@/hooks/use-dashboard";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
@@ -95,6 +95,7 @@ export default function DashboardPage() {
   const { data: health, isLoading: healthLoading } = useHealth();
   const { data: documents, isLoading: docsLoading } = useDocuments();
   const { data: evaluation } = useEvaluationReport();
+  const { data: evalDashboard } = useEvaluationDashboard();
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
 
   const loading = statsLoading || docsLoading || healthLoading;
@@ -105,6 +106,9 @@ export default function DashboardPage() {
   const totalPages = stats?.total_pages ?? documents?.reduce((sum, d) => sum + (d.pages || 0), 0) ?? 0;
   const uptime = health?.uptime_seconds ?? 0;
   const uptimeFormatted = uptime > 3600 ? `${(uptime / 3600).toFixed(1)}h` : `${(uptime / 60).toFixed(0)}m`;
+
+  const docsEvaluated = evalDashboard?.total_evaluated ?? 0;
+  const avgDocScore = evalDashboard?.avg_overall_score != null ? evalDashboard.avg_overall_score * 100 : null;
 
   const summary = evaluation?.summary;
   const s = summary?.sentinel;
@@ -159,6 +163,15 @@ export default function DashboardPage() {
                 icon={MessageSquare}
                 color="hsl(var(--chart-2))"
                 href="/dashboard/chat"
+                mono
+              />
+              <StatCard
+                title="Documents Evaluated"
+                value={docsEvaluated}
+                subtitle={avgDocScore != null ? `avg score ${avgDocScore.toFixed(0)}%` : "no evaluations yet"}
+                icon={BarChart3}
+                color={avgDocScore != null && avgDocScore >= 70 ? "hsl(var(--confidence-high))" : "hsl(var(--confidence-medium))"}
+                href="/dashboard/evaluation"
                 mono
               />
               <StatCard

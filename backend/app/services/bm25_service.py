@@ -34,6 +34,7 @@ async def search_bm25(
     db: AsyncSession,
     top_k: int = 20,
     user_id: str | None = None,
+    document_id: str | None = None,
 ) -> list[BM25Result]:
     start = time.perf_counter()
 
@@ -46,11 +47,16 @@ async def search_bm25(
     if not tsquery:
         return []
 
-    user_condition = ""
+    conditions = []
     params: dict = {"query": query_text, "limit": top_k}
     if user_id:
-        user_condition = "AND d.user_id = :user_id"
+        conditions.append("d.user_id = :user_id")
         params["user_id"] = user_id
+    if document_id:
+        conditions.append("c.document_id = :document_id")
+        params["document_id"] = document_id
+
+    where_clause = " AND ".join(conditions) if conditions else "TRUE"
 
     sql = text(f"""
         SELECT
@@ -64,7 +70,7 @@ async def search_bm25(
         JOIN documents d ON d.id = c.document_id
         WHERE c.embedding_status = 'embedded'
           AND to_tsvector('english', c.chunk_text) @@ plainto_tsquery('english', :query)
-          {user_condition}
+          AND {where_clause}
         ORDER BY bm25_score DESC
         LIMIT :limit
     """)

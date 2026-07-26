@@ -4,6 +4,7 @@ from typing import TypedDict
 class GraphState(TypedDict):
     question: str
     rewritten_question: str | None
+    document_id: str | None
     retrieved_chunks: list[dict]
     confidence_score: float
     confidence_level: str

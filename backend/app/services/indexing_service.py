@@ -1,3 +1,4 @@
+import asyncio
 import gc
 import logging
 from pathlib import Path
@@ -144,6 +145,13 @@ async def embed_document(document_id: str, db: AsyncSession) -> EmbedResponse:
         document_id, total_chunks, processed_chunks,
     )
 
+    try:
+        from app.services.document_evaluation_service import evaluate_document
+        asyncio.create_task(_auto_evaluate(document_id, document.user_id))
+        logger.info("Auto-evaluation triggered for document %s", document_id)
+    except Exception as e:
+        logger.warning("Failed to trigger auto-evaluation for %s: %s", document_id, e)
+
     force_gc()
     log_memory_usage("embedding_done", mem_before)
 
@@ -153,3 +161,16 @@ async def embed_document(document_id: str, db: AsyncSession) -> EmbedResponse:
         embedded_chunks=processed_chunks,
         status="embedded",
     )
+
+
+async def _auto_evaluate(document_id: str, user_id: str | None) -> None:
+    try:
+        from app.core.database import get_session_maker
+        session_maker = get_session_maker()
+        async with session_maker() as db:
+            from app.services.document_evaluation_service import evaluate_document
+            logger.info("Running auto-evaluation for document %s", document_id)
+            await evaluate_document(document_id, db, user_id=user_id)
+            logger.info("Auto-evaluation completed for document %s", document_id)
+    except Exception as e:
+        logger.error("Auto-evaluation failed for document %s: %s", document_id, e)

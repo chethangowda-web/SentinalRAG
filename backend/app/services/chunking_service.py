@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 _SECTION_HEADER_RE = re.compile(
     r"^(#{1,3}\s+|(?:[A-Z][A-Za-z\s]{2,50}):\s*$|(?:Chapter|Section|Part|Appendix)\s+\d+|^\d+\.\s+[A-Z])",
 )
+_SENTENCE_BOUNDARY = re.compile(r"(?<=[.!?])\s+")
 
 
 class TextChunk:
@@ -51,10 +52,29 @@ def _split_long_paragraph(para: str, chunk_size: int) -> list[str]:
     words = para.split()
     if len(words) <= chunk_size:
         return [para]
+    sentences = _SENTENCE_BOUNDARY.split(para)
     parts: list[str] = []
-    for i in range(0, len(words), chunk_size):
-        part = " ".join(words[i : i + chunk_size])
-        parts.append(part)
+    current: list[str] = []
+    current_len = 0
+    for sent in sentences:
+        sent_len = len(sent.split())
+        if current_len + sent_len <= chunk_size:
+            current.append(sent)
+            current_len += sent_len
+        else:
+            if current:
+                parts.append(" ".join(current))
+            if sent_len > chunk_size:
+                sub_words = sent.split()
+                for i in range(0, len(sub_words), chunk_size):
+                    parts.append(" ".join(sub_words[i:i + chunk_size]))
+                current = []
+                current_len = 0
+            else:
+                current = [sent]
+                current_len = sent_len
+    if current:
+        parts.append(" ".join(current))
     return parts
 
 
@@ -122,8 +142,18 @@ def chunk_text(text: str) -> list[TextChunk]:
 
     for para in paragraphs:
         detected = _detect_section(para)
+
         if detected:
+            if current_parts:
+                current_parts, current_words, current_char_start = _finalize_with_overlap(
+                    current_parts, current_char_start, chunk_index, chunks,
+                    section=current_section,
+                )
+                chunk_index += 1
             current_section = detected
+
+            if len(para.split()) <= 8:
+                continue
 
         para_words = len(para.split())
 

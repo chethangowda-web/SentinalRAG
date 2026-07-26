@@ -138,6 +138,7 @@ async def chat_endpoint(
     initial_state: GraphState = {
         "question": body.question.strip(),
         "rewritten_question": None,
+        "document_id": body.document_id,
         "retrieved_chunks": [],
         "confidence_score": 0.0,
         "confidence_level": "LOW",
@@ -160,7 +161,7 @@ async def chat_endpoint(
     }
 
     try:
-        result = await graph.ainvoke(initial_state, {"configurable": {"db": db, "user_id": current_user.id}})
+        result = await graph.ainvoke(initial_state, {"configurable": {"db": db, "user_id": current_user.id, "document_id": body.document_id}})
     except Exception as e:
         logger.exception("Graph execution failed for trace_id=%s: %s", trace_id, e)
         return ChatResponse(

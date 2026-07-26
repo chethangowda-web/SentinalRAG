@@ -1,8 +1,8 @@
 import asyncio
+import json
 import logging
 import time
 import uuid
-from pathlib import Path
 from typing import Any
 
 from sqlalchemy import select
@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.document import Document
+from app.models.document_evaluation import DocumentEvaluation
 from app.services.retrieval_service import retrieve
 from app.services.answer_generator import generate_answer
 from evaluation.metrics.collector import MetricsCollector
@@ -28,7 +29,6 @@ async def evaluate_document(document_id: str, db: AsyncSession, user_id: str | N
     logger.info("Starting per-document evaluation for %s: %s", document_id, document.filename)
 
     questions = _generate_questions(document)
-
     metrics_collector = MetricsCollector()
     per_question: list[dict[str, Any]] = []
     all_latencies: list[float] = []
@@ -50,7 +50,7 @@ async def evaluate_document(document_id: str, db: AsyncSession, user_id: str | N
 
     elapsed = round(time.perf_counter() - start_time, 2)
 
-    return {
+    eval_data = {
         "document_id": document_id,
         "filename": document.filename,
         "document_type": document.document_type,
@@ -61,6 +61,47 @@ async def evaluate_document(document_id: str, db: AsyncSession, user_id: str | N
         "per_question": per_question,
         "recommendations": _generate_recommendations(summary_metrics),
     }
+
+    try:
+        await _save_evaluation(db, document_id, user_id, summary_metrics, elapsed, eval_data)
+    except Exception as e:
+        logger.error("Failed to save document evaluation to DB: %s", e)
+
+    return eval_data
+
+
+async def _save_evaluation(
+    db: AsyncSession,
+    document_id: str,
+    user_id: str | None,
+    summary: dict[str, Any],
+    elapsed: float,
+    eval_data: dict[str, Any],
+) -> None:
+    existing = await db.execute(
+        select(DocumentEvaluation).where(DocumentEvaluation.document_id == document_id)
+    )
+    existing_eval = existing.scalar_one_or_none()
+
+    overall = summary.get("overall_rag_score", 0) / 100.0
+    record = existing_eval or DocumentEvaluation(document_id=document_id, user_id=user_id)
+    record.overall_score = overall
+    record.faithfulness = summary.get("avg_faithfulness", 0)
+    record.correctness = summary.get("avg_answer_relevancy", 0)
+    record.answer_relevancy = summary.get("avg_answer_relevancy", 0)
+    record.context_recall = summary.get("avg_answer_relevancy", 0)
+    record.precision = summary.get("avg_answer_relevancy", 0)
+    record.hallucination_rate = summary.get("avg_hallucination", 0)
+    record.retrieval_score = summary.get("avg_confidence", 0) / 100.0 if summary.get("avg_confidence") else 0
+    record.ocr_confidence = None
+    record.processing_time = elapsed
+    record.total_questions = summary.get("total_questions", 0)
+    record.eval_data = json.dumps(eval_data, default=str)
+    record.status = "completed"
+
+    if existing_eval is None:
+        db.add(record)
+    await db.commit()
 
 
 def _generate_questions(document: Document) -> list[dict[str, str]]:
@@ -117,7 +158,7 @@ async def _evaluate_single_question(
     question_text = q["question"]
     qid = str(uuid.uuid4())[:8]
 
-    search_response = await retrieve(question_text, db, user_id=document.user_id)
+    search_response = await retrieve(question_text, db, user_id=document.user_id, document_id=document.id)
 
     chunks = []
     for r in search_response.results:
