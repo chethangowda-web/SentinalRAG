@@ -92,6 +92,10 @@ An `llm_observability` dict tracks token usage per stage — prompt/completion/t
 
 The `graph_execution` list captures per-node timing, input/output summaries, routing decisions, and retry counts for full decision traceability.
 
+### Database migrations
+
+On PostgreSQL the app runs `alembic upgrade head` at startup (SQLite, used for local dev and tests, uses `create_all`). A database that already has tables but no `alembic_version` row (created before Alembic was used) is stamped at `902bc76d113c` first, then upgraded. All revisions are idempotent, so a database already matching the models passes through unchanged. `tests/test_migrations.py` exercises fresh, `create_all`-built and old-revision databases when `MIGRATION_TEST_DATABASE_URL` is set (CI sets it).
+
 ### Trace Service
 
 A dedicated `TraceService` persists every pipeline execution as a `Trace` ORM record (SQLAlchemy + Alembic migrations). Traces include question, answer, confidence score, reasoning path, retrieval details, latencies, llm_observability, and graph execution data. Export endpoints support CSV, Markdown, and JSON formats.

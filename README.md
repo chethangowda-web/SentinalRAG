@@ -254,7 +254,11 @@ sentinelrag/
 │   │   ├── env.py                    # Async Alembic environment
 │   │   ├── script.py.mako            # Migration template
 │   │   └── versions/                 # Revision scripts
-│   │       └── 001_initial.py        # Creates documents, chunks, traces tables
+│   │       ├── 001_initial.py        # documents, chunks, traces
+│   │       ├── 002_add_document_features.py
+│   │       ├── 003_add_users_and_ownership.py
+│   │       ├── 902bc76d113c_add_document_evaluations_table.py
+│   │       └── 004_sync_schema_with_models.py
 │   ├── evaluation/                   # Benchmark evaluation framework
 │   │   ├── dataset.py                # Dataset loader
 │   │   ├── datasets/benchmark.json   # 18-question benchmark

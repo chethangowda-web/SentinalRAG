@@ -114,111 +114,41 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
+# Schema state of databases that predate Alembic (built by create_all or the old
+# hand-written startup SQL). They are stamped here, then upgraded to head.
+_PRE_ALEMBIC_REVISION = "902bc76d113c"
+
+
+def _alembic_config():
+    from pathlib import Path
+
+    from alembic.config import Config
+
+    backend_dir = Path(__file__).resolve().parents[2]
+    cfg = Config(str(backend_dir / "alembic.ini"))
+    cfg.set_main_option("script_location", str(backend_dir / "migrations"))
+    cfg.attributes["configure_logger"] = False
+    return cfg
+
+
 async def _run_alembic_migrations() -> None:
-    """Add missing columns and tables for auth support (safe, idempotent)."""
-    from sqlalchemy import text as sa_text
+    """Bring the PostgreSQL schema to the latest Alembic revision."""
+    from alembic import command
+    from sqlalchemy import inspect as sa_inspect
 
-    engine = get_engine()
-    async with engine.connect() as conn:
-        await conn.execute(sa_text("SELECT 1"))
-        tables_result = await conn.execute(
-            sa_text("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
-        )
-        existing_tables = {row[0] for row in tables_result.fetchall()}
-        logger.info("Existing tables: %s", sorted(existing_tables))
+    def _inspect_tables(sync_conn) -> set[str]:
+        return set(sa_inspect(sync_conn).get_table_names())
 
-        if "users" not in existing_tables:
-            await conn.execute(sa_text(
-                "CREATE TABLE users ("
-                "id VARCHAR(36) PRIMARY KEY, "
-                "name VARCHAR(255) NOT NULL, "
-                "email VARCHAR(255) NOT NULL UNIQUE, "
-                "password_hash VARCHAR(255) NOT NULL, "
-                "created_at TIMESTAMP DEFAULT NOW(), "
-                "updated_at TIMESTAMP DEFAULT NOW()"
-                ")"
-            ))
-            await conn.execute(sa_text("CREATE INDEX IF NOT EXISTS ix_users_email ON users(email)"))
-            logger.info("Created users table")
+    async with get_engine().connect() as conn:
+        existing_tables = await conn.run_sync(_inspect_tables)
+    logger.info("Existing tables: %s", sorted(existing_tables))
 
-        if "evaluation_runs" not in existing_tables:
-            await conn.execute(sa_text(
-                "CREATE TABLE evaluation_runs ("
-                "id VARCHAR(36) PRIMARY KEY, "
-                "evaluation_id VARCHAR(100) NOT NULL, "
-                "user_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL, "
-                "status VARCHAR(20) NOT NULL DEFAULT 'running', "
-                "created_at TIMESTAMP DEFAULT NOW()"
-                ")"
-            ))
-            await conn.execute(sa_text(
-                "CREATE INDEX IF NOT EXISTS ix_evaluation_runs_evaluation_id ON evaluation_runs(evaluation_id)")
-            )
-            await conn.execute(sa_text(
-                "CREATE INDEX IF NOT EXISTS ix_evaluation_runs_user_id ON evaluation_runs(user_id)")
-            )
-            logger.info("Created evaluation_runs table")
-
-        if "document_evaluations" not in existing_tables:
-            await conn.execute(sa_text(
-                "CREATE TABLE document_evaluations ("
-                "id VARCHAR(36) PRIMARY KEY, "
-                "document_id VARCHAR(36) NOT NULL REFERENCES documents(id) ON DELETE CASCADE, "
-                "user_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL, "
-                "overall_score FLOAT DEFAULT 0, "
-                "faithfulness FLOAT DEFAULT 0, "
-                "correctness FLOAT DEFAULT 0, "
-                "answer_relevancy FLOAT DEFAULT 0, "
-                "context_recall FLOAT DEFAULT 0, "
-                "precision FLOAT DEFAULT 0, "
-                "hallucination_rate FLOAT DEFAULT 0, "
-                "retrieval_score FLOAT DEFAULT 0, "
-                "ocr_confidence FLOAT, "
-                "processing_time FLOAT DEFAULT 0, "
-                "total_questions INTEGER DEFAULT 0, "
-                "eval_data TEXT, "
-                "status VARCHAR(20) DEFAULT 'running', "
-                "error TEXT, "
-                "created_at TIMESTAMP DEFAULT NOW(), "
-                "updated_at TIMESTAMP DEFAULT NOW()"
-                ")"
-            ))
-            await conn.execute(sa_text(
-                "CREATE INDEX IF NOT EXISTS ix_document_evaluations_document_id ON document_evaluations(document_id)")
-            )
-            await conn.execute(sa_text(
-                "CREATE INDEX IF NOT EXISTS ix_document_evaluations_user_id ON document_evaluations(user_id)")
-            )
-            logger.info("Created document_evaluations table")
-
-        for tname in ("documents", "chat_sessions", "traces"):
-            if tname in existing_tables:
-                col_check = await conn.execute(
-                    sa_text(
-                        "SELECT EXISTS (SELECT FROM information_schema.columns "
-                        "WHERE table_name = :t AND column_name = 'user_id')"
-                    ),
-                    {"t": tname},
-                )
-                has_col = col_check.scalar()
-                if not has_col:
-                    await conn.execute(sa_text(
-                        f"ALTER TABLE {tname} ADD COLUMN user_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL"
-                    ))
-                    await conn.execute(sa_text(f"CREATE INDEX IF NOT EXISTS ix_{tname}_user_id ON {tname}(user_id)"))
-                    logger.info("Added user_id column + index to %s", tname)
-
-        await conn.execute(sa_text(
-            "CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) PRIMARY KEY)"
-        ))
-        version_check = await conn.execute(sa_text("SELECT version_num FROM alembic_version"))
-        row = version_check.fetchone()
-        if not row:
-            await conn.execute(sa_text("INSERT INTO alembic_version (version_num) VALUES ('902bc76d113c')"))
-            logger.info("Stamped alembic_version at 902bc76d113c")
-
-        await conn.commit()
-
+    cfg = _alembic_config()
+    # Alembic's env.py drives its own event loop, so run it off this one.
+    if "documents" in existing_tables and "alembic_version" not in existing_tables:
+        logger.info("Database predates Alembic; stamping at %s", _PRE_ALEMBIC_REVISION)
+        await asyncio.to_thread(command.stamp, cfg, _PRE_ALEMBIC_REVISION)
+    await asyncio.to_thread(command.upgrade, cfg, "head")
     logger.info("Schema migration applied successfully")
 
 
@@ -232,7 +162,7 @@ async def init_db() -> None:
         try:
             await _run_alembic_migrations()
         except Exception as e:
-            logger.warning("Alembic migration failed, fallback to create_all: %s", e)
+            logger.exception("Alembic migration failed, falling back to create_all: %s", e)
             engine = get_engine()
             async with engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)

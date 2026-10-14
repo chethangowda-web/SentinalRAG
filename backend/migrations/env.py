@@ -10,16 +10,20 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.core.config import settings
 from app.core.database import Base
 
-import app.models.document
-import app.models.chunk
-import app.models.trace
-import app.models.user
-import app.models.evaluation_run
-import app.models.document_evaluation
+# Imported for their side effect: registering every table on Base.metadata.
+import app.models.chat_session  # noqa: F401
+import app.models.chunk  # noqa: F401
+import app.models.document  # noqa: F401
+import app.models.document_evaluation  # noqa: F401
+import app.models.evaluation_run  # noqa: F401
+import app.models.trace  # noqa: F401
+import app.models.user  # noqa: F401
 
 config = context.config
 
-if config.config_file_name is not None:
+# When the app runs migrations at startup it sets configure_logger=False so that
+# fileConfig() does not replace the application's logging setup.
+if config.config_file_name is not None and config.attributes.get("configure_logger", True):
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
