@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 
@@ -11,7 +12,7 @@ async def rewrite_node(state: GraphState) -> dict:
     start = time.perf_counter()
     question = state["question"]
 
-    rewritten = rewrite_query(question)
+    rewritten = await asyncio.to_thread(rewrite_query, question)
 
     elapsed = round((time.perf_counter() - start) * 1000, 1)
     latencies = dict(state.get("latencies", {}))

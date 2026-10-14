@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 
@@ -14,7 +15,8 @@ async def generation_node(state: GraphState) -> dict:
     question = state["question"]
     chunks = state.get("retrieved_chunks", [])
 
-    answer = generate_answer(question, chunks)
+    # generate_answer makes a blocking HTTP call to the LLM; keep it off the event loop.
+    answer = await asyncio.to_thread(generate_answer, question, chunks)
 
     citations = []
     for c in chunks:
