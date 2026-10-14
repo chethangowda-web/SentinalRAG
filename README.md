@@ -45,7 +45,7 @@ An 8-node LangGraph workflow that evaluates confidence after every retrieval. Lo
 Combines vector similarity search (Qdrant, 384-dimensional embeddings) with PostgreSQL full-text search (BM25) using Reciprocal Rank Fusion (RRF). Retrieved results are re-ranked by a dedicated cross-encoder model for maximum precision.
 
 ### 3-Tier Confidence Scoring
-A composite confidence score (0–100) combining vector similarity (30%), reranker confidence (50%), and result coverage (20%). Scores map to HIGH (≥80), MEDIUM (≥50), or LOW tiers that drive the self-correction workflow.
+A composite confidence score (0–100) combining vector similarity (30%), reranker confidence (50%), and result coverage (20%). Scores map to HIGH (≥65), MEDIUM (≥40), or LOW tiers that drive the self-correction workflow.
 
 ### Contradiction Detection
 Identifies numerical conflicts (same figure cited in different contexts) and policy conflicts (positive vs. negative statements about the same policy) across retrieved chunks, preventing inconsistent answers.
@@ -389,9 +389,13 @@ npm run dev
 | `DATABASE_URL` | No | `postgresql+asyncpg://sentinel:sentinel@localhost:5432/sentinelrag` | PostgreSQL connection |
 | `REDIS_URL` | No | `redis://localhost:6379/0` | Redis connection |
 | `QDRANT_URL` | No | `http://localhost:6333` | Qdrant connection |
-| `SECRET_KEY` | Yes | `change-me-in-production` (in `.env.example`) | App secret key (required; generate a 32+ char value for production) |
+| `SECRET_KEY` | Yes | — | Signs login tokens. Must be a random 32+ char value; the server refuses to start on PostgreSQL with the old default or a short key |
+| `JWT_SECRET` | No | `SECRET_KEY` | Separate signing key for JWTs |
+| `ADMIN_EMAILS` | No | — | Comma-separated emails allowed to view global metrics and change settings |
+| `PRELOAD_MODELS` | No | `false` | Load embedding + reranker models at startup (~1 GB RAM) instead of on first use |
+| `LLM_MAX_TOKENS` | No | `1024` | Max tokens per generated answer |
 | `LOG_LEVEL` | No | `INFO` | Logging level |
-| `MAX_FILE_SIZE` | No | `52428800` | Max upload size (50MB) |
+| `MAX_FILE_SIZE` | No | `104857600` | Max upload size (100MB) |
 | `RATE_LIMIT_MAX_REQUESTS` | No | `100` | Max requests per window |
 | `RATE_LIMIT_WINDOW_SECONDS` | No | `60` | Rate limit window |
 
@@ -408,7 +412,7 @@ npm run dev
 | `GET` | `/api/v1/metrics` | Detailed system metrics |
 | `POST` | `/api/v1/chat` | Self-correcting Q&A with citations |
 | `POST` | `/api/v1/search` | Hybrid search with confidence scoring |
-| `POST` | `/api/v1/ingest` | Upload document (PDF/PNG/JPG, max 50MB) |
+| `POST` | `/api/v1/ingest` | Upload document (PDF/PNG/JPG, max 100MB) |
 | `POST` | `/api/v1/embed/{document_id}` | Generate embeddings for document |
 | `GET` | `/api/v1/document/{document_id}/chunks` | List chunks for a document |
 | `POST` | `/api/v1/evaluate` | Run full benchmark evaluation |
@@ -429,33 +433,9 @@ Full interactive API documentation is available at `/docs` (Swagger UI) when the
 
 ## Evaluation Results
 
-SentinelRAG was evaluated against a standard RAG baseline on an 18-question benchmark dataset covering factual, quantitative, policy, edge-case, ambiguous, and OCR questions.
+SentinelRAG ships a benchmark that runs a baseline RAG (single retrieve + generate) and the full self-correcting pipeline over the same 18 questions (`backend/evaluation/datasets/benchmark.json`) and compares faithfulness, hallucination, answer relevancy, context precision/recall, correctness, latency and retry/contradiction/clarification behaviour.
 
-### Key Metrics
-
-| Metric | Baseline RAG | SentinelRAG | Improvement |
-|---|---|---|---|
-| **Faithfulness** | 82.4% | **94.7%** | +12.3% |
-| **Hallucination Rate** | 17.6% | **5.3%** | −70% |
-| **Answer Relevancy** | 78.9% | **91.2%** | +12.3% |
-| **Context Precision** | 71.3% | **88.6%** | +17.3% |
-| **Context Recall** | 74.1% | **92.4%** | +18.3% |
-| **Correctness** | 76.8% | **89.5%** | +12.7% |
-
-### Failure Mode Reduction
-
-| Failure Mode | Baseline | SentinelRAG | Reduction |
-|---|---|---|---|
-| Hallucinations | 32 | 8 | **75%** |
-| Missing Context Mistakes | 28 | 4 | **86%** |
-| Contradiction Errors | 18 | 2 | **89%** |
-| Ambiguity Missteps | 12 | 3 | **75%** |
-
-### Latency Trade-off
-
-The self-correction pipeline adds ~1.3 seconds on average compared to the baseline (4.1s vs 2.8s), but this is offset by a 70% reduction in hallucination rate and an 86% reduction in missing-context errors.
-
----
+> **No published numbers yet.** The benchmark questions reference policy documents (`sla_policy.pdf`, `refund_policy.pdf`, ...) that are not in this repository, and an earlier version of the runner scored every answer with an empty context, so previously reported figures cannot be reproduced from the repo. Upload the benchmark documents with your own account, run `POST /api/v1/evaluate` (or use the Evaluation page), and the report is generated from your run. The metrics are keyword-overlap heuristics, not LLM-judged scores, so treat them as relative signals between the two pipelines.
 
 ## Performance Results
 
@@ -496,7 +476,7 @@ See [PERFORMANCE.md](./PERFORMANCE.md) for detailed benchmarks, load test result
 - [x] Token counting (tiktoken integration)
 - [ ] Multi-modal RAG (images, tables, charts)
 - [ ] Streaming responses (Server-Sent Events)
-- [ ] User authentication and multi-tenant support
+- [x] User authentication and per-user data isolation (JWT)
 - [ ] Agentic tool use (calculator, DB queries, API calls)
 - [ ] Fine-tuned embeddings for domain-specific retrieval
 - [ ] A/B testing framework for configuration optimization

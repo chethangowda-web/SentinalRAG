@@ -4,6 +4,8 @@
 **Scope:** Full codebase review (backend ~4,200 lines Python, frontend ~4,100 lines TSX/TS)
 **Auditor:** Automated Engineering Audit
 
+> **Status update:** This audit is a snapshot from 2026-07-18. Findings 1.1 (contradiction routing), 1.2 (BM25 score), 1.3 (retry check) and 1.4 (Featherless config) are fixed in the current code. A later review added: JWT secret validation, per-user scoping of search/embed/chunks/duplicates/evaluation reports, admin-only global metrics and settings, reachable fallback node, non-blocking LLM calls, and an evaluation runner that now passes retrieved chunks to the metrics. The scores below were not recomputed.
+
 ---
 
 ## Executive Summary
