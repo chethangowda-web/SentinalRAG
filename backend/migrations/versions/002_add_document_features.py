@@ -16,18 +16,40 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _inspector():
+    return sa.inspect(op.get_bind())
+
+
+def _has_table(name: str) -> bool:
+    return _inspector().has_table(name)
+
+
+def _has_column(table: str, column: str) -> bool:
+    return column in {c["name"] for c in _inspector().get_columns(table)}
+
+
+def _has_index(table: str, name: str) -> bool:
+    return name in {i["name"] for i in _inspector().get_indexes(table)}
+
+
 def upgrade() -> None:
-    op.add_column("documents", sa.Column("ocr_quality", sa.String(10), nullable=True))
-    op.add_column("documents", sa.Column("ocr_confidence", sa.Float(), nullable=True))
-    op.add_column("documents", sa.Column("summary", sa.Text(), nullable=True))
-    op.add_column("documents", sa.Column("key_topics", sa.Text(), nullable=True))
-    op.add_column("documents", sa.Column("keywords", sa.Text(), nullable=True))
-    op.add_column("documents", sa.Column("entities", sa.Text(), nullable=True))
-    op.add_column("documents", sa.Column("document_type", sa.String(50), nullable=True))
-    op.add_column("documents", sa.Column("estimated_reading_time", sa.Integer(), nullable=True))
-    op.add_column("documents", sa.Column("sha256_hash", sa.String(64), nullable=True))
-    op.add_column("documents", sa.Column("duplicate_of", sa.String(36), nullable=True))
-    op.create_index("ix_documents_sha256_hash", "documents", ["sha256_hash"])
+    columns = [
+        sa.Column("ocr_quality", sa.String(10), nullable=True),
+        sa.Column("ocr_confidence", sa.Float(), nullable=True),
+        sa.Column("summary", sa.Text(), nullable=True),
+        sa.Column("key_topics", sa.Text(), nullable=True),
+        sa.Column("keywords", sa.Text(), nullable=True),
+        sa.Column("entities", sa.Text(), nullable=True),
+        sa.Column("document_type", sa.String(50), nullable=True),
+        sa.Column("estimated_reading_time", sa.Integer(), nullable=True),
+        sa.Column("sha256_hash", sa.String(64), nullable=True),
+        sa.Column("duplicate_of", sa.String(36), nullable=True),
+    ]
+    for column in columns:
+        if not _has_column("documents", column.name):
+            op.add_column("documents", column)
+    if not _has_index("documents", "ix_documents_sha256_hash"):
+        op.create_index("ix_documents_sha256_hash", "documents", ["sha256_hash"])
 
 
 def downgrade() -> None:

@@ -16,7 +16,33 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _inspector():
+    return sa.inspect(op.get_bind())
+
+
+def _has_table(name: str) -> bool:
+    return _inspector().has_table(name)
+
+
+def _has_column(table: str, column: str) -> bool:
+    return column in {c["name"] for c in _inspector().get_columns(table)}
+
+
+def _has_index(table: str, name: str) -> bool:
+    return name in {i["name"] for i in _inspector().get_indexes(table)}
+
+
 def upgrade() -> None:
+    # Guards make this safe on databases that were created from the models before Alembic was used.
+    if not _has_table("documents"):
+        _create_documents()
+    if not _has_table("chunks"):
+        _create_chunks()
+    if not _has_table("traces"):
+        _create_traces()
+
+
+def _create_documents() -> None:
     op.create_table(
         "documents",
         sa.Column("id", sa.String(36), primary_key=True),
@@ -36,6 +62,9 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(), server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), onupdate=sa.func.now()),
     )
+
+
+def _create_chunks() -> None:
     op.create_table(
         "chunks",
         sa.Column("id", sa.String(36), primary_key=True),
@@ -52,6 +81,9 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(), server_default=sa.func.now()),
     )
     op.create_index("ix_chunks_document_id", "chunks", ["document_id"])
+
+
+def _create_traces() -> None:
     op.create_table(
         "traces",
         sa.Column("id", sa.String(36), primary_key=True),

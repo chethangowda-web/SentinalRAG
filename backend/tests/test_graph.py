@@ -101,9 +101,14 @@ class TestContradictionNode:
         assert route_after_contradiction(state) == "clarification"
 
     def test_route_no_contradiction_to_generate(self):
-        state: GraphState = _make_state()
+        state: GraphState = _make_state(level="MEDIUM")
         state["contradiction_detected"] = False
         assert route_after_contradiction(state) == "generate_answer"
+
+    def test_route_no_contradiction_low_confidence_to_fallback(self):
+        state: GraphState = _make_state(level="LOW")
+        state["contradiction_detected"] = False
+        assert route_after_contradiction(state) == "fallback"
 
 
 class TestRetryNode:
@@ -297,8 +302,6 @@ class TestGraphExecution:
                 with patch("app.graph.nodes.rewrite_node.rewrite_query") as mock_rewrite:
                     mock_rewrite.return_value = "improved query"
                     with patch("app.graph.nodes.generation_node.generate_answer") as mock_gen:
-                        mock_gen.return_value = "I don't have enough evidence to answer this question reliably."
-
                         result = await graph.ainvoke(
                             {
                                 "question": "obscure question",
@@ -325,8 +328,11 @@ class TestGraphExecution:
                             },
                             {"configurable": {"db": db_session}},
                         )
-                        assert "don't have enough evidence" in result["answer"]
-                        assert any("generate_answer" in s for s in result["reasoning_path"])
+                        # LOW confidence after retries ends in the static fallback, never the LLM.
+                        mock_gen.assert_not_called()
+                        assert "No relevant information" in result["answer"]
+                        assert any("fallback" in s for s in result["reasoning_path"])
+                        assert not any("generate_answer" in s for s in result["reasoning_path"])
 
 
 def _make_high_conf_response():

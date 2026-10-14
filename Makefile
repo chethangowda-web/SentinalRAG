@@ -63,7 +63,7 @@ test-frontend:
 lint:
 	@echo "Running linting..."
 	cd backend && ruff check app/ tests/
-	cd frontend && npm run lint
+	cd frontend && npm run typecheck
 
 format:
 	@echo "Formatting code..."

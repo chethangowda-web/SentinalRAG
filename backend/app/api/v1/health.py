@@ -1,8 +1,9 @@
 import logging
 import time
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.core.auth import require_admin
 from app.core.config import settings
 from app.schemas.health import HealthResponse, ReadinessResponse, MetricsResponse
 
@@ -54,15 +55,16 @@ def _check_embedding() -> dict:
         from app.services.embedding_service import is_model_loaded
         if is_model_loaded():
             return {"status": "healthy", "model": settings.EMBEDDING_MODEL}
-        return {"status": "unhealthy", "error": "Model not loaded"}
+        # Models load lazily on first use unless PRELOAD_MODELS is set, so this is expected.
+        return {"status": "not_loaded", "model": settings.EMBEDDING_MODEL}
     except Exception as e:
         return {"status": "unhealthy", "error": str(e)}
 
 
 def _check_llm() -> dict:
-    if settings.DEEPSEEK_API_KEY:
-        return {"status": "configured", "model": settings.LLM_MODEL}
-    return {"status": "unconfigured", "error": "DEEPSEEK_API_KEY not set"}
+    if settings.effective_llm_api_key:
+        return {"status": "configured", "model": settings.effective_llm_model}
+    return {"status": "unconfigured", "error": "DEEPSEEK_API_KEY or FEATHERLESS_API_KEY not set"}
 
 
 def _get_disk_usage() -> dict:
@@ -128,7 +130,7 @@ async def readiness_check():
     )
 
 
-@router.get("/metrics", response_model=MetricsResponse)
+@router.get("/metrics", response_model=MetricsResponse, dependencies=[Depends(require_admin)])
 async def metrics():
     return MetricsResponse(
         version=settings.APP_VERSION,

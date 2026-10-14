@@ -1,3 +1,4 @@
+import asyncio
 import gc
 import logging
 import time
@@ -53,6 +54,15 @@ async def lifespan(application: FastAPI):
     except Exception:
         pass
 
+    if settings.PRELOAD_MODELS:
+        try:
+            from app.services import embedding_service, reranker_service
+            await asyncio.to_thread(embedding_service._load_model)
+            await asyncio.to_thread(reranker_service._load_reranker)
+            logger.info("Embedding and reranker models preloaded")
+        except Exception as e:
+            logger.warning("Model preload failed, will load on first use: %s", e)
+
     logger.info("Resource tracking started")
     yield
     tracker.stop()
@@ -94,7 +104,7 @@ def create_app() -> FastAPI:
         logger.info("Incoming request: method=%s path=%s request_id=%s", request.method, request.url.path, request_id)
         try:
             response = await call_next(request)
-        except Exception as exc:
+        except Exception:
             logger.exception("Request failed: method=%s path=%s request_id=%s", request.method, request.url.path, request_id)
             raise
         elapsed = (time.perf_counter() - start) * 1000

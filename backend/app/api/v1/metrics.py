@@ -1,7 +1,8 @@
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.core.auth import require_admin
 from app.core.metrics import get_metrics_collector
 from app.core.resource_tracker import get_resource_tracker
 from app.schemas.metrics import (
@@ -13,7 +14,8 @@ from app.schemas.metrics import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["metrics"])
+# Process-wide metrics aren't scoped per user, so only admins may read them.
+router = APIRouter(tags=["metrics"], dependencies=[Depends(require_admin)])
 
 
 @router.get("/metrics/performance", response_model=PerformanceMetricsResponse)

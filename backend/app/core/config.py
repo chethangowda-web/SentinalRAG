@@ -5,6 +5,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_SECRET_KEY = "change-me-in-production"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -26,7 +28,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     QDRANT_URL: str = "http://localhost:6333"
     QDRANT_API_KEY: str = ""
-    SECRET_KEY: str = "change-me-in-production"
+    SECRET_KEY: str = _DEFAULT_SECRET_KEY
 
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
@@ -50,6 +52,9 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSION: int = 384
     EMBEDDING_BATCH_SIZE: int = 24
     QDRANT_COLLECTION: str = "documents"
+    # Load the embedding and reranker models at startup instead of on first use.
+    # Off by default: both models together need ~1 GB RAM, which small hosts can't spare.
+    PRELOAD_MODELS: bool = False
 
     # DeepSeek (primary LLM provider)
     DEEPSEEK_API_KEY: str = ""
@@ -67,6 +72,15 @@ class Settings(BaseSettings):
     JWT_SECRET: str = ""
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_MINUTES: int = 1440
+
+    # Comma-separated emails allowed to see global metrics and change settings
+    ADMIN_EMAILS: str = ""
+
+    LLM_MAX_TOKENS: int = 1024
+
+    @property
+    def admin_emails(self) -> set[str]:
+        return {e.strip().lower() for e in self.ADMIN_EMAILS.split(",") if e.strip()}
 
     @property
     def effective_jwt_secret(self) -> str:
@@ -107,6 +121,12 @@ class Settings(BaseSettings):
         errors: list[str] = []
         if not self.SECRET_KEY:
             errors.append("SECRET_KEY is required. Set it in .env or environment variables.")
+        elif not self.JWT_SECRET and (self.SECRET_KEY == _DEFAULT_SECRET_KEY or len(self.SECRET_KEY) < 32):
+            # SECRET_KEY signs the JWTs, so a known or short value lets anyone forge tokens.
+            errors.append(
+                "SECRET_KEY (or JWT_SECRET) must be a random value of at least 32 characters. "
+                'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
+            )
         if not self.effective_llm_api_key:
             errors.append("No LLM API key configured (DEEPSEEK_API_KEY or FEATHERLESS_API_KEY). LLM features will not work.")
         if self.DATABASE_URL and not self.is_postgres and not self.is_sqlite:

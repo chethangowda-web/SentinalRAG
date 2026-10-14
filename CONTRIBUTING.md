@@ -35,7 +35,7 @@ npm install
 ### TypeScript/React (Frontend)
 
 - **TypeScript** — Strict mode enabled, avoid `any`
-- **ESLint** — Run `npm run lint` before committing
+- **TypeScript** — Run `npm run typecheck` before committing
 - **Components** — Follow existing patterns, use functional components with hooks
 - **Styling** — Use Tailwind CSS utility classes; avoid inline styles
 

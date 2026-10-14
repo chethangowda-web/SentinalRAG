@@ -51,7 +51,7 @@ Query → QueryPreprocessor → VectorSearch + BM25Search → HybridSearch (RRF)
 
 **Key engineering decisions:**
 
-- **Lazy model loading**: Sentence Transformers and Cross-Encoder models are loaded on first use, not at startup. This keeps cold start time to ~1 second (vs. 5+ seconds for eager loading). The first request pays the cold-start cost, but subsequent requests are fast.
+- **Lazy model loading**: Sentence Transformers and Cross-Encoder models are loaded on first use, not at startup. This keeps memory low on small hosts (both models together need roughly 1 GB). The first request pays the cold-start cost; set `PRELOAD_MODELS=true` to load them at startup instead.
 - **Batched embeddings**: `EmbeddingService` processes documents in configurable batches (default 32), reducing GPU memory pressure and improving throughput for large documents.
 - **Graceful degradation**: Every service that depends on an external resource (LLM, Qdrant, database) has a fallback path. For example, `AnswerGenerator` falls back to returning the first chunk's text if the LLM is unavailable.
 - **Sync vs. async**: Heavy CPU-bound operations (embedding, reranking, OCR) are synchronous and run in the thread pool. I/O-bound operations (database queries, network calls) are async.
@@ -70,7 +70,7 @@ LangGraph was chosen over a simple if-else chain because it provides:
 
 **Node 1: Retrieve** — Executes hybrid search (vector + BM25 + RRF + Cross-Encoder) and stores results as structured dicts in `retrieved_chunks`.
 
-**Node 2: Confidence Evaluate** — Calculates a composite score from vector similarity (30%), reranker confidence (50%), and result coverage (20%). Routes to generate if HIGH (≥80), or to rewrite if LOW/MEDIUM.
+**Node 2: Confidence Evaluate** — Calculates a composite score from vector similarity (30%), reranker confidence (50%), and result coverage (20%). Reranker scores are min-max normalised per query before weighting, and vector scores are weighted by rank. Routes to generate if HIGH (≥65), or to rewrite if LOW/MEDIUM (<65).
 
 **Node 3: Query Rewrite** — Uses the LLM to rewrite the user's question for better retrieval. The prompt instructs the LLM to expand vague pronouns, fix grammar, and add context.
 
@@ -82,7 +82,7 @@ LangGraph was chosen over a simple if-else chain because it provides:
 
 **Node 7: Generate Answer** — Constructs a prompt with the original question and retrieved context. Instructs the LLM to use only the provided context and cite sources with `[Source N]` markers.
 
-**Node 8: Fallback** — Returns a standard low-confidence "I don't have enough information" response when all paths fail.
+**Node 8: Fallback** — Reached when retries are exhausted, confidence is still LOW and no contradiction was found. Returns a static "not enough evidence" response without calling the LLM.
 
 ### Confidence Breakdown & Observability
 
@@ -91,6 +91,10 @@ Every node in the pipeline now returns a `confidence_breakdown` dict with per-co
 An `llm_observability` dict tracks token usage per stage — prompt/completion/total tokens via `tiktoken` (cl100k_base, fallback `len//4`) — along with model name and temperature for AI observability.
 
 The `graph_execution` list captures per-node timing, input/output summaries, routing decisions, and retry counts for full decision traceability.
+
+### Database migrations
+
+On PostgreSQL the app runs `alembic upgrade head` at startup (SQLite, used for local dev and tests, uses `create_all`). A database that already has tables but no `alembic_version` row (created before Alembic was used) is stamped at `902bc76d113c` first, then upgraded. All revisions are idempotent, so a database already matching the models passes through unchanged. `tests/test_migrations.py` exercises fresh, `create_all`-built and old-revision databases when `MIGRATION_TEST_DATABASE_URL` is set (CI sets it).
 
 ### Trace Service
 
@@ -199,14 +203,14 @@ Raw text from PDFs and OCR contains artifacts that degrade retrieval quality:
 
 ```
 Document → Section detection (##, ===, numbered) → Paragraph splitting
-    → For each paragraph: if ≤500 words, keep; else split at sentence boundaries
-    → 100-word overlap between consecutive chunks
+    → For each paragraph: if ≤300 words (`CHUNK_SIZE`), keep; else split at sentence boundaries
+    → 50-word overlap (`CHUNK_OVERLAP`) between consecutive chunks
     → Each chunk tracks: document_id, chunk_index, char_start, char_end, page_number, section
 ```
 
-**Why 500-word chunks with 100-word overlap?**
-- **500 words** (~3–5 paragraphs) provides sufficient context for the LLM while keeping individual chunks under the token limit for embedding models
-- **100-word overlap** (20%) ensures that sentences spanning chunk boundaries are captured in both chunks, preventing context loss at boundaries
+**Why 300-word chunks with 50-word overlap?** (defaults; both are settings)
+- **300 words** (~2–3 paragraphs) provides sufficient context for the LLM while keeping individual chunks under the token limit for embedding models
+- **50-word overlap** (~17%) ensures that sentences spanning chunk boundaries are captured in both chunks, preventing context loss at boundaries
 - **Section awareness** preserves document structure — chunks from different sections are less likely to be fused by the reranker
 
 ---
@@ -254,7 +258,7 @@ RRF_score(d) = 1/(k + rank_vector(d)) + 1/(k + rank_bm25(d))
 
 **Model: ms-marco-MiniLM-L-6-v2**
 
-A cross-encoder evaluates query-document pairs jointly (unlike bi-encoders which encode independently). This is more accurate but O(n) — we only rerank the top 10 results from RRF fusion to keep latency under control.
+A cross-encoder evaluates query-document pairs jointly (unlike bi-encoders which encode independently). This is more accurate but O(n) — we only rerank the top 15 results from RRF fusion and keep the best 8 to keep latency under control.
 
 **Why rerank at all?** The cross-encoder improves precision by 10–15% over RRF alone because it can model the interaction between query and document tokens — something neither vector search nor BM25 can do independently.
 
@@ -270,14 +274,14 @@ confidence = vector_similarity * 0.30 + reranker_confidence * 0.50 + coverage * 
 |---|---|---|
 | Vector similarity (avg) | 30% | Measures semantic alignment between query and results |
 | Reranker confidence (avg) | 50% | Highest weight — cross-encoder best captures query-document relevance |
-| Coverage (min(total/10, 1)) | 20% | Penalizes pipelines with very few results; caps at 10+ results |
+| Coverage (min(total/5, 1)) | 20% | Penalizes pipelines with very few results; caps at 5+ results |
 
 **Threshold alignment:**
-- **HIGH (≥80)**: Routes directly to answer generation — high confidence that retrieved context contains the answer
-- **MEDIUM (50–79)**: Triggers query rewriting and retry — some relevant context exists but may be insufficient
-- **LOW (<50)**: Triggers query rewriting and retry — retrieved context is likely insufficient
+- **HIGH (≥65)**: Routes directly to answer generation — high confidence that retrieved context contains the answer
+- **MEDIUM (40–64)**: Triggers query rewriting and retry — some relevant context exists but may be insufficient
+- **LOW (<40)**: Triggers query rewriting and retry; if retries do not lift it and no contradiction is found, the pipeline returns the static fallback instead of asking the LLM to answer from weak context
 
-The 80/50 thresholds were determined empirically by evaluating 100+ query-response pairs and finding that scores ≥80 rarely required correction, while scores <50 rarely produced correct answers.
+The 65/40 thresholds are tunable starting points chosen by hand against the normalised reranker scores; they have not been calibrated on a labelled dataset.
 
 ---
 
@@ -329,7 +333,8 @@ class GraphState(TypedDict):
 
 **After Contradiction Detection:**
 - Contradiction found → `clarification`
-- No contradiction → `generate_answer`
+- No contradiction, confidence MEDIUM/HIGH → `generate_answer`
+- No contradiction, confidence still LOW → `fallback`
 
 **After Clarification:**
 - Always → `END` (returns clarification question to user)

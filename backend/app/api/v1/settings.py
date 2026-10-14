@@ -2,9 +2,10 @@ import json
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+from app.core.auth import require_admin
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -56,7 +57,7 @@ async def get_settings():
     )
 
 
-@router.put("/settings", response_model=SettingsResponse)
+@router.put("/settings", response_model=SettingsResponse, dependencies=[Depends(require_admin)])
 async def update_settings(body: SettingsUpdate):
     overrides = {}
     if _SETTINGS_FILE.exists():
@@ -70,7 +71,7 @@ async def update_settings(body: SettingsUpdate):
     return await get_settings()
 
 
-@router.post("/settings/reset")
+@router.post("/settings/reset", dependencies=[Depends(require_admin)])
 async def reset_settings():
     if _SETTINGS_FILE.exists():
         _SETTINGS_FILE.unlink()

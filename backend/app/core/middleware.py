@@ -51,6 +51,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.max_requests = max_requests
         self.window_seconds = window_seconds
         self.requests: dict[str, list[float]] = {}
+        self._requests_seen = 0
 
     async def dispatch(self, request: Request, call_next):
         if request.url.path.startswith("/api/"):
@@ -62,6 +63,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 self.requests[client_ip] = [
                     t for t in self.requests[client_ip] if t > window_start
                 ]
+
+            # Drop IPs with no requests left in the window so the dict can't grow without bound.
+            self._requests_seen += 1
+            if self._requests_seen % 1000 == 0:
+                self.requests = {
+                    ip: ts for ip, ts in self.requests.items() if ts and ts[-1] > window_start
+                }
 
             if len(self.requests.get(client_ip, [])) >= self.max_requests:
                 logging.getLogger("sentinelrag.security").warning(

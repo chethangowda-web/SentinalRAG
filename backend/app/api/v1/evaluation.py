@@ -59,7 +59,7 @@ def _count_questions(dataset_path: str) -> int:
         return 18
 
 
-async def _run_evaluation_background(eval_id: str, dataset_path: str, total: int) -> None:
+async def _run_evaluation_background(eval_id: str, dataset_path: str, total: int, user_id: str | None = None) -> None:
     tasks = _load_tasks()
     tasks[eval_id] = {"status": "running", "progress": 0, "total": total, "error": None}
     _save_tasks(tasks)
@@ -67,7 +67,7 @@ async def _run_evaluation_background(eval_id: str, dataset_path: str, total: int
     session_maker = get_session_maker()
     try:
         async with session_maker() as db:
-            result = await _runner.run(db=db, dataset_path=dataset_path, eval_id=eval_id)
+            result = await _runner.run(db=db, dataset_path=dataset_path, eval_id=eval_id, user_id=user_id)
 
         report_files = _report_gen.generate_all(result)
         result["reports"] = report_files
@@ -108,7 +108,7 @@ async def run_evaluation(
     db.add(run)
     await db.commit()
 
-    task = asyncio.create_task(_run_evaluation_background(eval_id, dataset_path, total_questions))
+    task = asyncio.create_task(_run_evaluation_background(eval_id, dataset_path, total_questions, current_user.id))
     _eval_tasks.add(task)
     task.add_done_callback(_eval_tasks.discard)
 
@@ -133,9 +133,20 @@ async def get_evaluation_status(
 
 @router.get("/evaluation/report")
 async def get_latest_report(
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
-    result = _report_gen.load_latest_result()
+    # Results are stored on disk for every user; only serve runs this user started.
+    runs = await db.execute(
+        select(EvaluationRun.evaluation_id)
+        .where(EvaluationRun.user_id == current_user.id)
+        .order_by(EvaluationRun.created_at.desc())
+    )
+    result = None
+    for (evaluation_id,) in runs.all():
+        result = _report_gen.load_result(evaluation_id)
+        if result is not None:
+            break
     if result is None:
         raise HTTPException(status_code=404, detail="No evaluation results found. Run /api/v1/evaluate first.")
     return result

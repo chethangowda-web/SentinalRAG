@@ -21,8 +21,14 @@ def contradiction_node(state: GraphState) -> dict:
     reasoning_path = list(state.get("reasoning_path", []))
     reasoning_path.append("contradiction_detect")
 
-    decision = f"{'detected -> clarification' if detected else 'none -> generate_answer'}"
-    next_node = "clarification" if detected else "generate_answer"
+    low_confidence = state.get("confidence_level") == "LOW"
+    if detected:
+        next_node = "clarification"
+    elif low_confidence:
+        next_node = "fallback"
+    else:
+        next_node = "generate_answer"
+    decision = f"{'detected' if detected else 'none'} -> {next_node}"
 
     graph_execution = list(state.get("graph_execution", []))
     graph_execution.append({
@@ -66,5 +72,8 @@ def route_after_contradiction(state: GraphState) -> str:
     if state.get("contradiction_detected"):
         logger.info("Contradiction detected -> routing to clarification")
         return "clarification"
+    if state.get("confidence_level") == "LOW":
+        logger.info("No contradiction but confidence still LOW -> routing to fallback")
+        return "fallback"
     logger.info("No contradiction -> routing to generate_answer")
     return "generate_answer"

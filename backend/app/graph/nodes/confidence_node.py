@@ -60,6 +60,7 @@ def confidence_node(state: GraphState) -> dict:
     return {
         "confidence_score": conf.score,
         "confidence_level": conf.level,
+        "initial_confidence": state.get("initial_confidence") if state.get("initial_confidence") is not None else conf.score,
         "confidence_reason": reason,
         "confidence_breakdown": breakdown,
         "latencies": latencies,

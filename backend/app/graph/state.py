@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 
 class GraphState(TypedDict):
@@ -24,3 +24,5 @@ class GraphState(TypedDict):
     retrieval_details: list[dict]
     confidence_breakdown: dict | None
     llm_observability: dict | None
+    # Confidence of the first retrieval, kept so retry gains can be measured
+    initial_confidence: NotRequired[float | None]

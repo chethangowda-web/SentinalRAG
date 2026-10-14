@@ -64,6 +64,7 @@ def build_graph() -> StateGraph:
         {
             "clarification": "clarification",
             "generate_answer": "generate_answer",
+            "fallback": "fallback",
         },
     )
 

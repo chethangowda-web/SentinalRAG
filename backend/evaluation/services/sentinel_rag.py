@@ -24,6 +24,7 @@ class SentinelRAG:
         self,
         question: str,
         db: AsyncSession,
+        user_id: str | None = None,
     ) -> dict[str, Any]:
         start = time.perf_counter()
         graph = self._get_graph()
@@ -48,7 +49,7 @@ class SentinelRAG:
         }
 
         try:
-            result = await graph.ainvoke(initial_state, {"configurable": {"db": db}})
+            result = await graph.ainvoke(initial_state, {"configurable": {"db": db, "user_id": user_id}})
         except Exception as e:
             logger.exception("SentinelRAG graph execution failed: %s", e)
             elapsed = round((time.perf_counter() - start) * 1000, 1)
@@ -87,4 +88,5 @@ class SentinelRAG:
             "clarification_needed": result.get("clarification_needed", False),
             "clarification_question": result.get("clarification_question"),
             "retry_count": result.get("retry_count", 0),
+            "initial_confidence": result.get("initial_confidence"),
         }

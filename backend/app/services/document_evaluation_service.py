@@ -8,7 +8,6 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.models.document import Document
 from app.models.document_evaluation import DocumentEvaluation
 from app.services.retrieval_service import retrieve
@@ -21,7 +20,10 @@ logger = logging.getLogger(__name__)
 async def evaluate_document(document_id: str, db: AsyncSession, user_id: str | None = None) -> dict[str, Any]:
     start_time = time.perf_counter()
 
-    result = await db.execute(select(Document).where(Document.id == document_id))
+    query = select(Document).where(Document.id == document_id)
+    if user_id is not None:
+        query = query.where(Document.user_id == user_id)
+    result = await db.execute(query)
     document = result.scalar_one_or_none()
     if document is None:
         raise ValueError(f"Document {document_id} not found")
@@ -41,7 +43,6 @@ async def evaluate_document(document_id: str, db: AsyncSession, user_id: str | N
         all_latencies.append(total_ms)
         all_confidences.append(pq_result.get("confidence_score", 0.0))
 
-    document_text = document.text_content or ""
     doc_keywords = set(document.keywords.split(",")) if document.keywords else set()
 
     summary_metrics = _compute_summary_metrics(
@@ -87,10 +88,10 @@ async def _save_evaluation(
     record = existing_eval or DocumentEvaluation(document_id=document_id, user_id=user_id)
     record.overall_score = overall
     record.faithfulness = summary.get("avg_faithfulness", 0)
-    record.correctness = summary.get("avg_answer_relevancy", 0)
+    record.correctness = summary.get("avg_correctness", 0)
     record.answer_relevancy = summary.get("avg_answer_relevancy", 0)
-    record.context_recall = summary.get("avg_answer_relevancy", 0)
-    record.precision = summary.get("avg_answer_relevancy", 0)
+    record.context_recall = summary.get("avg_context_recall", 0)
+    record.precision = summary.get("avg_context_precision", 0)
     record.hallucination_rate = summary.get("avg_hallucination", 0)
     record.retrieval_score = summary.get("avg_confidence", 0) / 100.0 if summary.get("avg_confidence") else 0
     record.ocr_confidence = None
@@ -119,6 +120,7 @@ def _generate_questions(document: Document) -> list[dict[str, str]]:
                 "question": f"What does this document say about {topic}?",
                 "type": "topic",
                 "source": "key_topics",
+                "reference": topic,
             })
 
     if keywords:
@@ -127,6 +129,7 @@ def _generate_questions(document: Document) -> list[dict[str, str]]:
                 "question": f"What information is provided about {kw} in this document?",
                 "type": "keyword",
                 "source": "keywords",
+                "reference": kw,
             })
 
     if summary:
@@ -136,6 +139,7 @@ def _generate_questions(document: Document) -> list[dict[str, str]]:
                 "question": f"Tell me more about: {sent.strip()}",
                 "type": "summary_detail",
                 "source": "summary",
+                "reference": sent.strip(),
             })
 
     doc_type = document.document_type or "document"
@@ -143,6 +147,7 @@ def _generate_questions(document: Document) -> list[dict[str, str]]:
         "question": f"What is the main purpose and key conclusions of this {doc_type}?",
         "type": "overall",
         "source": "general",
+        "reference": summary,
     })
 
     logger.info("Generated %d evaluation questions for document %s", len(questions), document.id)
@@ -174,13 +179,13 @@ async def _evaluate_single_question(
             "rerank_score": r.rerank_score,
         })
 
-    answer_text = generate_answer(question_text, chunks)
+    answer_text = await asyncio.to_thread(generate_answer, question_text, chunks)
 
     metrics = metrics_collector.compute_single(
         question=question_text,
         answer=answer_text,
         chunks=chunks,
-        ground_truth=document.text_content or "",
+        ground_truth=q.get("reference", ""),
         citations=None,
         confidence_score=search_response.confidence,
         latencies=search_response.latencies,
@@ -202,6 +207,9 @@ async def _evaluate_single_question(
         "metrics": {
             "faithfulness": _metric_value(metrics, "faithfulness"),
             "answer_relevancy": _metric_value(metrics, "answer_relevancy"),
+            "context_precision": _metric_value(metrics, "context_precision"),
+            "context_recall": _metric_value(metrics, "context_recall"),
+            "correctness": _metric_value(metrics, "correctness"),
             "hallucination": _metric_value(metrics, "hallucination"),
             "bias": _metric_value(metrics, "bias"),
             "toxicity": _metric_value(metrics, "toxicity"),
@@ -223,6 +231,9 @@ def _compute_summary_metrics(
 
     faithfulness_vals = [pq["metrics"]["faithfulness"] for pq in per_question]
     relevancy_vals = [pq["metrics"]["answer_relevancy"] for pq in per_question]
+    precision_vals = [pq["metrics"]["context_precision"] for pq in per_question]
+    recall_vals = [pq["metrics"]["context_recall"] for pq in per_question]
+    correctness_vals = [pq["metrics"]["correctness"] for pq in per_question]
     hallucination_vals = [pq["metrics"]["hallucination"] for pq in per_question]
     bias_vals = [pq["metrics"]["bias"] for pq in per_question]
     toxicity_vals = [pq["metrics"]["toxicity"] for pq in per_question]
@@ -253,6 +264,9 @@ def _compute_summary_metrics(
         "overall_rag_score": round(overall_rag_score, 1),
         "avg_faithfulness": round(avg_faithfulness, 4),
         "avg_answer_relevancy": round(avg_relevancy, 4),
+        "avg_context_precision": round(sum(precision_vals) / n, 4),
+        "avg_context_recall": round(sum(recall_vals) / n, 4),
+        "avg_correctness": round(sum(correctness_vals) / n, 4),
         "avg_hallucination": round(avg_hallucination, 4),
         "avg_bias": round(avg_bias, 4),
         "avg_toxicity": round(avg_toxicity, 4),

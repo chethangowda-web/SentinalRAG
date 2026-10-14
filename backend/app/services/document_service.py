@@ -10,7 +10,7 @@ from app.core.exceptions import AppException, InvalidUploadError
 from app.models.document import Document
 from app.schemas.document import IngestResponse
 from app.services.document_summary_service import generate_document_summary
-from app.services.duplicate_detection_service import check_duplicate
+from app.services.duplicate_detection_service import check_duplicate, compute_file_sha256
 from app.services.file_service import validate_file
 from app.services.ocr_quality_service import analyze_ocr_quality
 from app.services.ocr_service import ocr_image, ocr_pdf
@@ -126,7 +126,8 @@ async def ingest_document(
 
     log_memory_usage("summary_done", mem_before)
 
-    duplicate_result = await check_duplicate(open(upload_path, "rb").read(), filename, db, cleaned[:200])
+    file_sha256 = compute_file_sha256(upload_path)
+    duplicate_result = await check_duplicate(file_sha256, filename, db, cleaned[:200], user_id=user_id)
     if duplicate_result:
         logger.warning("Duplicate detected: %s matches %s (method=%s, sim=%.1f%%)", filename, duplicate_result.get("existing_filename", ""), duplicate_result["method"], duplicate_result["similarity"])
 
@@ -153,7 +154,7 @@ async def ingest_document(
         keywords=",".join(summary_result["keywords"][:12]) if summary_result.get("keywords") else None,
         document_type=summary_result["document_type"],
         estimated_reading_time=summary_result["estimated_reading_time"],
-        sha256_hash=duplicate_result["sha256"] if duplicate_result else None,
+        sha256_hash=file_sha256,
         duplicate_of=duplicate_result["existing_id"] if duplicate_result and duplicate_result["similarity"] > 90 else None,
     )
     cleaned = None

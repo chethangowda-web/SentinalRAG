@@ -8,6 +8,7 @@ from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.core.exceptions import AppException
 from app.models.chunk import Chunk
+from app.models.document import Document
 from app.models.user import User
 from app.schemas.chunk import ChunkListResponse, ChunkMetadata, EmbedResponse
 from app.services.indexing_service import embed_document
@@ -25,7 +26,7 @@ async def embed_document_endpoint(
 ):
     logger.info("Embed request for document: %s by user: %s", document_id, current_user.id)
     try:
-        result = await embed_document(document_id, db)
+        result = await embed_document(document_id, db, user_id=current_user.id)
     except AppException:
         raise
     except Exception as e:
@@ -42,6 +43,12 @@ async def list_chunks(
     current_user: User = Depends(get_current_user),
 ):
     logger.info("List chunks request for document: %s by user: %s", document_id, current_user.id)
+
+    owner = await db.execute(
+        select(Document.id).where(Document.id == document_id, Document.user_id == current_user.id)
+    )
+    if owner.scalar_one_or_none() is None:
+        raise AppException(status_code=404, detail=f"No chunks found for document {document_id}")
 
     count_result = await db.execute(
         select(func.count()).select_from(Chunk).where(Chunk.document_id == document_id)

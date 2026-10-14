@@ -20,7 +20,7 @@ def _get_llm():
             api_key=settings.effective_llm_api_key,
             base_url=settings.effective_llm_base_url,
             temperature=0.05,
-            max_tokens=256,
+            max_tokens=settings.LLM_MAX_TOKENS,
             timeout=30,
             max_retries=1,
         )

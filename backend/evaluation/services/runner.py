@@ -39,6 +39,21 @@ def _update_status(eval_id: str, progress: int, total: int, status: str = "runni
     _STATUS_FILE.write_text(json.dumps(tasks, indent=2))
 
 
+def _slim_chunks(chunks: list[dict[str, Any]], max_chars: int = 1500) -> list[dict[str, Any]]:
+    """Keep what the metrics and the report need from each retrieved chunk."""
+    return [
+        {
+            "chunk_id": c.get("chunk_id"),
+            "document_id": c.get("document_id"),
+            "filename": c.get("filename"),
+            "text": (c.get("text") or "")[:max_chars],
+            "vector_score": c.get("vector_score"),
+            "rerank_score": c.get("rerank_score"),
+        }
+        for c in chunks
+    ]
+
+
 class EvaluationRunner:
     def __init__(self) -> None:
         self.baseline = BaselineRAG()
@@ -54,6 +69,7 @@ class EvaluationRunner:
         dataset_path: str | None = None,
         eval_id: str | None = None,
         questions: list[dict[str, Any]] | None = None,
+        user_id: str | None = None,
     ) -> dict[str, Any]:
         eval_id = eval_id or str(uuid.uuid4())
         timestamp = datetime.now(timezone.utc).isoformat()
@@ -77,8 +93,8 @@ class EvaluationRunner:
                     qid = q["id"]
                     logger.info("Processing question %s/%s: %s", qid, total, q["question"][:60])
 
-                    b_result = await self.baseline.answer(q["question"], session)
-                    s_result = await self.sentinel.answer(q["question"], session)
+                    b_result = await self.baseline.answer(q["question"], session, user_id=user_id)
+                    s_result = await self.sentinel.answer(q["question"], session, user_id=user_id)
 
                     b_result["question_id"] = qid
                     s_result["question_id"] = qid
@@ -104,6 +120,7 @@ class EvaluationRunner:
                             "clarification_needed": b_result.get("clarification_needed", False),
                             "clarification_question": b_result.get("clarification_question"),
                             "retry_count": b_result.get("retry_count", 0),
+                            "retrieved_chunks": _slim_chunks(b_result.get("retrieved_chunks", [])),
                         },
                         "sentinel": {
                             "answer": s_result["answer"],
@@ -117,6 +134,8 @@ class EvaluationRunner:
                             "clarification_needed": s_result.get("clarification_needed", False),
                             "clarification_question": s_result.get("clarification_question"),
                             "retry_count": s_result.get("retry_count", 0),
+                            "initial_confidence": s_result.get("initial_confidence"),
+                            "retrieved_chunks": _slim_chunks(s_result.get("retrieved_chunks", [])),
                         },
                     }
                 except Exception as exc:
@@ -125,35 +144,11 @@ class EvaluationRunner:
 
         results = [await process_one(i, q) for i, q in enumerate(questions)]
         per_question = [r for r in results if r is not None]
+        # Drop failed questions from the question list too, so answers stay paired with their ground truth.
+        questions = [q for q, r in zip(questions, results) if r is not None]
 
         baseline_results = [pq["baseline"] for pq in per_question]
         sentinel_results = [pq["sentinel"] for pq in per_question]
-
-        baseline_results_raw = []
-        sentinel_results_raw = []
-        for pq in per_question:
-            baseline_results_raw.append({
-                "answer": pq["baseline"]["answer"],
-                "confidence_score": pq["baseline"]["confidence_score"],
-                "latencies": pq["baseline"]["latencies"],
-                "citations": pq["baseline"]["citations"],
-                "reasoning_path": pq["baseline"]["reasoning_path"],
-                "contradiction_detected": pq["baseline"]["contradiction_detected"],
-                "clarification_needed": pq["baseline"]["clarification_needed"],
-                "retry_count": pq["baseline"]["retry_count"],
-                "retrieved_chunks": [],
-            })
-            sentinel_results_raw.append({
-                "answer": pq["sentinel"]["answer"],
-                "confidence_score": pq["sentinel"]["confidence_score"],
-                "latencies": pq["sentinel"]["latencies"],
-                "citations": pq["sentinel"]["citations"],
-                "reasoning_path": pq["sentinel"]["reasoning_path"],
-                "contradiction_detected": pq["sentinel"]["contradiction_detected"],
-                "clarification_needed": pq["sentinel"]["clarification_needed"],
-                "retry_count": pq["sentinel"]["retry_count"],
-                "retrieved_chunks": [],
-            })
 
         force_gc()
         log_memory_usage("evaluation_metrics_start")
@@ -225,10 +220,10 @@ class EvaluationRunner:
         confidence_after_retry = []
 
         for r in results:
-            if r.get("retry_count", 0) > 0:
-                conf = r.get("confidence_score", 0.0)
-                confidence_before_retry.append(conf * 0.7)
-                confidence_after_retry.append(conf)
+            initial = r.get("initial_confidence")
+            if r.get("retry_count", 0) > 0 and initial is not None:
+                confidence_before_retry.append(initial)
+                confidence_after_retry.append(r.get("confidence_score", 0.0))
 
         return self.metrics_collector.compute_aggregate(
             all_questions=questions,
