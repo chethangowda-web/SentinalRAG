@@ -1,3 +1,4 @@
+import asyncio
 import gc
 import logging
 import time
@@ -52,6 +53,15 @@ async def lifespan(application: FastAPI):
         logger.info("Qdrant client version: %s", qdrant_client.__version__)
     except Exception:
         pass
+
+    if settings.PRELOAD_MODELS:
+        try:
+            from app.services import embedding_service, reranker_service
+            await asyncio.to_thread(embedding_service._load_model)
+            await asyncio.to_thread(reranker_service._load_reranker)
+            logger.info("Embedding and reranker models preloaded")
+        except Exception as e:
+            logger.warning("Model preload failed, will load on first use: %s", e)
 
     logger.info("Resource tracking started")
     yield

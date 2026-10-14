@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSION: int = 384
     EMBEDDING_BATCH_SIZE: int = 24
     QDRANT_COLLECTION: str = "documents"
+    # Load the embedding and reranker models at startup instead of on first use.
+    # Off by default: both models together need ~1 GB RAM, which small hosts can't spare.
+    PRELOAD_MODELS: bool = False
 
     # DeepSeek (primary LLM provider)
     DEEPSEEK_API_KEY: str = ""

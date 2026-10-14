@@ -55,7 +55,8 @@ def _check_embedding() -> dict:
         from app.services.embedding_service import is_model_loaded
         if is_model_loaded():
             return {"status": "healthy", "model": settings.EMBEDDING_MODEL}
-        return {"status": "unhealthy", "error": "Model not loaded"}
+        # Models load lazily on first use unless PRELOAD_MODELS is set, so this is expected.
+        return {"status": "not_loaded", "model": settings.EMBEDDING_MODEL}
     except Exception as e:
         return {"status": "unhealthy", "error": str(e)}
 

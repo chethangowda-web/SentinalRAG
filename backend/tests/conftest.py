@@ -18,8 +18,10 @@ settings.SECRET_KEY = "test-secret-key-not-for-production"
 db_module._engine = None
 db_module._async_session_maker = None
 
+from app.core.auth import get_current_user  # noqa: E402
 from app.core.database import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
+from app.models.user import User  # noqa: E402
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -60,7 +62,22 @@ async def db_session(async_engine):
 
 
 @pytest_asyncio.fixture
-async def async_client(db_session):
+async def test_user(db_session):
+    user = User(
+        id="test-user-id",
+        name="Test User",
+        email="test@example.com",
+        password_hash="not-a-real-hash",
+    )
+    db_session.add(user)
+    await db_session.commit()
+    return user
+
+
+@pytest_asyncio.fixture
+async def async_client(db_session, test_user):
+    # Every /api/v1 route except auth and health requires a logged-in user.
+    app.dependency_overrides[get_current_user] = lambda: test_user
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client

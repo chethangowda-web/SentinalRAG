@@ -70,6 +70,7 @@ class TestTraceAPI:
 
         mock_trace = MagicMock()
         mock_trace.id = "trace-1"
+        mock_trace.user_id = "test-user-id"
         mock_trace.timestamp = None
         mock_trace.original_query = "test"
         mock_trace.rewritten_query = None
@@ -101,6 +102,16 @@ class TestTraceAPI:
             data = response.json()
             assert data["id"] == "trace-1"
             assert data["final_confidence"] == 95.0
+
+    @pytest.mark.asyncio
+    async def test_get_trace_owned_by_another_user(self, async_client):
+        with patch("app.api.v1.traces.trace_service.get_trace", new_callable=AsyncMock) as mock_get:
+            mock_trace = MagicMock()
+            mock_trace.user_id = "another-user-id"
+            mock_get.return_value = mock_trace
+
+            response = await async_client.get("/api/v1/traces/trace-1")
+            assert response.status_code == 404
 
     @pytest.mark.asyncio
     async def test_get_trace_not_found(self, async_client):
