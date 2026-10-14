@@ -55,7 +55,7 @@ class TestVectorSearch:
                     "filename": "contract.pdf",
                     "chunk_index": 0,
                 }
-                mock_client.search.return_value = [mock_result]
+                mock_client.query_points.return_value.points = [mock_result]
                 mock_qdrant.return_value = mock_client
 
                 results = search_vector("refund policy", top_k=20)
@@ -76,7 +76,7 @@ class TestVectorSearch:
             with patch("app.services.vector_search_service.get_qdrant_client") as mock_qdrant:
                 from qdrant_client.http.exceptions import UnexpectedResponse
                 mock_client = MagicMock()
-                mock_client.search.side_effect = UnexpectedResponse(503, "Service Unavailable", b"", {})
+                mock_client.query_points.side_effect = UnexpectedResponse(503, "Service Unavailable", b"", {})
                 mock_qdrant.return_value = mock_client
                 results = search_vector("test")
                 assert results == []
@@ -86,7 +86,7 @@ class TestVectorSearch:
             mock_embed.return_value = [[0.1] * 384]
             with patch("app.services.vector_search_service.get_qdrant_client") as mock_qdrant:
                 mock_client = MagicMock()
-                mock_client.search.return_value = [
+                mock_client.query_points.return_value.points = [
                     MagicMock(score=0.9, payload={"chunk_id": f"c{i}", "document_id": "d1", "text": f"text {i}"})
                     for i in range(3)
                 ]

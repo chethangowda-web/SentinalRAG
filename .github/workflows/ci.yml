@@ -20,7 +20,8 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install ruff
+      # Same version as requirements-dev.txt; newer releases enable more rules by default
+      - run: pip install ruff==0.8.6
       - run: ruff check app/ tests/
 
   backend-test:
