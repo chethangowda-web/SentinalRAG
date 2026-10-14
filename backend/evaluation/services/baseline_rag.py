@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 from typing import Any
@@ -18,10 +19,11 @@ class BaselineRAG:
         self,
         question: str,
         db: AsyncSession,
+        user_id: str | None = None,
     ) -> dict[str, Any]:
         start = time.perf_counter()
 
-        search_response = await retrieve(question, db)
+        search_response = await retrieve(question, db, user_id=user_id)
 
         chunks = []
         for r in search_response.results:
@@ -37,7 +39,7 @@ class BaselineRAG:
                 "rerank_score": r.rerank_score,
             })
 
-        answer_text = generate_answer(question, chunks)
+        answer_text = await asyncio.to_thread(generate_answer, question, chunks)
 
         elapsed = round((time.perf_counter() - start) * 1000, 1)
 
