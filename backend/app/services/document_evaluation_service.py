@@ -8,7 +8,6 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.models.document import Document
 from app.models.document_evaluation import DocumentEvaluation
 from app.services.retrieval_service import retrieve
@@ -44,7 +43,6 @@ async def evaluate_document(document_id: str, db: AsyncSession, user_id: str | N
         all_latencies.append(total_ms)
         all_confidences.append(pq_result.get("confidence_score", 0.0))
 
-    document_text = document.text_content or ""
     doc_keywords = set(document.keywords.split(",")) if document.keywords else set()
 
     summary_metrics = _compute_summary_metrics(

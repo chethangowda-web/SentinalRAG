@@ -26,9 +26,6 @@ async def wait_for_postgres(
 
     kwargs = {"echo": False, "pool_size": 1, "max_overflow": 0}
 
-    from urllib.parse import parse_qs, urlparse
-    parsed = urlparse(url)
-    qs = parse_qs(parsed.query, keep_blank_values=True)
     ssl_required = "ssl=require" in url or "sslmode=require" in url
 
     ssl_mode = settings.DATABASE_SSL

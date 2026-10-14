@@ -141,11 +141,11 @@ open http://localhost
 | Persistence | None (cache-only; currently reserved for future use) |
 | Health Check | `redis-cli ping` (5s interval) |
 
-### Qdrant v1.13.0
+### Qdrant v1.16.2
 
 | Detail | Value |
 |---|---|
-| Image | `qdrant/qdrant:v1.13.0` |
+| Image | `qdrant/qdrant:v1.16.2` |
 | Ports | 6333 (REST), 6334 (gRPC) — internal only |
 | Data Volume | `qdrant_data` (persistent) |
 | Collection | `documents` (auto-created on first embed) |
@@ -360,7 +360,7 @@ createdb sentinelrag -O sentinel
 **Qdrant:**
 ```bash
 # Docker (recommended for local)
-docker run -d -p 6333:6333 -p 6334:6334 qdrant/qdrant:v1.13.0
+docker run -d -p 6333:6333 -p 6334:6334 qdrant/qdrant:v1.16.2
 ```
 
 **Redis:**

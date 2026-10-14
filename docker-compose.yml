@@ -31,7 +31,7 @@ services:
   # Healthcheck uses process check (kill -0 1) because the official Qdrant image
   # does not ship with curl, wget, or Python. PID 1 is always the qdrant binary.
   qdrant:
-    image: qdrant/qdrant:v1.13.0
+    image: qdrant/qdrant:v1.16.2
     container_name: sentinelrag-qdrant
     restart: unless-stopped
     ports:

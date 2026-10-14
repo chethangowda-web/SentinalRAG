@@ -11,7 +11,7 @@ from app.core.exceptions import AppException
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.schemas.chunk import EmbedResponse
-from app.services.chunking_service import TextChunk, chunk_text
+from app.services.chunking_service import chunk_text
 from app.services.embedding_service import generate_embeddings_async
 from app.services.qdrant_service import ensure_collection, upsert_vectors, vector_exists
 from app.utils.memory import force_gc, log_memory_usage
@@ -149,7 +149,6 @@ async def embed_document(document_id: str, db: AsyncSession, user_id: str | None
     )
 
     try:
-        from app.services.document_evaluation_service import evaluate_document
         asyncio.create_task(_auto_evaluate(document_id, document.user_id))
         logger.info("Auto-evaluation triggered for document %s", document_id)
     except Exception as e:

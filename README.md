@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)](https://fastapi.tiangolo.com)
 [![Next.js 15](https://img.shields.io/badge/next.js-15-black)](https://nextjs.org)
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.4-blueviolet)](https://langchain-ai.github.io/langgraph/)
-[![Qdrant](https://img.shields.io/badge/Qdrant-1.13-red)](https://qdrant.tech)
+[![Qdrant](https://img.shields.io/badge/Qdrant-1.16-red)](https://qdrant.tech)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)](https://postgresql.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/chethangowda-web/SentinalRAG/actions/workflows/ci.yml/badge.svg)](https://github.com/chethangowda-web/SentinalRAG/actions)
@@ -92,7 +92,7 @@ Docker Compose orchestration (PostgreSQL, Qdrant, FastAPI, Next.js, NGINX). Stru
            │                                  │                │                  │
    ┌───────▼────────┐                 ┌───────▼─────────┐  ┌──▼───────────┐  ┌──▼───────────┐
    │   PostgreSQL    │                 │     Qdrant       │  │    Redis     │  │  Tesseract   │
-   │   16            │                 │   v1.13.0        │  │    v7        │  │  OCR         │
+   │   16            │                 │   v1.16.2        │  │    v7        │  │  OCR         │
    │                 │                 │                  │  │              │  │              │
    │  Document meta  │                 │  384d embeddings │  │  (reserved   │  │  PDF/Image   │
    │  BM25 full-text │                 │  Vector search   │  │   for cache) │  │  text extr.  │
@@ -154,7 +154,7 @@ User Query
 | **Animation** | Framer Motion, Recharts | latest |
 | **Backend** | Python, FastAPI, LangGraph | 3.12, 0.115, 0.4 |
 | **ORM** | SQLAlchemy (async) | 2.0 |
-| **Vector DB** | Qdrant | 1.13 |
+| **Vector DB** | Qdrant | 1.16 |
 | **Database** | PostgreSQL (asyncpg) | 16 |
 | **Cache** | — | (future: Redis) |
 | **Embeddings** | BAAI/bge-small-en-v1.5 (Sentence Transformers) | 384d |

@@ -104,7 +104,7 @@ def create_app() -> FastAPI:
         logger.info("Incoming request: method=%s path=%s request_id=%s", request.method, request.url.path, request_id)
         try:
             response = await call_next(request)
-        except Exception as exc:
+        except Exception:
             logger.exception("Request failed: method=%s path=%s request_id=%s", request.method, request.url.path, request_id)
             raise
         elapsed = (time.perf_counter() - start) * 1000
