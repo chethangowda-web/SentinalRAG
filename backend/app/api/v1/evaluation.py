@@ -133,9 +133,20 @@ async def get_evaluation_status(
 
 @router.get("/evaluation/report")
 async def get_latest_report(
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
-    result = _report_gen.load_latest_result()
+    # Results are stored on disk for every user; only serve runs this user started.
+    runs = await db.execute(
+        select(EvaluationRun.evaluation_id)
+        .where(EvaluationRun.user_id == current_user.id)
+        .order_by(EvaluationRun.created_at.desc())
+    )
+    result = None
+    for (evaluation_id,) in runs.all():
+        result = _report_gen.load_result(evaluation_id)
+        if result is not None:
+            break
     if result is None:
         raise HTTPException(status_code=404, detail="No evaluation results found. Run /api/v1/evaluate first.")
     return result

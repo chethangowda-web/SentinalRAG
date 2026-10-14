@@ -19,10 +19,13 @@ from app.utils.memory import force_gc, log_memory_usage
 logger = logging.getLogger(__name__)
 
 
-async def embed_document(document_id: str, db: AsyncSession) -> EmbedResponse:
+async def embed_document(document_id: str, db: AsyncSession, user_id: str | None = None) -> EmbedResponse:
     mem_before = log_memory_usage("embedding_start")
 
-    result = await db.execute(select(Document).where(Document.id == document_id))
+    query = select(Document).where(Document.id == document_id)
+    if user_id is not None:
+        query = query.where(Document.user_id == user_id)
+    result = await db.execute(query)
     document = result.scalar_one_or_none()
 
     if document is None:

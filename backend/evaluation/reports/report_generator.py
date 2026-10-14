@@ -215,6 +215,13 @@ class ReportGenerator:
                 return json.load(f)
         return None
 
+    def load_result(self, evaluation_id: str) -> dict[str, Any] | None:
+        path = self.results_dir / f"eval_{Path(evaluation_id).name}.json"
+        if path.exists():
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        return None
+
     def load_history(self) -> list[dict[str, Any]]:
         path = self.results_dir / "evaluation_history.json"
         if path.exists():

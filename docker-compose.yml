@@ -66,8 +66,9 @@ services:
       DATABASE_URL: postgresql+asyncpg://sentinel:sentinel@postgres:5432/sentinelrag
       QDRANT_URL: http://qdrant:6333
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      # change-me-in-production is safe for local dev; generate a real key for production
-      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      # Signs JWTs, so it must be set to a random 32+ char value in .env
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env (python -c "import secrets; print(secrets.token_urlsafe(32))")}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       BACKEND_CORS_ORIGINS: '["http://localhost:3000","http://localhost"]'
       UPLOAD_DIR: /data/uploads
       PROCESSED_DIR: /data/processed

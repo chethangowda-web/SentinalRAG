@@ -61,3 +61,9 @@ async def get_current_user(
         raise AppException(status_code=401, detail="User not found")
 
     return user
+
+
+async def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.email.lower() not in settings.admin_emails:
+        raise AppException(status_code=403, detail="Administrator access required")
+    return current_user

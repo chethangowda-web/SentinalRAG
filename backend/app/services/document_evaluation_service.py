@@ -21,7 +21,10 @@ logger = logging.getLogger(__name__)
 async def evaluate_document(document_id: str, db: AsyncSession, user_id: str | None = None) -> dict[str, Any]:
     start_time = time.perf_counter()
 
-    result = await db.execute(select(Document).where(Document.id == document_id))
+    query = select(Document).where(Document.id == document_id)
+    if user_id is not None:
+        query = query.where(Document.user_id == user_id)
+    result = await db.execute(query)
     document = result.scalar_one_or_none()
     if document is None:
         raise ValueError(f"Document {document_id} not found")
@@ -174,7 +177,7 @@ async def _evaluate_single_question(
             "rerank_score": r.rerank_score,
         })
 
-    answer_text = generate_answer(question_text, chunks)
+    answer_text = await asyncio.to_thread(generate_answer, question_text, chunks)
 
     metrics = metrics_collector.compute_single(
         question=question_text,
