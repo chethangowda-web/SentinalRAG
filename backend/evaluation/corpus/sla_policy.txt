@@ -1,0 +1,19 @@
+Network Services Service Level Agreement - Standard Plan
+
+1. Availability
+The minimum uptime requirement for network services on the Standard plan is 99.9%, measured on a monthly basis. Uptime is calculated as the total minutes in the month minus minutes of unplanned downtime, divided by the total minutes in the month.
+
+2. Performance Targets
+Round-trip latency within a single region must stay below 50 milliseconds. Packet loss must stay below 0.1% averaged over the month.
+
+3. Scheduled Maintenance
+Planned maintenance takes place every Sunday between 02:00 and 04:00 UTC. Customers receive at least 72 hours of notice before any maintenance window. Time spent in announced maintenance windows does not count as downtime.
+
+4. Incident Response Times (Standard Plan)
+Critical incidents receive a first response within 1 hour. High priority incidents receive a first response within 4 hours. Normal priority incidents receive a first response within 1 business day.
+
+5. Service Credits
+If monthly uptime falls below 99.9% but is at least 99.0%, the customer receives a service credit of 10% of that month's network fees. If monthly uptime falls below 99.0%, the customer receives a service credit of 25% of that month's network fees. Credits must be claimed within 30 days of the end of the affected month by opening a billing ticket. Credits are applied to the next invoice and are not paid out in cash.
+
+6. Exclusions
+Downtime caused by force majeure events, by the customer's own equipment or configuration changes, or by third-party services outside our network is excluded from uptime calculations.

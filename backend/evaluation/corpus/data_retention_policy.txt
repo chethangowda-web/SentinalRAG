@@ -1,0 +1,10 @@
+Data Retention and Security Policy (2025)
+
+1. Retention Periods
+System and access logs are retained for 90 days. Audit logs are retained for 1 year. Daily backups are retained for 35 days.
+
+2. Account Deletion
+When an account is deleted, all of its data is purged within 30 days.
+
+3. Encryption
+Customer data is encrypted with AES-256 at rest and protected with TLS 1.3 in transit.

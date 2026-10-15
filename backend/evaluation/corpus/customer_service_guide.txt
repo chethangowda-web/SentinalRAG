@@ -1,0 +1,16 @@
+Customer Service Guide
+
+1. Contact Channels
+Support is available by phone, email and live chat. Critical incidents are handled 24/7. All other requests are handled Monday to Friday, 08:00 to 18:00 UTC.
+
+2. Languages
+Support is offered in English, Spanish and German.
+
+3. Ticket Handling
+Every ticket is acknowledged within 15 minutes of submission. Refund and billing requests are routed to the billing team through the support portal.
+
+4. Escalation
+Tickets start at Tier 1 support. A ticket that is unresolved after 24 hours is escalated to Tier 2. A ticket that is unresolved after 72 hours is escalated to the support manager.
+
+5. Customer Satisfaction
+After a ticket is closed the customer receives a satisfaction survey. Scores below 3 out of 5 trigger a follow-up call from a team lead.

@@ -1,0 +1,53 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 1032 >>
+stream
+BT /F1 11 Tf 15 TL 56 732 Td
+(Premium Service Addendum) Tj T*
+() Tj T*
+(This addendum applies only to customers who have purchased the Premium plan. It adds to,) Tj T*
+(and for Premium customers replaces, the terms of the Standard Service Level Agreement.) Tj T*
+() Tj T*
+(1. Availability) Tj T*
+(The uptime guarantee for Premium services is 99.99%, measured on a monthly basis.) Tj T*
+() Tj T*
+(2. Incident Response Times \(Premium Plan\)) Tj T*
+(Critical incidents receive a first response within 15 minutes. High priority incidents) Tj T*
+(receive a first response within 1 hour.) Tj T*
+() Tj T*
+(3. Dedicated Support) Tj T*
+(Every Premium customer is assigned a named account manager and a 24/7 priority support) Tj T*
+(line.) Tj T*
+() Tj T*
+(4. Service Credits) Tj T*
+(If monthly uptime falls below 99.99% but is at least 99.9%, the customer receives a) Tj T*
+(service credit of 20% of that month's fees. If monthly uptime falls below 99.9%, the) Tj T*
+(customer receives a service credit of 50% of that month's fees.) Tj T*
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000185 00000 n 
+0000000311 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1395
+%%EOF
