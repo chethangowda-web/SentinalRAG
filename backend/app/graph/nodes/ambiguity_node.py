@@ -15,12 +15,13 @@ MAX_WORDS_TO_CHECK = 6
 async def ambiguity_node(state: GraphState) -> dict:
     start = time.perf_counter()
     question = state["question"]
-    chunks = state.get("retrieved_chunks", [])
     words = len(question.split())
 
     clarification = None
     if words <= MAX_WORDS_TO_CHECK:
-        clarification = await asyncio.to_thread(detect_ambiguity, question, chunks, False)
+        # Judge the question alone. Showing the retrieved passages made the model ask "which plan?"
+        # about specific questions simply because several plans appear in the documents.
+        clarification = await asyncio.to_thread(detect_ambiguity, question, [], False)
 
     needed = clarification is not None
     elapsed = round((time.perf_counter() - start) * 1000, 1)
