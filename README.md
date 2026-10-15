@@ -442,9 +442,25 @@ Full interactive API documentation is available at `/docs` (Swagger UI) when the
 
 ## Evaluation Results
 
-SentinelRAG ships a benchmark that runs a baseline RAG (single retrieve + generate) and the full self-correcting pipeline over the same 18 questions (`backend/evaluation/datasets/benchmark.json`) and compares faithfulness, hallucination, answer relevancy, context precision/recall, correctness, latency and retry/contradiction/clarification behaviour.
+SentinelRAG ships a benchmark that runs a baseline RAG (one hybrid retrieval + one answer) and the full self-correcting pipeline over the same 18 questions (`backend/evaluation/datasets/benchmark.json`) against a six-document corpus (`backend/evaluation/corpus/`: easy, medium, multi-step, contradictory, missing-context and ambiguous questions).
 
-> **No published numbers yet.** The benchmark questions reference policy documents (`sla_policy.pdf`, `refund_policy.pdf`, ...) that are not in this repository, and an earlier version of the runner scored every answer with an empty context, so previously reported figures cannot be reproduced from the repo. Upload the benchmark documents with your own account, run `POST /api/v1/evaluate` (or use the Evaluation page), and the report is generated from your run. The metrics are keyword-overlap heuristics, not LLM-judged scores, so treat them as relative signals between the two pipelines.
+Latest run on the live deployment with `gemini-3.1-flash-lite` (full report: [BENCHMARK.md](./BENCHMARK.md)):
+
+| Metric | Baseline | SentinelRAG |
+|---|---|---|
+| Faithfulness | 78.7% | **81.2%** |
+| Hallucination rate (lower is better) | 21.3% | **18.8%** |
+| Answer relevancy | 23.7% | **27.6%** |
+| Correctness | 61.5% | **62.9%** |
+| Context precision | 74.9% | **75.5%** |
+| Questions with no answer | 0 | 0 |
+| Mean latency | **3.7 s** | 10.1 s |
+
+These are keyword-overlap heuristics on 18 questions, not LLM-judged scores, so read them as rough relative signals: the differences are small, and 3 of SentinelRAG's and 2 of the baseline's 18 answers fell back to raw text when the free Gemini tier rate-limited a call. The self-correcting path costs about 2.7x the latency.
+
+**What the benchmark caught.** The first real run showed SentinelRAG returning *no answer* for 7 of 18 questions (correctness 40.8%, far below the baseline): every question that triggered a retry was falsely flagged "contradictory" by the keyword heuristic, which sent it to a clarification step that had nothing to ask. The fix (clarification now continues to answer generation, and a keyword hit must be confirmed by the LLM) took that to 0 of 18 and correctness to 62.9%. Known gap: ambiguous questions are no longer asked to clarify, because the ambiguity check only runs after a contradiction was found.
+
+Reproduce it against any deployment: `python scripts/run_benchmark.py --base-url https://your-app.up.railway.app`.
 
 ## Performance Results
 
