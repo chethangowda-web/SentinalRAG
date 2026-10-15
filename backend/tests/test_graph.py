@@ -335,6 +335,16 @@ class TestGraphExecution:
                         assert not any("generate_answer" in s for s in result["reasoning_path"])
 
 
+def _parse_sse(text: str) -> list[tuple[str, dict]]:
+    import json
+
+    events = []
+    for block in text.strip().split("\n\n"):
+        event_line, data_line = block.split("\n", 1)
+        events.append((event_line.removeprefix("event: "), json.loads(data_line.removeprefix("data: "))))
+    return events
+
+
 def _make_high_conf_response():
     mock_response = MagicMock()
     mock_response.confidence = 95.0
@@ -361,6 +371,44 @@ class TestChatAPI:
         assert response.status_code == 200
         data = response.json()
         assert data["confidence_level"] == "LOW"
+
+    @pytest.mark.asyncio
+    async def test_chat_stream_emits_steps_then_result(self, async_client, db_session):
+        mock_resp = _make_high_conf_response()
+
+        with patch("app.graph.nodes.retrieve_node.retrieve", new_callable=AsyncMock, return_value=mock_resp):
+            with patch("app.graph.nodes.generation_node.generate_answer", return_value="The policy is 30 days."):
+                response = await async_client.post("/api/v1/chat/stream", json={"question": "What is the policy?"})
+
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/event-stream")
+        events = _parse_sse(response.text)
+
+        names = [name for name, _ in events]
+        assert names[-1] == "result"
+        assert set(names[:-1]) == {"step"}
+        # One step per node on the HIGH-confidence path, in execution order
+        assert [d["node"] for n, d in events if n == "step"] == ["retrieve", "confidence_evaluate", "generate_answer"]
+
+        final = events[-1][1]
+        assert final["answer"] == "The policy is 30 days."
+        assert final["confidence"] > 0
+        assert final["reasoning_path"] == ["retrieve", "confidence_evaluate", "generate_answer"]
+
+    @pytest.mark.asyncio
+    async def test_chat_stream_empty_question_returns_single_result(self, async_client, db_session):
+        response = await async_client.post("/api/v1/chat/stream", json={"question": " "})
+        events = _parse_sse(response.text)
+        assert [name for name, _ in events] == ["result"]
+        assert events[0][1]["confidence_level"] == "LOW"
+
+    @pytest.mark.asyncio
+    async def test_chat_stream_reports_pipeline_failure_as_error_event(self, async_client, db_session):
+        with patch("app.graph.nodes.retrieve_node.retrieve", new_callable=AsyncMock, side_effect=RuntimeError("boom")):
+            response = await async_client.post("/api/v1/chat/stream", json={"question": "What is the policy?"})
+        events = _parse_sse(response.text)
+        assert events[-1][0] == "error"
+        assert "boom" not in events[-1][1]["detail"]
 
     @pytest.mark.asyncio
     async def test_chat_endpoint_returns_response(self, async_client, db_session):

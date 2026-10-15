@@ -203,6 +203,26 @@ Execute the self-correcting RAG pipeline. The system retrieves relevant context,
 
 ---
 
+### `POST /api/v1/chat/stream`
+
+Same request body and pipeline as `POST /api/v1/chat`, returned as Server-Sent Events so a client can show progress while the answer is produced. Requires the same `Authorization: Bearer` header.
+
+| Event | Data | When |
+|---|---|---|
+| `step` | `{ "node", "execution_time_ms", "decision", "output" }` | Each time a pipeline node finishes (`retrieve`, `confidence_evaluate`, `rewrite_query`, `retry_retrieve`, `contradiction_detect`, `clarification`, `generate_answer`, `fallback`) |
+| `result` | The full `ChatResponse` (identical to `POST /api/v1/chat`) | Once, last |
+| `error` | `{ "detail" }` | Instead of `result` if the pipeline fails |
+
+```
+event: step
+data: {"node": "retrieve", "execution_time_ms": 412.3, "decision": null, "output": "5 chunks, confidence=71.2/HIGH"}
+
+event: result
+data: {"answer": "...", "confidence": 71.2, "session_id": "...", ...}
+```
+
+The trace and chat history are saved before `result` is sent, exactly as for the non-streaming endpoint.
+
 ## Search Endpoints
 
 ### `POST /api/v1/search`

@@ -1,13 +1,15 @@
+import json
 import logging
 import time
 import uuid
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
 from app.core.config import settings
-from app.core.database import get_db
+from app.core.database import get_db, get_session_maker
 from app.graph.graph_builder import build_graph
 from app.graph.state import GraphState
 from app.models.user import User
@@ -107,35 +109,8 @@ def _normalize_confidence(value: float) -> float:
     return round(value, 1)
 
 
-@router.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(
-    request: Request,
-    body: ChatRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    start = time.perf_counter()
-    trace_id = str(uuid.uuid4())
-    request.state.trace_id = trace_id
-
-    session_id = body.session_id
-    if not session_id:
-        session_id = str(uuid.uuid4())
-
-    if not body.question or not body.question.strip():
-        return ChatResponse(
-            answer="Please provide a valid question.",
-            confidence=0.0,
-            confidence_level="LOW",
-            reasoning_path=["validation"],
-            citations=[],
-            trace_id=trace_id,
-            model_used=settings.effective_llm_model or "unknown",
-        )
-
-    graph = _get_graph()
-
-    initial_state: GraphState = {
+def _initial_state(body: ChatRequest, trace_id: str) -> GraphState:
+    return {
         "question": body.question.strip(),
         "rewritten_question": None,
         "document_id": body.document_id,
@@ -160,20 +135,33 @@ async def chat_endpoint(
         "llm_observability": None,
     }
 
-    try:
-        result = await graph.ainvoke(initial_state, {"configurable": {"db": db, "user_id": current_user.id, "document_id": body.document_id}})
-    except Exception as e:
-        logger.exception("Graph execution failed for trace_id=%s: %s", trace_id, e)
-        return ChatResponse(
-            answer="An error occurred while processing your question. Please try again.",
-            confidence=0.0,
-            confidence_level="LOW",
-            reasoning_path=["error"],
-            citations=[],
-            trace_id=trace_id,
-            model_used=settings.effective_llm_model or "unknown",
-        )
 
+def _graph_config(db: AsyncSession, current_user: User, body: ChatRequest) -> dict:
+    return {"configurable": {"db": db, "user_id": current_user.id, "document_id": body.document_id}}
+
+
+def _simple_response(answer: str, path: str, trace_id: str) -> ChatResponse:
+    return ChatResponse(
+        answer=answer,
+        confidence=0.0,
+        confidence_level="LOW",
+        reasoning_path=[path],
+        citations=[],
+        trace_id=trace_id,
+        model_used=settings.effective_llm_model or "unknown",
+    )
+
+
+async def _build_response(
+    db: AsyncSession,
+    current_user: User,
+    body: ChatRequest,
+    trace_id: str,
+    session_id: str,
+    result: dict,
+    start: float,
+) -> ChatResponse:
+    """Turn a finished graph state into the API response, then persist the trace and chat history."""
     answer_text = result.get("answer", "")
     retrieved_chunks = result.get("retrieved_chunks", [])
 
@@ -192,7 +180,6 @@ async def chat_endpoint(
 
     raw_conf = result.get("confidence_score", 0.0)
     confidence = _normalize_confidence(raw_conf)
-    confidence_level = result.get("confidence_level", "LOW")
     if confidence >= 65:
         confidence_level = "HIGH"
     elif confidence >= 40:
@@ -216,7 +203,7 @@ async def chat_endpoint(
 
     retrieval_details = result.get("retrieval_details", [])
     improved = result.get("confidence_improved", False)
-    prev_conf = initial_state["confidence_score"]
+    prev_conf = result.get("initial_confidence") or 0.0
     current_conf = confidence
     confidence_after_rewrite = current_conf if result.get("rewritten_question") else None
 
@@ -302,3 +289,85 @@ async def chat_endpoint(
         logger.error("Failed to save chat history: %s", e)
 
     return response
+
+
+@router.post("/chat", response_model=ChatResponse)
+async def chat_endpoint(
+    request: Request,
+    body: ChatRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    start = time.perf_counter()
+    trace_id = str(uuid.uuid4())
+    request.state.trace_id = trace_id
+
+    session_id = body.session_id or str(uuid.uuid4())
+
+    if not body.question or not body.question.strip():
+        return _simple_response("Please provide a valid question.", "validation", trace_id)
+
+    graph = _get_graph()
+
+    try:
+        result = await graph.ainvoke(_initial_state(body, trace_id), _graph_config(db, current_user, body))
+    except Exception as e:
+        logger.exception("Graph execution failed for trace_id=%s: %s", trace_id, e)
+        return _simple_response("An error occurred while processing your question. Please try again.", "error", trace_id)
+
+    return await _build_response(db, current_user, body, trace_id, session_id, result, start)
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, default=str)}\n\n"
+
+
+@router.post("/chat/stream")
+async def chat_stream_endpoint(
+    request: Request,
+    body: ChatRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Same pipeline as POST /chat, streamed as Server-Sent Events.
+
+    Emits one `step` event as each graph node finishes, then a final `result` event holding
+    the full ChatResponse (or an `error` event).
+    """
+    start = time.perf_counter()
+    trace_id = str(uuid.uuid4())
+    request.state.trace_id = trace_id
+    session_id = body.session_id or str(uuid.uuid4())
+
+    async def events():
+        if not body.question or not body.question.strip():
+            empty = _simple_response("Please provide a valid question.", "validation", trace_id)
+            yield _sse("result", empty.model_dump(mode="json"))
+            return
+        try:
+            # The request-scoped session may already be closed once streaming starts, so use our own.
+            async with get_session_maker()() as db:
+                state = dict(_initial_state(body, trace_id))
+                async for update in _get_graph().astream(
+                    state, _graph_config(db, current_user, body), stream_mode="updates"
+                ):
+                    for node, delta in update.items():
+                        delta = delta or {}
+                        state.update(delta)
+                        step = (delta.get("graph_execution") or [{}])[-1]
+                        yield _sse("step", {
+                            "node": node,
+                            "execution_time_ms": step.get("execution_time_ms"),
+                            "decision": step.get("decision"),
+                            "output": step.get("output"),
+                        })
+                response = await _build_response(db, current_user, body, trace_id, session_id, state, start)
+            yield _sse("result", response.model_dump(mode="json"))
+        except Exception as e:
+            logger.exception("Streaming graph execution failed for trace_id=%s: %s", trace_id, e)
+            yield _sse("error", {"detail": "An error occurred while processing your question. Please try again."})
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
