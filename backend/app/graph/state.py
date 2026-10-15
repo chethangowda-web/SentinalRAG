@@ -30,3 +30,5 @@ class GraphState(TypedDict):
     corpus_small: NotRequired[bool]
     # The user asked to be answered even if the question looks vague
     skip_clarification: NotRequired[bool]
+    # The question was rewritten into a standalone one using the conversation so far, so it is not vague
+    context_resolved: NotRequired[bool]
