@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from app.api.v1.router import api_v1_router
 from app.core.config import settings
 from app.core.cors import setup_cors
+from app.core.frontend import mount_frontend
 from app.core.exceptions import AppException, app_exception_handler, global_exception_handler, http_exception_handler
 from fastapi.exceptions import HTTPException
 from app.core.logging import setup_logging
@@ -116,15 +117,17 @@ def create_app() -> FastAPI:
                      request.method, request.url.path, response.status_code, elapsed, request_id)
         return response
 
+    # The exported frontend owns "/" when present; otherwise "/" is a small JSON banner.
+    # Mounting must come after every API route so "/api/v1/*" and "/docs" win.
+    if not mount_frontend(application):
+        @application.get("/")
+        async def root():
+            return {
+                "app": settings.APP_NAME,
+                "version": settings.APP_VERSION,
+            }
+
     return application
 
 
 app = create_app()
-
-
-@app.get("/")
-async def root():
-    return {
-        "app": settings.APP_NAME,
-        "version": settings.APP_VERSION,
-    }

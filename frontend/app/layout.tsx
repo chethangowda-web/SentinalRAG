@@ -19,12 +19,12 @@ export const metadata: Metadata = {
     template: "%s | SentinelRAG",
   },
   description:
-    "A production-grade Self-Correcting Retrieval-Augmented Generation platform powered by DeepSeek V4 and LangGraph.",
-  keywords: ["RAG", "AI", "retrieval augmented generation", "langgraph", "deepseek", "document search"],
+    "A production-grade Self-Correcting Retrieval-Augmented Generation platform powered by LangGraph and hybrid search.",
+  keywords: ["RAG", "AI", "retrieval augmented generation", "langgraph", "document search"],
   openGraph: {
     title: "SentinelRAG — Self-Correcting RAG Platform",
     description:
-      "A production-grade Self-Correcting Retrieval-Augmented Generation platform powered by DeepSeek V4 and LangGraph.",
+      "A production-grade Self-Correcting Retrieval-Augmented Generation platform powered by LangGraph and hybrid search.",
     type: "website",
     siteName: "SentinelRAG",
   },
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "SentinelRAG — Self-Correcting RAG Platform",
     description:
-      "A production-grade Self-Correcting Retrieval-Augmented Generation platform powered by DeepSeek V4 and LangGraph.",
+      "A production-grade Self-Correcting Retrieval-Augmented Generation platform powered by LangGraph and hybrid search.",
   },
   robots: {
     index: true,

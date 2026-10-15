@@ -2,7 +2,8 @@ import axios from "axios";
 import type { IngestResponse } from "@/types";
 import { api, getStoredToken } from "./api";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "https://sentinalrag-production.up.railway.app";
+// Empty means same origin (nginx or the backend serving this app). Never default to a real deployment.
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export async function uploadDocument(file: File, onProgress?: (pct: number) => void): Promise<IngestResponse> {
   const formData = new FormData();

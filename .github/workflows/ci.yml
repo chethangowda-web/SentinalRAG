@@ -106,3 +106,12 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  docker-build:
+    name: Single-container image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t sentinelrag:ci .
+      - name: Web UI is baked into the image
+        run: docker run --rm --entrypoint sh sentinelrag:ci -c 'test -f /app/static/index.html && test -f /app/static/login/index.html && ls /app/static'
