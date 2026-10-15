@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import time
@@ -23,7 +24,7 @@ from app.schemas.chat import (
     RetrievalDetailItem,
 )
 from app.core.exceptions import AppException
-from app.services import chat_history_service, trace_service
+from app.services import chat_history_service, followup_service, trace_service
 from app.services.quota_service import check_chat_quota
 
 logger = logging.getLogger(__name__)
@@ -137,6 +138,25 @@ def _initial_state(body: ChatRequest, trace_id: str) -> GraphState:
         "llm_observability": None,
         "skip_clarification": body.skip_clarification,
     }
+
+
+async def _prepare_state(db: AsyncSession, body: ChatRequest, trace_id: str) -> GraphState:
+    """Initial graph state, with a follow-up question rewritten using the conversation so far."""
+    state = _initial_state(body, trace_id)
+    if not body.session_id:
+        return state
+    try:
+        messages = await chat_history_service.get_messages(db, body.session_id)
+        history = [(m.role, m.content) for m in messages if m.content]
+        rewritten = await asyncio.to_thread(followup_service.standalone_question, state["question"], history)
+    except Exception as e:  # a history lookup problem must never block the question itself
+        logger.warning("Could not resolve follow-up for session %s: %s", body.session_id, e)
+        return state
+    if rewritten and rewritten.strip().lower() != state["question"].lower():
+        logger.info("Follow-up resolved: %r -> %r", state["question"], rewritten)
+        state["question"] = rewritten
+        state["context_resolved"] = True
+    return state
 
 
 def _graph_config(db: AsyncSession, current_user: User, body: ChatRequest) -> dict:
@@ -316,7 +336,7 @@ async def chat_endpoint(
     graph = _get_graph()
 
     try:
-        result = await graph.ainvoke(_initial_state(body, trace_id), _graph_config(db, current_user, body))
+        result = await graph.ainvoke(await _prepare_state(db, body, trace_id), _graph_config(db, current_user, body))
     except Exception as e:
         logger.exception("Graph execution failed for trace_id=%s: %s", trace_id, e)
         return _simple_response("An error occurred while processing your question. Please try again.", "error", trace_id)
@@ -359,7 +379,7 @@ async def chat_stream_endpoint(
                     return
                 except Exception as exc:  # a broken quota lookup must not take chat down
                     logger.warning("Chat quota check failed, allowing the request: %s", exc)
-                state = dict(_initial_state(body, trace_id))
+                state = dict(await _prepare_state(db, body, trace_id))
                 async for update in _get_graph().astream(
                     state, _graph_config(db, current_user, body), stream_mode="updates"
                 ):

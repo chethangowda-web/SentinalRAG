@@ -1,11 +1,37 @@
 import asyncio
 import logging
+import re
 import time
 
 from app.graph.state import GraphState
 from app.services.clarification_service import detect_ambiguity
 
 logger = logging.getLogger(__name__)
+
+# Words too generic to show that a question names one of the user's documents
+_GENERIC_WORDS = {
+    "policy", "policies", "guide", "document", "documents", "report", "file", "files", "about", "tell",
+    "what", "which", "where", "when", "does", "that", "this", "there", "their", "with", "from", "have",
+    "explain", "details", "information", "process", "please",
+}
+
+
+def _top_titles(chunks: list[dict], limit: int = 3) -> list[str]:
+    titles: list[str] = []
+    for c in chunks:
+        name = c.get("filename")
+        if name and name not in titles:
+            titles.append(name)
+        if len(titles) >= limit:
+            break
+    return titles
+
+
+def _names_a_document(question: str, titles: list[str]) -> bool:
+    """True when a distinctive word of the question appears in the name of a top-matching document."""
+    words = {w for w in re.findall(r"[a-z]{4,}", question.lower()) if w not in _GENERIC_WORDS}
+    haystack = " ".join(titles).lower().replace("_", " ").replace("-", " ")
+    return any(w in haystack for w in words)
 
 # Vague questions ("Tell me about the network", "How long does it take?") are short. Longer
 # questions are assumed specific and skip the check, so they cost no extra LLM call.
@@ -17,12 +43,15 @@ async def ambiguity_node(state: GraphState) -> dict:
     question = state["question"]
     words = len(question.split())
     skipped = bool(state.get("skip_clarification"))
+    resolved = bool(state.get("context_resolved"))
+    titles = _top_titles(state.get("retrieved_chunks", []))
+    named = words <= MAX_WORDS_TO_CHECK and not skipped and not resolved and _names_a_document(question, titles)
 
     clarification = None
-    if words <= MAX_WORDS_TO_CHECK and not skipped:
+    if words <= MAX_WORDS_TO_CHECK and not skipped and not resolved and not named:
         # Judge the question alone. Showing the retrieved passages made the model ask "which plan?"
         # about specific questions simply because several plans appear in the documents.
-        clarification = await asyncio.to_thread(detect_ambiguity, question, [], False)
+        clarification = await asyncio.to_thread(detect_ambiguity, question, [], False, titles)
 
     needed = clarification is not None
     elapsed = round((time.perf_counter() - start) * 1000, 1)
@@ -35,6 +64,10 @@ async def ambiguity_node(state: GraphState) -> dict:
 
     if skipped:
         output, decision, next_node = "skipped (user chose to answer anyway)", "answer anyway -> confidence_evaluate", "confidence_evaluate"
+    elif resolved:
+        output, decision, next_node = "skipped (made specific using the conversation)", "specific -> confidence_evaluate", "confidence_evaluate"
+    elif named:
+        output, decision, next_node = "skipped (names one of your documents)", "specific -> confidence_evaluate", "confidence_evaluate"
     elif words > MAX_WORDS_TO_CHECK:
         output, decision, next_node = f"skipped ({words} words, specific enough)", "specific -> confidence_evaluate", "confidence_evaluate"
     elif needed:

@@ -1,4 +1,5 @@
 import asyncio
+import re
 import logging
 import time
 
@@ -18,8 +19,13 @@ async def generation_node(state: GraphState) -> dict:
     # generate_answer makes a blocking HTTP call to the LLM; keep it off the event loop.
     answer = await asyncio.to_thread(generate_answer, question, chunks)
 
+    no_answer = answer.strip().lower().startswith("i don't have enough information")
+    # Keep only the passages the answer actually cites; a refusal cites nothing
+    cited = {int(n) - 1 for n in re.findall(r"\[Source (\d+)\]", answer)}
+    shown = [] if no_answer else [c for i, c in enumerate(chunks) if not cited or i in cited]
+
     citations = []
-    for c in chunks:
+    for c in shown:
         citations.append({
             "document_id": c.get("document_id", ""),
             "chunk_id": c.get("chunk_id", ""),
@@ -74,7 +80,7 @@ async def generation_node(state: GraphState) -> dict:
         len(answer), len(citations), elapsed,
     )
 
-    return {
+    update = {
         "answer": answer,
         "citations": citations,
         "confidence_breakdown": final_breakdown,
@@ -83,3 +89,8 @@ async def generation_node(state: GraphState) -> dict:
         "graph_execution": graph_execution,
         "llm_observability": llm_obs,
     }
+    if no_answer:
+        # Retrieval found passages, but they do not answer the question: do not report that as confident
+        update["confidence_score"] = min(state.get("confidence_score", 0.0), 20.0)
+        update["confidence_level"] = "LOW"
+    return update

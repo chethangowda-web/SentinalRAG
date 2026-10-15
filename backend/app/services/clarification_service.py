@@ -27,7 +27,9 @@ _vague_word_re = re.compile(
 )
 
 
-def detect_ambiguity(question: str, chunks: list[dict], use_keywords: bool = True) -> str | None:
+def detect_ambiguity(
+    question: str, chunks: list[dict], use_keywords: bool = True, titles: list[str] | None = None
+) -> str | None:
     """Return a clarifying question if the question is too vague to answer, else None.
 
     The keyword screen is quick but crude (it matches words like "explain" and "that" in perfectly
@@ -58,6 +60,13 @@ def detect_ambiguity(question: str, chunks: list[dict], use_keywords: bool = Tru
         c.get("text", "")[:200] for c in chunks[:3] if c.get("text")
     )
 
+    titles_line = ""
+    if titles:
+        titles_line = (
+            f"The user has these documents: {', '.join(titles)}. A question about a topic that matches "
+            "one of these document names is CLEAR.\n"
+        )
+
     prompt = (
         "Decide whether the following question is too vague to answer from documents. "
         "Be conservative: only call a question ambiguous if you cannot tell WHAT it is asking about. "
@@ -66,6 +75,7 @@ def detect_ambiguity(question: str, chunks: list[dict], use_keywords: bool = Tru
         "CLEAR examples: 'What is the notice period for contract termination?', 'Who approves travel expenses?', "
         "'When do invoices get issued?'.\n"
         "AMBIGUOUS examples: 'What's the deadline?', 'Can you explain the process?', 'Tell me about the policy'.\n"
+        f"{titles_line}"
         "If ambiguous, write one short clarifying question. If clear, output exactly CLEAR.\n\n"
         f"Question: {question}\n\n"
         f"Context: {context}\n\n"
