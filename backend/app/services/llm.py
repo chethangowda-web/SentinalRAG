@@ -44,6 +44,18 @@ def is_rate_limit_error(exc: Exception) -> bool:
     return getattr(exc, "status_code", None) == 429 or "429" in str(exc)[:200]
 
 
+# 502/503/504 are the provider saying "try again" (Gemini: "model is experiencing high demand").
+_TRANSIENT_STATUS = (502, 503, 504)
+
+
+def is_transient_error(exc: Exception) -> bool:
+    status = getattr(exc, "status_code", None)
+    if status in _TRANSIENT_STATUS:
+        return True
+    head = str(exc)[:200]
+    return any(f"Error code: {code}" in head for code in _TRANSIENT_STATUS)
+
+
 def rate_limit_wait_seconds(exc: Exception, attempt: int) -> float:
     """How long to wait before retrying: the provider's hint if given, else a growing default."""
     match = _RETRY_IN_SECONDS.search(str(exc))
@@ -52,12 +64,13 @@ def rate_limit_wait_seconds(exc: Exception, attempt: int) -> float:
 
 
 def invoke_with_retry(llm, prompt: str, rate_limit_retries: int = 1):
-    """llm.invoke(prompt), waiting out rate limits up to `rate_limit_retries` times."""
+    """llm.invoke(prompt), waiting out rate limits and transient provider errors up to `rate_limit_retries` times."""
     for attempt in range(rate_limit_retries + 1):
         try:
             return llm.invoke(prompt)
         except Exception as exc:
-            if not is_rate_limit_error(exc) or attempt == rate_limit_retries:
+            retryable = is_rate_limit_error(exc) or is_transient_error(exc)
+            if not retryable or attempt == rate_limit_retries:
                 raise
             wait = rate_limit_wait_seconds(exc, attempt)
             logger.warning("LLM rate limited; waiting %.1fs before retry %d/%d", wait, attempt + 1, rate_limit_retries)

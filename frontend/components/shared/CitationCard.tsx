@@ -17,7 +17,7 @@ export function CitationCard({ citation, index }: CitationCardProps) {
             {index + 1}
           </span>
           <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">{citation.document_id?.slice(0, 8)}...</span>
+          <span className="text-xs text-muted-foreground">{citation.filename || `${citation.document_id?.slice(0, 8)}...`}</span>
         </div>
         {citation.page && (
           <span className="text-[10px] text-muted-foreground">p.{citation.page}</span>

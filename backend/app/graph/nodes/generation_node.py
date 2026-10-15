@@ -23,6 +23,7 @@ async def generation_node(state: GraphState) -> dict:
         citations.append({
             "document_id": c.get("document_id", ""),
             "chunk_id": c.get("chunk_id", ""),
+            "filename": c.get("filename"),
             "page": c.get("page_number"),
             "text": c.get("text", "")[:200],
         })

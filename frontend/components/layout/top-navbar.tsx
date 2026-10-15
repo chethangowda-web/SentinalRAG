@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, Bell, Search, Menu } from "lucide-react";
+import { ChevronRight, Search, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ export function TopNavbar({ onMenuClick }: { onMenuClick?: () => void }) {
       <div className="flex items-center gap-2 text-sm">
         <button
           onClick={onMenuClick}
+          aria-label="Open navigation menu"
           className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors lg:hidden"
         >
           <Menu className="h-5 w-5" />
@@ -51,11 +52,10 @@ export function TopNavbar({ onMenuClick }: { onMenuClick?: () => void }) {
 
       <div className="flex items-center gap-2">
         <ThemeToggle />
-        <Button variant="ghost" size="icon" className="hidden sm:flex">
-          <Search className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="hidden sm:flex">
-          <Bell className="h-4 w-4" />
+        <Button asChild variant="ghost" size="icon" className="hidden sm:flex">
+          <Link href="/dashboard/search" aria-label="Search documents">
+            <Search className="h-4 w-4" />
+          </Link>
         </Button>
         <Link href="/dashboard/profile">
           <div className="ml-2 flex items-center gap-2 border-l pl-3 cursor-pointer hover:opacity-80 transition-opacity">

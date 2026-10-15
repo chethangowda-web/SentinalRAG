@@ -192,6 +192,7 @@ async def _build_response(
         CitationItem(
             document_id=c.get("document_id", ""),
             chunk_id=c.get("chunk_id", ""),
+            filename=c.get("filename"),
             page=c.get("page"),
             text=c.get("text"),
         )

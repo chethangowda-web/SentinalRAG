@@ -58,7 +58,7 @@ export default function SearchPage() {
                 {results.length} retrieved chunks for &ldquo;{query}&rdquo;
               </p>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><Gauge className="h-3 w-3" /> <span className="font-system-mono tabular-nums">{Math.round(searchMutation.data.confidence * 100)}%</span></span>
+                <span className="flex items-center gap-1"><Gauge className="h-3 w-3" /> <span className="font-system-mono tabular-nums">{Math.round(searchMutation.data.confidence)}%</span></span>
                 {latencies && (
                   <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> <span className="font-system-mono tabular-nums">{(Object.values(latencies).reduce((a, b) => a + b, 0) / 1000).toFixed(2)}s</span></span>
                 )}

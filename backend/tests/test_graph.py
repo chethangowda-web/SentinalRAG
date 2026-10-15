@@ -450,6 +450,8 @@ class TestChatAPI:
                 data = response.json()
                 assert "citations" in data
                 assert len(data["citations"]) > 0
+                # The UI shows the file name on each source, not just the document id
+                assert data["citations"][0]["filename"].endswith(".pdf")
 
     @pytest.mark.asyncio
     async def test_chat_endpoint_reasoning_path(self, async_client, db_session):

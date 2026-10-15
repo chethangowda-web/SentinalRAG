@@ -20,6 +20,7 @@ export interface ChatStepEvent {
 
 export interface CitationItem {
   document_id: string;
+  filename?: string | null;
   chunk_id: string;
   page: number | null;
   text: string | null;
@@ -158,6 +159,12 @@ export interface IngestResponse {
   words: number;
   ocr_used: boolean;
   processing_time: number;
+  // Filled in client-side from the embed step that follows ingest
+  total_chunks?: number;
+  embedded_chunks?: number;
+  is_duplicate?: boolean;
+  duplicate_info?: { existing_id: string; existing_filename: string; similarity: number; method: string } | null;
+  ocr_confidence?: number | null;
 }
 
 export interface Document {

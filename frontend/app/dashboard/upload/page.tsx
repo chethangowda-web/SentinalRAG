@@ -151,7 +151,7 @@ export default function UploadPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <SummaryMetric label="Pages" value={upload.data.pages?.toString() ?? "--"} icon={FileText} color="hsl(var(--chart-1))" />
                     <SummaryMetric label="Words" value={upload.data.words?.toLocaleString() ?? "--"} icon={Brain} color="hsl(var(--chart-2))" />
-                    <SummaryMetric label="Knowledge Score" value="85%" icon={Shield} color="hsl(var(--success))" />
+                    <SummaryMetric label="Chunks" value={upload.data.total_chunks?.toString() ?? "--"} icon={Shield} color="hsl(var(--success))" />
                     <SummaryMetric label="Processing Time" value={upload.data.processing_time ? `${upload.data.processing_time.toFixed(1)}s` : "--"} icon={Clock} color="hsl(var(--chart-3))" />
                   </div>
 
@@ -167,11 +167,11 @@ export default function UploadPage() {
                       </div>
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Layers className="h-4 w-4" />
-                        <span>{upload.data.words || 0} chunks created</span>
+                        <span>{upload.data.total_chunks ?? 0} chunks created</span>
                       </div>
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Database className="h-4 w-4" />
-                        <span>{upload.data.words || 0} embeddings stored</span>
+                        <span>{upload.data.embedded_chunks ?? 0} embeddings stored</span>
                       </div>
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <CheckCircle2 className="h-4 w-4 text-success" />

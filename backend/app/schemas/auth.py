@@ -52,6 +52,7 @@ class UserResponse(BaseModel):
     total_documents: int = 0
     total_sessions: int = 0
     total_evaluations: int = 0
+    is_admin: bool = False
 
 
 class TokenResponse(BaseModel):

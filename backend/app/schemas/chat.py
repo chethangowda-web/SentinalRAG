@@ -11,6 +11,7 @@ class ChatRequest(BaseModel):
 
 class CitationItem(BaseModel):
     document_id: str
+    filename: str | None = None
     chunk_id: str
     page: int | None = None
     text: str | None = None

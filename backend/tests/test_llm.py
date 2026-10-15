@@ -59,3 +59,31 @@ def test_build_llm_returns_none_without_a_key():
     with patch.object(llm.settings, "GEMINI_API_KEY", ""), patch.object(llm.settings, "FEATHERLESS_API_KEY", ""), \
             patch.object(llm.settings, "DEEPSEEK_API_KEY", ""):
         assert llm.build_llm(max_tokens=10, timeout=5) is None
+
+
+GEMINI_503 = "Error code: 503 - [{'error': {'code': 503, 'message': 'This model is currently experiencing high demand.'}}]"
+
+
+def test_transient_provider_errors_are_recognised():
+    assert llm.is_transient_error(Exception(GEMINI_503))
+    exc = Exception("boom")
+    exc.status_code = 502
+    assert llm.is_transient_error(exc)
+    assert not llm.is_transient_error(Exception("Error code: 401 - invalid key"))
+    assert not llm.is_transient_error(Exception("Error code: 400 - bad request"))
+
+
+def test_invoke_retries_a_503_and_then_succeeds():
+    model = MagicMock()
+    model.invoke.side_effect = [Exception(GEMINI_503), "answer"]
+    with patch("app.services.llm.time.sleep") as sleep:
+        assert llm.invoke_with_retry(model, "q") == "answer"
+    sleep.assert_called_once()
+
+
+def test_auth_errors_are_never_retried():
+    model = MagicMock()
+    model.invoke.side_effect = Exception("Error code: 401 - invalid key")
+    with patch("app.services.llm.time.sleep") as sleep, pytest.raises(Exception, match="401"):
+        llm.invoke_with_retry(model, "q")
+    sleep.assert_not_called()
