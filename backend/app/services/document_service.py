@@ -1,3 +1,4 @@
+import asyncio
 import gc
 import logging
 import time
@@ -94,9 +95,10 @@ async def ingest_document(
 
     try:
         if strategy == "ocr_image":
-            raw_text, pages, ocr_used = _process_image(upload_path)
+            # OCR and PDF parsing are CPU-bound; keep them off the event loop so health checks still answer.
+            raw_text, pages, ocr_used = await asyncio.to_thread(_process_image, upload_path)
         else:
-            raw_text, pages, ocr_used = _extract_pdf_text(upload_path)
+            raw_text, pages, ocr_used = await asyncio.to_thread(_extract_pdf_text, upload_path)
     except (InvalidUploadError, AppException):
         raise
     except Exception as exc:
