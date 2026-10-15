@@ -140,7 +140,7 @@ async def ingest_document(
         filename=filename,
         file_type=ext.lstrip("."),
         status="processed",
-        original_path=str(upload_path),
+        original_path=None,
         extracted_text_path=str(processed_path),
         pages=pages,
         word_count=word_count,
@@ -166,6 +166,7 @@ async def ingest_document(
         await db.commit()
         await db.refresh(document)
         db.expunge(document)
+        upload_path.unlink(missing_ok=True)  # the extracted text lives in the database; do not fill the disk
     except Exception as exc:
         logger.exception("Database error while saving document %s", doc_id)
         raise AppException(status_code=500, detail=f"Failed to save document to database: {exc}")

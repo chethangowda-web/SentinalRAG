@@ -11,6 +11,7 @@ from app.core.exceptions import AppException
 from app.models.document import Document
 from app.models.chunk import Chunk
 from app.models.user import User
+from app.services.indexing_service import schedule_embedding
 from app.services.qdrant_service import delete_document_vectors
 
 logger = logging.getLogger(__name__)
@@ -74,7 +75,9 @@ async def get_document(
     doc = result.scalar_one_or_none()
     if not doc:
         raise AppException(status_code=404, detail=f"Document {document_id} not found")
+    chunk_count = (await db.execute(select(func.count(Chunk.id)).where(Chunk.document_id == document_id))).scalar() or 0
     return {
+        "chunk_count": chunk_count,
         "id": doc.id,
         "filename": doc.filename,
         "file_type": doc.file_type,
@@ -100,6 +103,27 @@ async def get_document(
         "sha256_hash": doc.sha256_hash,
         "duplicate_of": doc.duplicate_of,
     }
+
+
+@router.post("/documents/{document_id}/reindex", status_code=202)
+async def reindex_document(
+    document_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Retry chunking/embedding for a document that is not indexed (processed or failed)."""
+    result = await db.execute(
+        select(Document).where(Document.id == document_id, Document.user_id == current_user.id)
+    )
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise AppException(status_code=404, detail=f"Document {document_id} not found")
+
+    if doc.status in ("embedding", "embedded"):
+        return {"status": doc.status}
+
+    schedule_embedding(document_id, current_user.id)
+    return {"status": "embedding"}
 
 
 @router.delete("/documents/{document_id}")
