@@ -75,3 +75,17 @@ async def test_citations_are_limited_to_the_passages_the_answer_uses():
         update = await generation_node(_state("Refund window?", confidence_score=80.0))
     assert [c["chunk_id"] for c in update["citations"]] == ["c1"]
     assert "confidence_score" not in update
+
+
+@pytest.mark.asyncio
+async def test_a_clarification_reply_reports_no_confidence(db_session, test_user):
+    import time
+
+    from app.api.v1.chat import _build_response
+    from app.schemas.chat import ChatRequest
+
+    result = {"clarification_needed": True, "clarification_question": "Which policy?", "answer": None,
+              "confidence_score": 77.8, "reasoning_path": ["retrieve", "ambiguity_check"]}
+    response = await _build_response(db_session, test_user, ChatRequest(question="Tell me about it"),
+                                     "t1", "s1", result, time.perf_counter())
+    assert response.confidence == 0.0 and response.confidence_level == "LOW"
