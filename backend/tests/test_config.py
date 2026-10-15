@@ -31,7 +31,9 @@ def test_admin_emails_are_parsed_case_insensitively():
 
 
 def _llm(**overrides) -> Settings:
-    return Settings(_env_file=None, SECRET_KEY="k" * 40, **overrides)
+    # Blank every provider key first: the real environment (e.g. CI) may define some of them.
+    keys = {"GEMINI_API_KEY": "", "FEATHERLESS_API_KEY": "", "DEEPSEEK_API_KEY": ""}
+    return Settings(_env_file=None, SECRET_KEY="k" * 40, **{**keys, **overrides})
 
 
 def test_gemini_is_used_when_its_key_is_set():
