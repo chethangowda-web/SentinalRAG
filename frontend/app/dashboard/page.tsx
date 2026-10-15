@@ -229,6 +229,7 @@ export default function DashboardPage() {
                     <BarChart3 className="h-4 w-4 text-primary" />
                     Quality Metrics
                   </CardTitle>
+                  <p className="text-xs text-muted-foreground">From the latest benchmark run (keyword-overlap estimates)</p>
                 </CardHeader>
                 <CardContent>
                   {s ? (

@@ -2,14 +2,31 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { runEvaluation, getEvaluationStatus, getEvaluationReport, getEvaluationHistory, getEvaluationDashboard } from "@/services/evaluation";
+import { runEvaluation, getEvaluationStatus, getEvaluationLatest, setupBenchmark, getEvaluationHistory, getEvaluationDashboard } from "@/services/evaluation";
 import type { EvalStatusResponse } from "@/services/evaluation";
 
-export function useEvaluationReport() {
+export function useEvaluationLatest() {
   return useQuery({
-    queryKey: ["evaluation-report"],
-    queryFn: getEvaluationReport,
-    retry: 1,
+    queryKey: ["evaluation-latest"],
+    queryFn: getEvaluationLatest,
+    // Poll while a run is in flight or the sample documents are still being indexed.
+    refetchInterval: (query) => {
+      const d = query.state.data;
+      return d && (d.run?.status === "running" || d.benchmark.loading) ? 3000 : false;
+    },
+  });
+}
+
+export function useEvaluationReport() {
+  const query = useEvaluationLatest();
+  return { ...query, data: query.data?.report ?? undefined };
+}
+
+export function useSetupBenchmark() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: setupBenchmark,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["evaluation-latest"] }),
   });
 }
 
@@ -35,7 +52,7 @@ export function useRunEvaluation() {
           if (pollingRef.current) clearInterval(pollingRef.current);
           pollingRef.current = null;
           if (s.status === "completed") {
-            queryClient.invalidateQueries({ queryKey: ["evaluation-report"] });
+            queryClient.invalidateQueries({ queryKey: ["evaluation-latest"] });
             queryClient.invalidateQueries({ queryKey: ["evaluation-history"] });
           }
         }
@@ -50,6 +67,7 @@ export function useRunEvaluation() {
     mutationFn: runEvaluation,
     onSuccess: (data) => {
       setStatus({ evaluation_id: data.evaluation_id, status: "running", progress: 0, total: data.total_questions, error: null });
+      queryClient.invalidateQueries({ queryKey: ["evaluation-latest"] });
       startPolling(data.evaluation_id);
     },
   });

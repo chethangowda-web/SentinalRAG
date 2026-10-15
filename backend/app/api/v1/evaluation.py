@@ -2,12 +2,12 @@ import asyncio
 import json
 import logging
 import uuid
-
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
@@ -17,6 +17,7 @@ from app.models.document import Document
 from app.models.document_evaluation import DocumentEvaluation
 from app.models.evaluation_run import EvaluationRun
 from app.models.user import User
+from app.services.benchmark_service import benchmark_status, start_loading
 from app.services.document_evaluation_service import evaluate_document
 from evaluation.dataset import load_dataset, get_dataset_summary
 from evaluation.reports.report_generator import ReportGenerator
@@ -59,6 +60,38 @@ def _count_questions(dataset_path: str) -> int:
         return 18
 
 
+async def _set_run_status(eval_id: str, status: str) -> None:
+    try:
+        async with get_session_maker()() as db:
+            await db.execute(update(EvaluationRun).where(EvaluationRun.evaluation_id == eval_id).values(status=status))
+            await db.commit()
+    except Exception:
+        logger.exception("Could not record status %s for evaluation %s", status, eval_id)
+
+
+async def recover_interrupted_runs(db: AsyncSession) -> int:
+    """Runs that were "running" when the process restarted can never finish; mark them failed."""
+    running = (await db.execute(select(EvaluationRun).where(EvaluationRun.status == "running"))).scalars().all()
+    for run in running:
+        # Runs from before status was recorded finished fine if their result file exists
+        run.status = "completed" if _report_gen.load_result(run.evaluation_id) is not None else "failed"
+    await db.commit()
+    return len(running)
+
+
+async def _latest_report_for(db: AsyncSession, user_id: str) -> dict[str, Any] | None:
+    runs = await db.execute(
+        select(EvaluationRun.evaluation_id)
+        .where(EvaluationRun.user_id == user_id)  # a result file exists only for runs that finished
+        .order_by(EvaluationRun.created_at.desc())
+    )
+    for (evaluation_id,) in runs.all():
+        result = _report_gen.load_result(evaluation_id)
+        if result is not None:
+            return result
+    return None
+
+
 async def _run_evaluation_background(eval_id: str, dataset_path: str, total: int, user_id: str | None = None) -> None:
     tasks = _load_tasks()
     tasks[eval_id] = {"status": "running", "progress": 0, "total": total, "error": None}
@@ -79,6 +112,7 @@ async def _run_evaluation_background(eval_id: str, dataset_path: str, total: int
         )
         result["visualizations"] = visualizations
 
+        await _set_run_status(eval_id, "completed")
         tasks = _load_tasks()
         tasks[eval_id] = {
             "status": "completed",
@@ -90,6 +124,7 @@ async def _run_evaluation_background(eval_id: str, dataset_path: str, total: int
 
     except Exception as exc:
         logger.exception("Background evaluation %s failed", eval_id)
+        await _set_run_status(eval_id, "failed")
         tasks = _load_tasks()
         tasks[eval_id] = {"status": "failed", "progress": 0, "total": total, "error": str(exc)}
         _save_tasks(tasks)
@@ -100,6 +135,22 @@ async def run_evaluation(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
+    benchmark = await benchmark_status(db, current_user.id)
+    if not benchmark["ready"]:
+        raise AppException(
+            status_code=409,
+            detail="The benchmark's sample documents are not loaded yet. Load them first (POST /api/v1/evaluation/benchmark/setup).",
+        )
+    in_flight = await db.execute(
+        select(EvaluationRun.id).where(
+            EvaluationRun.user_id == current_user.id,
+            EvaluationRun.status == "running",
+            EvaluationRun.created_at > datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=30),
+        )
+    )
+    if in_flight.first() is not None:
+        raise AppException(status_code=409, detail="An evaluation is already running.")
+
     eval_id = str(uuid.uuid4())
     dataset_path = str(Path(__file__).resolve().parent.parent.parent.parent / "evaluation" / "datasets" / "benchmark.json")
     total_questions = _count_questions(dataset_path)
@@ -119,6 +170,51 @@ async def run_evaluation(
     }
 
 
+@router.get("/evaluation/latest")
+async def get_latest_evaluation_state(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Everything the evaluation page needs in one call: the last report, any run in flight, benchmark readiness.
+
+    Unlike /evaluation/report this never 404s, and a run in progress survives a page reload.
+    """
+    latest = (await db.execute(
+        select(EvaluationRun).where(EvaluationRun.user_id == current_user.id).order_by(EvaluationRun.created_at.desc()).limit(1)
+    )).scalar_one_or_none()
+
+    run = None
+    if latest is not None:
+        task = _load_tasks().get(latest.evaluation_id, {})
+        running = latest.status == "running"
+        run = {
+            "evaluation_id": latest.evaluation_id,
+            "status": latest.status,
+            "progress": task.get("progress", 0) if running else task.get("total", 0),
+            "total": task.get("total", 18),
+            "error": task.get("error"),
+        }
+
+    return {
+        "report": await _latest_report_for(db, current_user.id),
+        "run": run,
+        "benchmark": await benchmark_status(db, current_user.id),
+    }
+
+
+@router.post("/evaluation/benchmark/setup", status_code=202)
+async def setup_benchmark(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Load the benchmark's six sample documents into this account (in the background)."""
+    status = await benchmark_status(db, current_user.id)
+    if not status["ready"]:
+        start_loading(current_user.id)
+        status = {**status, "loading": True}
+    return status
+
+
 @router.get("/evaluation/status/{evaluation_id}")
 async def get_evaluation_status(
     evaluation_id: str,
@@ -136,17 +232,7 @@ async def get_latest_report(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
-    # Results are stored on disk for every user; only serve runs this user started.
-    runs = await db.execute(
-        select(EvaluationRun.evaluation_id)
-        .where(EvaluationRun.user_id == current_user.id)
-        .order_by(EvaluationRun.created_at.desc())
-    )
-    result = None
-    for (evaluation_id,) in runs.all():
-        result = _report_gen.load_result(evaluation_id)
-        if result is not None:
-            break
+    result = await _latest_report_for(db, current_user.id)
     if result is None:
         raise HTTPException(status_code=404, detail="No evaluation results found. Run /api/v1/evaluate first.")
     return result

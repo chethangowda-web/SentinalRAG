@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
-import { useEvaluationReport, useEvaluationHistory, useRunEvaluation } from "@/hooks/use-evaluation";
+import { useEvaluationReport, useEvaluationHistory, useRunEvaluation, useEvaluationLatest, useSetupBenchmark } from "@/hooks/use-evaluation";
 import { useDocuments } from "@/hooks/use-documents";
 import { getDocumentEvaluation } from "@/services/evaluation";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
@@ -181,6 +181,11 @@ export default function EvaluationPage() {
   const { data: history, isLoading: historyLoading } = useEvaluationHistory();
   const { data: documents } = useDocuments();
   const runEval = useRunEvaluation();
+  const latest = useEvaluationLatest();
+  const setupBenchmark = useSetupBenchmark();
+  const benchmark = latest.data?.benchmark;
+  const benchmarkReady = !!benchmark?.ready;
+  const benchmarkLoading = setupBenchmark.isPending || !!benchmark?.loading;
 
   const [docEval, setDocEval] = useState<any | null>(null);
   const [docEvalLoading, setDocEvalLoading] = useState(false);
@@ -199,14 +204,23 @@ export default function EvaluationPage() {
 
   const handleRun = async () => {
     try {
+      if (!benchmarkReady) {
+        await setupBenchmark.mutateAsync();
+        toast.success("Loading the benchmark documents...");
+        return;
+      }
       await runEval.mutateAsync();
-    } catch { toast.error("Evaluation failed to start"); }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Evaluation failed to start");
+    }
   };
 
-  const isRunning = runEval.evalStatus?.status === "running";
-  const runProgress = runEval.evalStatus?.progress ?? 0;
-  const runTotal = runEval.evalStatus?.total ?? 18;
-  const runError = runEval.evalStatus?.error;
+  // The server remembers a run in flight, so it is still shown after a reload.
+  const serverRun = latest.data?.run;
+  const isRunning = runEval.evalStatus?.status === "running" || serverRun?.status === "running";
+  const runProgress = runEval.evalStatus?.progress ?? serverRun?.progress ?? 0;
+  const runTotal = runEval.evalStatus?.total ?? serverRun?.total ?? 18;
+  const runError = runEval.evalStatus?.error ?? (serverRun?.status === "failed" ? serverRun.error ?? "The last run did not finish" : null);
 
   const summary = report?.summary;
   const s = summary?.sentinel;
@@ -277,7 +291,7 @@ export default function EvaluationPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Evaluation Report</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              AI document quality assessment and pipeline performance metrics.
+              Compares a plain RAG baseline with the self-correcting pipeline on an 18-question benchmark over six sample policy documents. Scores are keyword-overlap estimates, best read as relative signals.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -296,9 +310,9 @@ export default function EvaluationPage() {
                 Export
               </Button>
             )}
-            <Button onClick={handleRun} disabled={runEval.isPending || isRunning}>
-              {isRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-              {isRunning ? "Running..." : "Run Evaluation"}
+            <Button onClick={handleRun} disabled={runEval.isPending || isRunning || benchmarkLoading}>
+              {isRunning || benchmarkLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+              {isRunning ? "Running..." : benchmarkLoading ? "Loading documents..." : benchmarkReady ? "Run Evaluation" : "Load benchmark documents"}
             </Button>
           </div>
         </div>
@@ -447,12 +461,25 @@ export default function EvaluationPage() {
           <EmptyState
             icon={BarChart3}
             title="No Evaluation Data"
-            description="Run an evaluation to measure your RAG pipeline performance across faithfulness, correctness, retrieval accuracy, and more."
+            description={
+              benchmarkReady
+                ? "The benchmark documents are loaded. Run the evaluation to compare the baseline with the self-correcting pipeline."
+                : "The benchmark questions are about six sample policy documents, so they are added to your account first (a few seconds). You can delete them afterwards."
+            }
             action={
-              <Button onClick={handleRun} disabled={runEval.isPending} size="lg" className="gap-2">
-                {runEval.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                Run Evaluation
-              </Button>
+              <div className="flex flex-col items-center gap-3">
+                <Button onClick={handleRun} disabled={runEval.isPending || benchmarkLoading} size="lg" className="gap-2">
+                  {runEval.isPending || benchmarkLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                  {benchmarkReady ? "Run Evaluation" : benchmarkLoading ? "Loading documents..." : "Load benchmark documents"}
+                </Button>
+                {benchmarkLoading && benchmark && (
+                  <ul className="text-xs text-muted-foreground" aria-live="polite">
+                    {benchmark.documents.map((d) => (
+                      <li key={d.filename}>{d.filename}: {d.status === "embedded" ? "ready" : d.status === "missing" ? "waiting" : "indexing"}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             }
           />
         )}
