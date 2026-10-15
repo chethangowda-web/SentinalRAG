@@ -64,6 +64,8 @@ class Settings(BaseSettings):
     GEMINI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
     # gemini-3.1-flash-lite has a far higher free-tier request limit than gemini-2.5-flash (5/min)
     GEMINI_MODEL: str = "gemini-3.1-flash-lite"
+    # Tried in order when GEMINI_MODEL has used up its daily quota (each model has its own allowance).
+    GEMINI_FALLBACK_MODELS: str = "gemini-3.5-flash-lite,gemini-3.5-flash"
 
     # DeepSeek (fallback LLM provider)
     DEEPSEEK_API_KEY: str = ""
@@ -86,6 +88,10 @@ class Settings(BaseSettings):
     ADMIN_EMAILS: str = ""
 
     LLM_MAX_TOKENS: int = 1024
+    # Simultaneous in-flight LLM calls; keeps bursts from tripping per-minute limits.
+    LLM_MAX_CONCURRENCY: int = 4
+    # Remember generated answers for identical question + retrieved-passage sets (entries).
+    ANSWER_CACHE_SIZE: int = 256
 
     # Index (chunk + embed) a document in the background right after upload.
     AUTO_INDEX_ON_UPLOAD: bool = True
@@ -145,6 +151,15 @@ class Settings(BaseSettings):
         if self.llm_provider == "featherless":
             return self.FEATHERLESS_MODEL or self.LLM_MODEL
         return self.LLM_MODEL
+
+    @property
+    def llm_model_candidates(self) -> list[str]:
+        """Models to try, in order. Only Gemini has configurable fallbacks."""
+        primary = self.effective_llm_model
+        if self.llm_provider != "gemini":
+            return [primary] if primary else []
+        extras = [m.strip() for m in self.GEMINI_FALLBACK_MODELS.split(",") if m.strip()]
+        return [primary] + [m for m in extras if m != primary]
 
     @property
     def effective_llm_reasoning_effort(self) -> str:

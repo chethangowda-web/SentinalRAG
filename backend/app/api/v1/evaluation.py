@@ -19,6 +19,7 @@ from app.models.evaluation_run import EvaluationRun
 from app.models.user import User
 from app.services.benchmark_service import benchmark_status, start_loading
 from app.services.document_evaluation_service import evaluate_document
+from app.services.llm import llm_status
 from evaluation.dataset import load_dataset, get_dataset_summary
 from evaluation.reports.report_generator import ReportGenerator
 from evaluation.reports.visualizer import Visualizer
@@ -135,6 +136,12 @@ async def run_evaluation(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
+    quota = llm_status()
+    if quota["exhausted"]:
+        raise AppException(
+            status_code=409,
+            detail=f"The AI model's request quota is used up (resets in about {max(1, quota['retry_after_seconds'] // 3600)} hour(s)); an evaluation would only produce fallback answers.",
+        )
     benchmark = await benchmark_status(db, current_user.id)
     if not benchmark["ready"]:
         raise AppException(

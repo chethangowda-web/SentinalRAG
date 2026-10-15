@@ -6,6 +6,7 @@ from pathlib import Path
 
 from app.core.config import settings
 from app.core.exceptions import InvalidUploadError
+from app.services.text_cleaning import PAGE_BREAK
 from app.utils.memory import force_gc, log_memory_usage
 
 # Tesseract spawns one thread per core by default, and each thread holds working memory.
@@ -113,7 +114,7 @@ def ocr_pdf(pdf_path: Path) -> str:
             gc.collect()
 
     doc.close()
-    combined = "\n".join(all_text)
+    combined = ("\n" + PAGE_BREAK + "\n").join(all_text)
     logger.info("Scanned PDF OCR complete: %d pages, %d chars", total_pages, len(combined))
 
     force_gc()

@@ -3,6 +3,7 @@ import re
 import uuid
 
 from app.core.config import settings
+from app.services.text_cleaning import PAGE_BREAK
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,7 @@ def _finalize_chunk(
     chunk_index: int,
     chunks: list[TextChunk],
     section: str | None = None,
+    page_number: int | None = None,
 ) -> tuple[list[str], int, int]:
     chunk_text_str = "\n\n".join(parts)
     chunk_char_start = char_start
@@ -97,6 +99,7 @@ def _finalize_chunk(
         char_start=chunk_char_start,
         char_end=chunk_char_end,
         word_count=word_count,
+        page_number=page_number,
         section=section,
     ))
 
@@ -109,6 +112,7 @@ def _finalize_with_overlap(
     chunk_index: int,
     chunks: list[TextChunk],
     section: str | None = None,
+    page_number: int | None = None,
 ) -> tuple[list[str], int, int]:
     chunk_text_str = "\n\n".join(parts)
     chunk_char_start = char_start
@@ -122,6 +126,7 @@ def _finalize_with_overlap(
         char_start=chunk_char_start,
         char_end=chunk_char_end,
         word_count=word_count,
+        page_number=page_number,
         section=section,
     ))
 
@@ -131,24 +136,53 @@ def _finalize_with_overlap(
     return [], 0, chunk_char_end
 
 
-def chunk_text(text: str) -> list[TextChunk]:
-    paragraphs = split_into_paragraphs(text)
+def chunk_text(text: str, paginated: bool = False) -> list[TextChunk]:
+    """Split text into overlapping chunks.
+
+    Pages are separated by PAGE_BREAK in text extracted from PDFs/images. With `paginated` (or any
+    page break present) each chunk records the page it starts on; otherwise page_number stays None.
+    """
+    pages = text.split(PAGE_BREAK)
+    track_pages = paginated or len(pages) > 1
+    paragraphs: list[str] = []
+    paragraph_pages: list[int | None] = []
+    for page_no, page_text in enumerate(pages, start=1):
+        for paragraph in split_into_paragraphs(page_text):
+            paragraphs.append(paragraph)
+            paragraph_pages.append(page_no if track_pages else None)
+
     chunks: list[TextChunk] = []
     current_parts: list[str] = []
     current_words = 0
     current_char_start = 0
     chunk_index = 0
     current_section: str | None = None
+    # Page of the first *new* paragraph in the chunk being built. Overlap text carried over from the
+    # previous chunk does not count: a chunk is cited by the page of its own content.
+    current_page: int | None = None
+    # False while the chunk being built holds only overlap carried over from the previous chunk.
+    # Such a chunk adds nothing new (it would be a duplicate of the previous chunk's tail), so it is dropped.
+    has_new = False
 
-    for para in paragraphs:
+    def add(part: str, words: int, page: int | None) -> None:
+        nonlocal current_words, current_page, has_new
+        if current_page is None:
+            current_page = page
+        current_parts.append(part)
+        current_words += words
+        has_new = True
+
+    for para, page in zip(paragraphs, paragraph_pages):
         detected = _detect_section(para)
 
         if detected:
-            if current_parts:
+            if current_parts and has_new:
                 current_parts, current_words, current_char_start = _finalize_with_overlap(
                     current_parts, current_char_start, chunk_index, chunks,
-                    section=current_section,
+                    section=current_section, page_number=current_page,
                 )
+                current_page = None
+                has_new = False
                 chunk_index += 1
             current_section = detected
 
@@ -158,41 +192,44 @@ def chunk_text(text: str) -> list[TextChunk]:
         para_words = len(para.split())
 
         if current_words + para_words <= settings.CHUNK_SIZE:
-            current_parts.append(para)
-            current_words += para_words
+            add(para, para_words, page)
             continue
 
-        if current_parts:
+        if current_parts and has_new:
             current_parts, current_words, current_char_start = _finalize_with_overlap(
                 current_parts, current_char_start, chunk_index, chunks,
-                section=current_section,
+                section=current_section, page_number=current_page,
             )
+            current_page = None
+            has_new = False
             chunk_index += 1
+        elif current_parts:
+            current_parts, current_words = [], 0  # overlap only: nothing new to keep
 
         sub_parts = _split_long_paragraph(para, settings.CHUNK_SIZE)
         for sub in sub_parts:
             sub_words = len(sub.split())
             if current_words + sub_words <= settings.CHUNK_SIZE:
-                current_parts.append(sub)
-                current_words += sub_words
+                add(sub, sub_words, page)
             else:
-                if current_parts:
+                if current_parts and has_new:
                     current_parts, current_words, current_char_start = _finalize_chunk(
                         current_parts, current_char_start, chunk_index, chunks,
-                        section=current_section,
+                        section=current_section, page_number=current_page,
                     )
+                    current_page = None
+                    has_new = False
                     chunk_index += 1
-                current_parts.append(sub)
-                current_words += sub_words
+                add(sub, sub_words, page)
 
-    if current_parts:
-        _finalize_chunk(current_parts, current_char_start, chunk_index, chunks, section=current_section)
+    if current_parts and has_new:
+        _finalize_chunk(current_parts, current_char_start, chunk_index, chunks, section=current_section, page_number=current_page)
 
     logger.info("Chunking complete: %d chunks from %d chars", len(chunks), len(text))
     for c in chunks:
         logger.debug(
-            "  Chunk %d: %d words, chars [%d:%d], section=%s",
-            c.chunk_index, c.word_count, c.char_start, c.char_end, c.section,
+            "  Chunk %d: %d words, chars [%d:%d], section=%s, page=%s",
+            c.chunk_index, c.word_count, c.char_start, c.char_end, c.section, c.page_number,
         )
 
     return chunks

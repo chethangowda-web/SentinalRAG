@@ -26,3 +26,7 @@ class GraphState(TypedDict):
     llm_observability: dict | None
     # Confidence of the first retrieval, kept so retry gains can be measured
     initial_confidence: NotRequired[float | None]
+    # True when the index held fewer than five candidates, so low coverage is not a retrieval failure
+    corpus_small: NotRequired[bool]
+    # The user asked to be answered even if the question looks vague
+    skip_clarification: NotRequired[bool]

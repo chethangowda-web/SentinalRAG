@@ -1,3 +1,4 @@
+import json
 import logging
 
 from fastapi import APIRouter, Depends
@@ -9,6 +10,7 @@ from app.core.database import get_db
 from app.models.document import Document
 from app.models.chunk import Chunk
 from app.models.chat_session import ChatSession
+from app.models.trace import Trace
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -93,7 +95,31 @@ async def get_dashboard_stats(
         for row in recent_result.all()
     ]
 
+    # Real pipeline numbers from this user's recent questions (not uptime, not benchmark runs)
+    recent = (await db.execute(
+        select(Trace.latencies, Trace.retrieval_attempts)
+        .where(Trace.user_id == current_user.id)
+        .order_by(Trace.timestamp.desc())
+        .limit(200)
+    )).all()
+    response_times: list[float] = []
+    corrected = 0
+    for latencies_json, attempts in recent:
+        try:
+            timings = json.loads(latencies_json) if latencies_json else {}
+        except (TypeError, ValueError):
+            timings = {}
+        # Node timings are sequential, so their sum is the time the question spent in the pipeline
+        total_ms = sum(v for k, v in timings.items() if k.endswith("_node") and isinstance(v, (int, float)))
+        if total_ms > 0:
+            response_times.append(total_ms)
+        if (attempts or 1) > 1:
+            corrected += 1
+
     return {
+        "avg_response_ms": round(sum(response_times) / len(response_times)) if response_times else None,
+        "self_correction_rate": round(100 * corrected / len(recent), 1) if recent else None,
+        "questions_answered": len(recent),
         "total_documents": total_docs,
         "total_chunks": total_chunks,
         "total_sessions": total_sessions,

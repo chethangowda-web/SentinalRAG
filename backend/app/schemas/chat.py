@@ -7,6 +7,8 @@ class ChatRequest(BaseModel):
     question: str
     session_id: str | None = None
     document_id: str | None = None
+    # Set when the user chose "Answer anyway" after being asked to clarify
+    skip_clarification: bool = False
 
 
 class CitationItem(BaseModel):

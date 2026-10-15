@@ -16,9 +16,10 @@ async def ambiguity_node(state: GraphState) -> dict:
     start = time.perf_counter()
     question = state["question"]
     words = len(question.split())
+    skipped = bool(state.get("skip_clarification"))
 
     clarification = None
-    if words <= MAX_WORDS_TO_CHECK:
+    if words <= MAX_WORDS_TO_CHECK and not skipped:
         # Judge the question alone. Showing the retrieved passages made the model ask "which plan?"
         # about specific questions simply because several plans appear in the documents.
         clarification = await asyncio.to_thread(detect_ambiguity, question, [], False)
@@ -32,7 +33,9 @@ async def ambiguity_node(state: GraphState) -> dict:
     reasoning_path = list(state.get("reasoning_path", []))
     reasoning_path.append("ambiguity_check")
 
-    if words > MAX_WORDS_TO_CHECK:
+    if skipped:
+        output, decision, next_node = "skipped (user chose to answer anyway)", "answer anyway -> confidence_evaluate", "confidence_evaluate"
+    elif words > MAX_WORDS_TO_CHECK:
         output, decision, next_node = f"skipped ({words} words, specific enough)", "specific -> confidence_evaluate", "confidence_evaluate"
     elif needed:
         output, decision, next_node = f"needed: {clarification[:80]}", "ambiguous -> END", "END"

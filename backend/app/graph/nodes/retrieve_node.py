@@ -77,6 +77,7 @@ async def retrieve_node(state: GraphState, config: RunnableConfig) -> dict:
         "retrieved_chunks": chunks,
         "confidence_score": search_response.confidence,
         "confidence_level": search_response.confidence_level,
+        "corpus_small": search_response.corpus_small is True,
         "latencies": latencies,
         "reasoning_path": reasoning_path,
         "graph_execution": graph_execution,

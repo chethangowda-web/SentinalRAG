@@ -135,6 +135,7 @@ def _initial_state(body: ChatRequest, trace_id: str) -> GraphState:
         "retrieval_details": [],
         "confidence_breakdown": None,
         "llm_observability": None,
+        "skip_clarification": body.skip_clarification,
     }
 
 

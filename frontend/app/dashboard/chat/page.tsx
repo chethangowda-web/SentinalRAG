@@ -20,6 +20,7 @@ import {
   useClearSessionMessages,
 } from "@/hooks/use-chat";
 import { streamChatMessage } from "@/services/chat";
+import { rerankPercent } from "@/lib/utils";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Button } from "@/components/ui/button";
@@ -426,7 +427,7 @@ function EvidencePanel({
                     </div>
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground tabular-nums">
                       <span>V:{rd.vector_score.toFixed(3)}</span>
-                      <span>R:{rd.rerank_score.toFixed(3)}</span>
+                      <span>Relevance {rerankPercent(rd.rerank_score)}%</span>
                     </div>
                   </div>
                   <p className="leading-relaxed line-clamp-2 text-muted-foreground">
@@ -675,11 +676,9 @@ export default function ChatPage() {
   }, [messages, scrollToBottom]);
 
   /* send */
-  const handleSend = useCallback(async () => {
-    const question = input.trim();
+  const sendQuestion = useCallback(async (question: string, skipClarification = false) => {
     if (!question || isStreaming) return;
 
-    setInput("");
     setIsStreaming(true);
     setLiveSteps([]);
     setStreamError(null);
@@ -693,6 +692,7 @@ export default function ChatPage() {
           question,
           session_id: activeSessionId,
           document_id: chatDocumentId || undefined,
+          skip_clarification: skipClarification || undefined,
         },
         (step) => setLiveSteps((prev) => [...prev, step])
       );
@@ -729,7 +729,14 @@ export default function ChatPage() {
       setIsStreaming(false);
       setLiveSteps([]);
     }
-  }, [input, isStreaming, activeSessionId, qc]);
+  }, [isStreaming, activeSessionId, chatDocumentId, qc]);
+
+  const handleSend = useCallback(() => {
+    const question = input.trim();
+    if (!question) return;
+    setInput("");
+    sendQuestion(question);
+  }, [input, sendQuestion]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -1374,6 +1381,17 @@ export default function ChatPage() {
                                       <p className="text-[11px] text-blue-600/70 dark:text-blue-400/70 mt-0.5">
                                         {msg.response.clarification_question}
                                       </p>
+                                      {i > 0 && messages[i - 1].role === "user" && (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="mt-2 h-7 text-xs"
+                                          disabled={isStreaming}
+                                          onClick={() => sendQuestion(messages[i - 1].content, true)}
+                                        >
+                                          Answer anyway
+                                        </Button>
+                                      )}
                                     </div>
                                   </div>
                                 </div>

@@ -123,6 +123,8 @@ export default function DashboardPage() {
   const avgConfidence = allValues.length > 0 ? (allValues.reduce((a, b) => a + b, 0) / allValues.length) * 100 : null;
   const retrievalAccuracy = recall != null && precision != null ? ((recall + precision) / 2) * 100 : null;
   const selfCorrectionRate = retrySuccess != null ? (1 - retrySuccess) * 100 : null;
+  // Prefer the live rate from the user's own questions over the last benchmark run
+  const liveCorrectionRate = stats?.self_correction_rate ?? selfCorrectionRate;
   const ocrConfidence = stats?.avg_ocr_confidence != null ? stats.avg_ocr_confidence * 100 : null;
 
   const recentDocs = stats?.recent_documents ?? documents?.slice(0, 5) ?? [];
@@ -183,16 +185,16 @@ export default function DashboardPage() {
                 mono
               />
               <StatCard
-                title="Server Uptime"
-                value={uptime > 0 ? uptimeFormatted : "--"}
-                subtitle="since last restart"
+                title="Avg Response Time"
+                value={stats?.avg_response_ms != null ? `${(stats.avg_response_ms / 1000).toFixed(1)}s` : "--"}
+                subtitle={stats?.questions_answered ? `across ${stats.questions_answered} recent questions` : "ask a question to see this"}
                 icon={Clock}
                 color="hsl(var(--chart-3))"
               />
               <StatCard
                 title="Self-Corrections"
-                value={selfCorrectionRate != null ? `${selfCorrectionRate.toFixed(0)}%` : "--"}
-                subtitle="query rewrite rate"
+                value={liveCorrectionRate != null ? `${liveCorrectionRate.toFixed(0)}%` : "--"}
+                subtitle="of recent questions needed a retry"
                 icon={RefreshCw}
                 color="hsl(var(--chart-4))"
                 mono
@@ -216,7 +218,7 @@ export default function DashboardPage() {
               <StatCard
                 title="System Health"
                 value={health?.status === "healthy" ? "Operational" : health?.status ?? "Unknown"}
-                subtitle={health?.version ? `v${health.version}` : ""}
+                subtitle={health?.version ? `v${health.version} · up ${uptimeFormatted}` : ""}
                 icon={Activity}
                 color={health?.status === "healthy" ? "hsl(var(--confidence-high))" : "hsl(var(--confidence-low))"}
               />

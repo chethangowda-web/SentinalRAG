@@ -1,14 +1,50 @@
+import hashlib
 import logging
+import threading
 import time
 import traceback
+from collections import OrderedDict
 
 from app.core.config import settings
-from app.services.llm import build_llm, invoke_with_retry
+from app.services.llm import LLMQuotaExhausted, build_llm, invoke_with_retry
 from app.services.token_counter import count_tokens
 
 logger = logging.getLogger(__name__)
 
 _llm = None
+
+# Identical question + identical retrieved passages give an identical answer, so remember it:
+# repeat questions, retries and benchmark reruns then cost no LLM request.
+_answer_cache: "OrderedDict[str, str]" = OrderedDict()
+_cache_lock = threading.Lock()
+
+
+def _cache_key(question: str, chunks: list[dict]) -> str:
+    ids = "|".join(str(c.get("chunk_id") or c.get("text", "")[:80]) for c in chunks[:8])
+    return hashlib.sha256(f"{question.strip().lower()}||{ids}".encode()).hexdigest()
+
+
+def _cache_get(key: str) -> str | None:
+    with _cache_lock:
+        answer = _answer_cache.get(key)
+        if answer is not None:
+            _answer_cache.move_to_end(key)
+        return answer
+
+
+def _cache_put(key: str, answer: str) -> None:
+    if settings.ANSWER_CACHE_SIZE <= 0:
+        return
+    with _cache_lock:
+        _answer_cache[key] = answer
+        _answer_cache.move_to_end(key)
+        while len(_answer_cache) > settings.ANSWER_CACHE_SIZE:
+            _answer_cache.popitem(last=False)
+
+
+def clear_answer_cache() -> None:
+    with _cache_lock:
+        _answer_cache.clear()
 
 
 def _get_llm():
@@ -29,6 +65,12 @@ def generate_answer(question: str, chunks: list[dict]) -> str:
     if llm is None:
         logger.warning("No LLM configured, returning chunk-based fallback")
         return _no_llm_fallback(question, chunks, "no_llm")
+
+    cache_key = _cache_key(question, chunks)
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        logger.info("Answer served from cache")
+        return cached
 
     start = time.perf_counter()
 
@@ -63,7 +105,12 @@ def generate_answer(question: str, chunks: list[dict]) -> str:
         answer = response.content.strip()
         elapsed = round((time.perf_counter() - start) * 1000, 1)
         logger.info("Answer generated in %.1fms from %d chunks", elapsed, len(chunks))
+        if answer:
+            _cache_put(cache_key, answer)
         return answer
+    except LLMQuotaExhausted as e:
+        logger.error("LLM quota exhausted: %s", e)
+        return _no_llm_fallback(question, chunks, "quota", str(int(e.retry_after_seconds)))
     except Exception as e:
         err_str = str(e)
         logger.error("LLM generation failed: %s", err_str[:200])
@@ -98,7 +145,13 @@ def _no_llm_fallback(question: str, chunks: list[dict], reason: str = "unknown",
     doc_id = top.get("document_id", "unknown")
 
     notice = ""
-    if reason == "rate_limit":
+    if reason == "quota":
+        hours = max(1, round(int(detail or 0) / 3600)) if detail.isdigit() else 1
+        notice = (
+            "\n\n> **The AI service's request quota is used up for now** (it resets in about "
+            f"{hours} hour(s)). Showing the most relevant retrieved passage instead of a written answer."
+        )
+    elif reason == "rate_limit":
         notice = (
             "\n\n> **LLM rate limit reached.** Generated content below is raw retrieved text. "
             "Add a valid API key to your `.env` for unlimited usage."

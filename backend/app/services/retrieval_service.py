@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 RERANK_TOP_K = 15
 FINAL_TOP_K = 8
+COVERAGE_TARGET = 5  # passages that count as full coverage (see confidence_service)
 
 
 class SearchResultItem:
@@ -54,7 +55,9 @@ class SearchResponse:
         confidence_level: str,
         results: list[SearchResultItem],
         latencies: dict[str, float] | None = None,
+        corpus_small: bool = False,
     ):
+        self.corpus_small = corpus_small
         self.query = query
         self.confidence = confidence
         self.confidence_level = confidence_level
@@ -124,11 +127,13 @@ async def retrieve(
         vector_scores.append(hr.vector_score)
         rerank_scores.append(rerank_score)
 
+    corpus_small = len(hybrid_results) < COVERAGE_TARGET
     confidence_start = time.perf_counter()
     conf = confidence_service.calculate_confidence(
         vector_scores=vector_scores,
         rerank_scores=rerank_scores,
         total_results=len(results),
+        coverage_full=corpus_small,
     )
     latencies["confidence"] = round((time.perf_counter() - confidence_start) * 1000, 1)
 
@@ -149,4 +154,5 @@ async def retrieve(
         confidence_level=conf.level,
         results=results,
         latencies=latencies,
+        corpus_small=corpus_small,
     )

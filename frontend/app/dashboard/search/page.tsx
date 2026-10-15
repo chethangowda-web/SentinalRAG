@@ -1,5 +1,7 @@
 "use client";
 
+import { rerankPercent } from "@/lib/utils";
+
 import { useState } from "react";
 import { Search, FileText, Loader2, Clock, Gauge, ArrowUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -99,11 +101,11 @@ export default function SearchPage() {
                       </td>
                       <td className="p-3">
                         <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-system-mono font-medium tabular-nums ${
-                          item.rerank_score > 0.5
+                          item.rerank_score > 0
                             ? "border-confidence-high/30 bg-confidence-high-bg text-confidence-high"
                             : "border-border/60 text-muted-foreground"
                         }`}>
-                          {item.rerank_score.toFixed(3)}
+                          {rerankPercent(item.rerank_score)}%
                         </span>
                       </td>
                       <td className="p-3">
