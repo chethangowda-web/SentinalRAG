@@ -202,7 +202,9 @@ open http://localhost
 
 | Variable | Default | Description |
 |---|---|---|
-| `DEEPSEEK_API_KEY` | — | DeepSeek API key (required if Featherless not set) |
+| `GEMINI_API_KEY` | — | Google Gemini API key (preferred provider when set) |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model name |
+| `DEEPSEEK_API_KEY` | — | DeepSeek API key (fallback provider) |
 | `DEEPSEEK_BASE_URL` | `https://api.deepseek.com/v1` | DeepSeek API base URL |
 | `LLM_MODEL` | `deepseek-chat` | LLM model name |
 | `LLM_TEMPERATURE` | `0.1` | LLM temperature (0.0–1.0) |
@@ -444,7 +446,7 @@ Backend logs structured JSON with `request_id` for request tracing:
 | Symptom | Cause | Solution |
 |---|---|---|
 | Backend health check fails | Database not ready | Wait for PostgreSQL health check (10s start period) |
-| LLM features return fallback | API key not configured | Set `DEEPSEEK_API_KEY` or `FEATHERLESS_API_KEY` |
+| LLM features return fallback | API key not configured | Set `GEMINI_API_KEY` (or `DEEPSEEK_API_KEY` / `FEATHERLESS_API_KEY`) |
 | Upload fails with 400 | File too large or wrong type | Check file type (PDF/PNG/JPG) and size (max 50MB) |
 | Chat returns "I don't know" | No documents ingested | Upload documents first via the upload page |
 | Qdrant connection refused | Qdrant not started or wrong URL | Check `QDRANT_URL` environment variable |
