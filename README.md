@@ -39,7 +39,7 @@ These failure modes are particularly dangerous in regulated industries — finan
 ## Key Features
 
 ### Self-Correcting Pipeline
-An 8-node LangGraph workflow that evaluates confidence after every retrieval. Low-confidence results trigger automatic query rewriting and re-retrieval before resorting to contradiction detection or graceful fallback.
+A 9-node LangGraph workflow that checks short questions for ambiguity and evaluates confidence after every retrieval. Low-confidence results trigger automatic query rewriting and re-retrieval before resorting to contradiction detection or graceful fallback.
 
 ### Hybrid Retrieval
 Combines vector similarity search (Qdrant, 384-dimensional embeddings) with PostgreSQL full-text search (BM25) using Reciprocal Rank Fusion (RRF). Retrieved results are re-ranked by a dedicated cross-encoder model for maximum precision.
@@ -77,7 +77,7 @@ Docker Compose orchestration (PostgreSQL, Qdrant, FastAPI, Next.js, NGINX). Stru
 │    (React 19, Dark)    │                          │   (Python 3.12)       │
 │                        │                          │                       │
 │   Dashboard            │◄──── HTTP/JSON ──────────►   LangGraph Pipeline  │
-│   Chat UI              │                          │   8 self-correcting   │
+│   Chat UI              │                          │   9 self-correcting   │
 │   Document Manager     │                          │   nodes               │
 │   Evaluation View      │                          │                       │
 │   Explainability Panel │                          │   Hybrid Retrieval    │
@@ -201,9 +201,10 @@ sentinelrag/
 │   │   │   └── qdrant.py             # Qdrant client singleton
 │   │   ├── graph/                    # LangGraph self-correction pipeline
 │   │   │   ├── state.py              # GraphState TypedDict
-│   │   │   ├── graph_builder.py      # 8-node graph construction
+│   │   │   ├── graph_builder.py      # 9-node graph construction
 │   │   │   └── nodes/                # Individual graph nodes
 │   │   │       ├── retrieve_node.py
+│   │   │       ├── ambiguity_node.py
 │   │   │       ├── confidence_node.py
 │   │   │       ├── rewrite_node.py
 │   │   │       ├── retry_node.py

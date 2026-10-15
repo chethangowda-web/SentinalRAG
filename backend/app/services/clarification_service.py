@@ -27,8 +27,13 @@ _vague_word_re = re.compile(
 )
 
 
-def detect_ambiguity(question: str, chunks: list[dict]) -> str | None:
-    if _vague_word_re.search(question):
+def detect_ambiguity(question: str, chunks: list[dict], use_keywords: bool = True) -> str | None:
+    """Return a clarifying question if the question is too vague to answer, else None.
+
+    The keyword screen is quick but crude (it matches words like "explain" and "that" in perfectly
+    specific questions), so callers that run on every question pass use_keywords=False and rely on the LLM.
+    """
+    if use_keywords and _vague_word_re.search(question):
         if chunks:
             topics = _extract_topics(chunks)
             if topics:
@@ -54,9 +59,10 @@ def detect_ambiguity(question: str, chunks: list[dict]) -> str | None:
     )
 
     prompt = (
-        "Analyze if the following question is ambiguous given the context.\n"
-        "If ambiguous, suggest a clarification question. "
-        "If clear, output 'CLEAR'.\n\n"
+        "Decide whether the following question is too vague to answer from documents. "
+        "It is ambiguous only if it names no specific topic or could refer to several unrelated things. "
+        "A short question that names a specific topic (a policy, a number, a process, a plan) is CLEAR.\n"
+        "If ambiguous, write one short clarifying question. If clear, output exactly CLEAR.\n\n"
         f"Question: {question}\n\n"
         f"Context: {context}\n\n"
         "Output (either 'CLEAR' or a clarification question):"
@@ -66,7 +72,7 @@ def detect_ambiguity(question: str, chunks: list[dict]) -> str | None:
         response = invoke_with_retry(llm, prompt)
         result = response.content.strip()
         elapsed = round((time.perf_counter() - start) * 1000, 1)
-        if result.upper() == "CLEAR":
+        if result.upper().startswith("CLEAR"):
             logger.info("Clarification check: clear (%.1fms)", elapsed)
             return None
         logger.info("Clarification needed: %s (%.1fms)", result[:80], elapsed)
