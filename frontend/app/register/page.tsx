@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
-import { Shield, Mail, Lock, User, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Shield, Mail, Lock, User, Eye, EyeOff, ArrowLeft, KeyRound } from "lucide-react";
+import { getAuthConfig } from "@/services/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -16,6 +17,12 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
+  const [needsInvite, setNeedsInvite] = useState(false);
+
+  useEffect(() => {
+    getAuthConfig().then((c) => setNeedsInvite(c.registration_requires_code)).catch(() => undefined);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,9 +34,13 @@ export default function RegisterPage() {
       toast.error("Password must be at least 8 characters");
       return;
     }
+    if (needsInvite && !inviteCode.trim()) {
+      toast.error("Enter your invite code");
+      return;
+    }
     setLoading(true);
     try {
-      await register({ name, email, password });
+      await register({ name, email, password, invite_code: needsInvite ? inviteCode.trim() : undefined });
       toast.success("Account created successfully!");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Registration failed");
@@ -108,6 +119,22 @@ export default function RegisterPage() {
                 </button>
               </div>
             </div>
+            {needsInvite && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Invite code</label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Ask the administrator"
+                    value={inviteCode}
+                    onChange={(e) => setInviteCode(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+            )}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Creating account..." : "Create account"}
             </Button>

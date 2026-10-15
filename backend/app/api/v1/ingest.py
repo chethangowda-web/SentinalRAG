@@ -11,6 +11,7 @@ from app.core.exceptions import AppException
 from app.models.user import User
 from app.schemas.document import IngestResponse
 from app.services.document_service import ingest_document
+from app.services.quota_service import check_upload_quota
 from app.services.file_service import save_upload_stream
 from app.utils.file_utils import get_upload_path
 from app.utils.memory import log_memory_usage
@@ -50,6 +51,8 @@ async def upload_document(
             status_code=413,
             detail=f"File too large. Maximum allowed size is {file_size_limit // (1024 * 1024)} MB.",
         )
+
+    await check_upload_quota(db, current_user.id, file.size or 0)
 
     upload_path, doc_id = get_upload_path(filename)
     total_bytes = await save_upload_stream(file.read, upload_path, file_size_limit)

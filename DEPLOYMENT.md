@@ -552,3 +552,7 @@ volumes:
 - [ ] Review and restrict CORS origins for production domain
 - [ ] Implement network policies (Docker network segmentation)
 - [ ] Set resource limits on all containers
+
+### Running behind a proxy
+
+The containers start uvicorn with `--proxy-headers --forwarded-allow-ips=*` so `request.client` is the real client address taken from `X-Forwarded-For`. The per-IP rate limits (global, sign-up, failed login) depend on this: without it every visitor looks like the platform's proxy and shares one bucket. `*` is only safe when the app is reachable exclusively through that proxy (Railway, nginx in docker-compose); do not expose uvicorn directly to the internet with it.

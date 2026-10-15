@@ -97,3 +97,13 @@ def no_real_llm_calls(monkeypatch):
         "app.services.answer_generator",
     ):
         monkeypatch.setattr(f"{module}._get_llm", lambda: None)
+
+
+@pytest.fixture(autouse=True)
+def fresh_rate_limits():
+    """Auth rate limits are process-wide counters; start every test with empty ones."""
+    from app.api.v1.auth import reset_rate_limits
+
+    reset_rate_limits()
+    yield
+    reset_rate_limits()

@@ -22,7 +22,9 @@ from app.schemas.chat import (
     LLMObservability,
     RetrievalDetailItem,
 )
+from app.core.exceptions import AppException
 from app.services import chat_history_service, trace_service
+from app.services.quota_service import check_chat_quota
 
 logger = logging.getLogger(__name__)
 
@@ -308,6 +310,8 @@ async def chat_endpoint(
     if not body.question or not body.question.strip():
         return _simple_response("Please provide a valid question.", "validation", trace_id)
 
+    await check_chat_quota(db, current_user.id)
+
     graph = _get_graph()
 
     try:
@@ -347,6 +351,13 @@ async def chat_stream_endpoint(
         try:
             # The request-scoped session may already be closed once streaming starts, so use our own.
             async with get_session_maker()() as db:
+                try:
+                    await check_chat_quota(db, current_user.id)
+                except AppException as quota_error:
+                    yield _sse("error", {"detail": quota_error.detail})
+                    return
+                except Exception as exc:  # a broken quota lookup must not take chat down
+                    logger.warning("Chat quota check failed, allowing the request: %s", exc)
                 state = dict(_initial_state(body, trace_id))
                 async for update in _get_graph().astream(
                     state, _graph_config(db, current_user, body), stream_mode="updates"

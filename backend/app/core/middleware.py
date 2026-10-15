@@ -9,7 +9,8 @@ from starlette.responses import JSONResponse, Response
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+        # The outer metrics middleware (main.py) assigns the id first so its own log lines carry it.
+        request_id = getattr(request.state, "request_id", None) or request.headers.get("X-Request-ID", str(uuid.uuid4()))
         request.state.request_id = request_id
 
         start = time.perf_counter()
@@ -34,9 +35,23 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         return response
 
 
+# The exported UI uses inline scripts/styles, so 'unsafe-inline' is needed for both; everything else is locked to
+# this origin. Swagger UI (/docs) loads assets from a CDN, so it is exempt.
+CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; "
+    "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+)
+_CSP_EXEMPT_PREFIXES = ("/docs", "/redoc", "/openapi.json")
+
+
 class SecureHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response: Response = await call_next(request)
+        if not request.url.path.startswith(_CSP_EXEMPT_PREFIXES):
+            response.headers["Content-Security-Policy"] = CONTENT_SECURITY_POLICY
+        if request.headers.get("x-forwarded-proto") == "https" or request.url.scheme == "https":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
