@@ -66,18 +66,22 @@ def run_evaluation(client: httpx.Client, timeout_s: int) -> dict:
 
     deadline = time.time() + timeout_s
     last = None
+    polls = 0
     while time.time() < deadline:
-        status = client.get(f"/api/v1/evaluation/status/{eval_id}").json()
+        polls += 1
+        response = client.get(f"/api/v1/evaluation/status/{eval_id}")
+        status = response.json() if response.status_code == 200 else {}
         progress = f"{status.get('progress', 0)}/{status.get('total', '?')}"
-        if progress != last:
-            log(f"status {status['status']} {progress}")
-            last = progress
-        if status["status"] == "completed":
-            report = client.get("/api/v1/evaluation/report")
-            report.raise_for_status()
-            return report.json()
-        if status["status"] == "failed":
+        if (status.get("status"), progress) != last:
+            log(f"status {status.get('status', f'http {response.status_code}')} {progress}")
+            last = (status.get("status"), progress)
+        if status.get("status") == "failed":
             raise SystemExit(f"evaluation failed: {status.get('error')}")
+        # The status file is advisory; the saved report for this run id is the real signal that it is done.
+        if status.get("status") == "completed" or polls % 3 == 0:
+            report = client.get("/api/v1/evaluation/report")
+            if report.status_code == 200 and report.json().get("evaluation_id") == eval_id:
+                return report.json()
         time.sleep(10)
     raise SystemExit("timed out waiting for the evaluation")
 
@@ -111,6 +115,20 @@ def render(report: dict, base_url: str, model: str) -> str:
     bl, sl = base.get("latency", {}).get("value"), sent.get("latency", {}).get("value")
     if bl is not None and sl is not None:
         lines.append(f"| Mean latency | {bl / 1000:.1f}s | {sl / 1000:.1f}s | {'Baseline' if bl < sl else 'SentinelRAG'} |")
+
+    def fell_back(pipeline: str) -> list[str]:
+        marker = "Based on the retrieved documents (source:"
+        return [pq["id"] for pq in report["per_question"] if (pq[pipeline].get("answer") or "").startswith(marker)]
+
+    base_fb, sent_fb = fell_back("baseline"), fell_back("sentinel")
+    lines += [
+        "",
+        f"Answers that fell back to raw retrieved text because the LLM call failed (usually the provider's rate limit):"
+        f" baseline {len(base_fb)}/{report['total_questions']}, SentinelRAG {len(sent_fb)}/{report['total_questions']}"
+        f"{' (questions ' + ', '.join(sent_fb) + ')' if sent_fb else ''}. These count against the pipeline that hit them.",
+    ]
+    unanswered = [pq["id"] for pq in report["per_question"] if pq["sentinel"].get("answer") is None]
+    lines.append(f"Questions where SentinelRAG returned no answer at all: {len(unanswered)}/{report['total_questions']}.")
 
     lines += ["", "## Behaviour by category", "", "| Category | Questions | Retried | Contradiction flagged | Clarification asked | Refused (no evidence) |", "|---|---|---|---|---|---|"]
     by_cat: dict[str, list[dict]] = {}
