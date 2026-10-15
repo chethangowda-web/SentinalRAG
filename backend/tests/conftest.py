@@ -3,6 +3,7 @@ import os
 
 os.environ["SECRET_KEY"] = "test-secret-key-not-for-production"
 
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -81,3 +82,18 @@ async def async_client(db_session, test_user):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
+
+
+@pytest.fixture(autouse=True)
+def no_real_llm_calls(monkeypatch):
+    """CI sets a dummy API key so config validates; make sure no test can reach a real LLM with it.
+
+    Tests that need a model patch `_get_llm` themselves, which overrides this.
+    """
+    for module in (
+        "app.services.contradiction_service",
+        "app.services.clarification_service",
+        "app.services.query_rewriter",
+        "app.services.answer_generator",
+    ):
+        monkeypatch.setattr(f"{module}._get_llm", lambda: None)

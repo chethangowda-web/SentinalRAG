@@ -1,27 +1,76 @@
 import logging
 import re
 
+from app.services.llm import build_llm, invoke_with_retry
+
 logger = logging.getLogger(__name__)
 
 
 _NUMBER_RE = re.compile(r"\b\d+[\.,]?\d*\b")
 
 
-def detect_contradictions(chunks: list[dict]) -> tuple[bool, str | None]:
+_llm = None
+
+
+def _get_llm():
+    global _llm
+    if _llm is None:
+        _llm = build_llm(max_tokens=16, timeout=20, temperature=0.0)
+    return _llm
+
+
+def verify_contradiction(question: str, chunks: list[dict], reason: str | None) -> bool | None:
+    """Ask the LLM whether flagged passages really give conflicting answers to the question.
+
+    Returns True/False, or None when it cannot be decided (no LLM, an error, or an unclear reply).
+    """
+    llm = _get_llm()
+    if llm is None:
+        return None
+
+    passages = "\n\n".join(
+        f"[{i + 1}] {(c.get('text') or '')[:600]}" for i, c in enumerate(chunks[:6]) if c.get("text")
+    )
+    prompt = (
+        "The passages below were flagged by a rough keyword check as possibly contradicting each other. "
+        "Decide whether they actually give CONFLICTING answers to the question. "
+        "Different plans, tiers, products, dates or scopes are NOT a conflict, and neither is a number "
+        "that merely appears in unrelated sentences.\n\n"
+        f"Question: {question}\n\nPassages:\n{passages}\n\n"
+        "Reply with exactly one word: YES (they conflict) or NO."
+    )
+    try:
+        reply = (invoke_with_retry(llm, prompt).content or "").strip().upper()
+    except Exception as exc:
+        logger.warning("Contradiction verification failed, keeping the keyword result: %s", str(exc)[:160])
+        return None
+    if reply.startswith("YES"):
+        return True
+    if reply.startswith("NO"):
+        return False
+    return None
+
+
+def detect_contradictions(chunks: list[dict], question: str | None = None) -> tuple[bool, str | None]:
+    """Keyword screen for conflicting sources; when a question is given, an LLM confirms any hit.
+
+    The keyword check alone fires on almost any pair of chunks containing numbers, so a hit is
+    only trusted outright when it cannot be verified.
+    """
     if len(chunks) < 2:
         return False, None
 
     texts = [c.get("text", "") for c in chunks if c.get("text")]
 
-    number_conflicts = _check_number_conflicts(texts)
-    if number_conflicts:
-        return True, number_conflicts
+    reason = _check_number_conflicts(texts) or _check_policy_conflicts(texts)
+    if not reason:
+        return False, None
 
-    policy_conflicts = _check_policy_conflicts(texts)
-    if policy_conflicts:
-        return True, policy_conflicts
+    if question and verify_contradiction(question, chunks, reason) is False:
+        logger.info("Keyword contradiction rejected by LLM verification: %s", reason[:80])
+        return False, None
 
-    return False, None
+    return True, reason
 
 
 _CONFLICT_PHRASES = [
