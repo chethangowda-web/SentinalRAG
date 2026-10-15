@@ -8,7 +8,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.core.config import settings
-from app.core.database import Base
+from app.core.database import Base, get_migration_database_url
 
 # Imported for their side effect: registering every table on Base.metadata.
 import app.models.chat_session  # noqa: F401
@@ -57,7 +57,7 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = settings.DATABASE_URL
+    configuration["sqlalchemy.url"] = get_migration_database_url()
     connectable = async_engine_from_config(
         configuration,
         prefix="sqlalchemy.",
