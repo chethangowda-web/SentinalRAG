@@ -15,7 +15,7 @@ from app.services.duplicate_detection_service import check_duplicate, compute_fi
 from app.services.file_service import validate_file
 from app.services.ocr_quality_service import analyze_ocr_quality
 from app.services.ocr_service import ocr_image, ocr_pdf
-from app.services.text_cleaning import clean_text
+from app.services.text_cleaning import PAGE_BREAK, clean_text
 from app.utils.file_utils import get_processed_path
 from app.utils.memory import log_memory_usage
 
@@ -55,10 +55,11 @@ def _extract_pdf_text(pdf_path: Path) -> tuple[str, int, bool]:
         raw_text_parts.append(text)
 
     doc.close()
-    combined = "\n".join(raw_text_parts)
+    combined = ("\n" + PAGE_BREAK + "\n").join(raw_text_parts)
 
-    if len(combined.strip()) < settings.TEXT_MIN_LENGTH_FOR_PDF:
-        logger.info("PDF appears scanned — falling back to OCR (%d chars)", len(combined.strip()))
+    extracted_chars = sum(len(part.strip()) for part in raw_text_parts)
+    if extracted_chars < settings.TEXT_MIN_LENGTH_FOR_PDF:
+        logger.info("PDF appears scanned — falling back to OCR (%d chars)", extracted_chars)
         combined = ocr_pdf(pdf_path)
         ocr_used = True
 

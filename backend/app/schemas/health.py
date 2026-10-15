@@ -11,6 +11,7 @@ class ComponentStatus(BaseModel):
     status: str
     error: str | None = None
     model: str | None = None
+    retry_after_seconds: int | None = None
 
 
 class ReadinessResponse(BaseModel):

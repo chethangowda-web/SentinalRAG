@@ -21,6 +21,7 @@ def confidence_node(state: GraphState) -> dict:
         vector_scores=vector_scores,
         rerank_scores=rerank_scores,
         total_results=len(chunks),
+        coverage_full=state.get("corpus_small", False),
         citation_count=citation_count,
         contradiction_detected=contradiction_detected,
         retry_success=retry_success,

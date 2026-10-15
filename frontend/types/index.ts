@@ -8,6 +8,7 @@ export interface ChatRequest {
   question: string;
   session_id?: string | null;
   document_id?: string | null;
+  skip_clarification?: boolean;
 }
 
 /** One pipeline node finishing, as streamed by POST /api/v1/chat/stream. */
@@ -191,6 +192,9 @@ export interface Document {
 }
 
 export interface DashboardStats {
+  avg_response_ms?: number | null;
+  self_correction_rate?: number | null;
+  questions_answered?: number;
   total_documents: number;
   total_chunks: number;
   total_sessions: number;

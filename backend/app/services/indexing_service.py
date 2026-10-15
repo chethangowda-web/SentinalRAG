@@ -58,7 +58,7 @@ async def embed_document(document_id: str, db: AsyncSession, user_id: str | None
     if not text.strip():
         raise AppException(status_code=400, detail="Document text is empty")
 
-    chunks = chunk_text(text)
+    chunks = chunk_text(text, paginated=True)
     text = None
     logger.info("Created %d chunks for document %s", len(chunks), document_id)
     log_memory_usage("chunking_done", mem_before)

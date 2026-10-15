@@ -2,6 +2,9 @@ import logging
 import re
 import unicodedata
 
+# Separates pages in extracted text (a form feed). The chunker uses it to record which page a chunk starts on.
+PAGE_BREAK = "\f"
+
 logger = logging.getLogger(__name__)
 
 
@@ -61,12 +64,18 @@ def remove_repeated_footers(text: str) -> str:
     return text
 
 
-def clean_text(raw: str) -> str:
+def _clean_page(raw: str) -> str:
     text = normalize_unicode(raw)
     text = remove_extra_spaces(text)
     text = remove_page_numbers(text)
     text = remove_repeated_headers(text)
     text = remove_repeated_footers(text)
-    text = text.strip()
+    return text.strip()
+
+
+def clean_text(raw: str) -> str:
+    # Clean page by page and keep PAGE_BREAK between pages: str.splitlines() (used by the helpers above)
+    # treats a form feed as a line boundary and would silently delete the markers.
+    text = PAGE_BREAK.join(_clean_page(page) for page in raw.split(PAGE_BREAK))
     logger.info("Text cleaning complete: %d characters", len(text))
     return text

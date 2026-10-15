@@ -48,6 +48,7 @@ def contradiction_node(state: GraphState) -> dict:
         vector_scores=vector_scores_c,
         rerank_scores=rerank_scores_c,
         total_results=len(chunks),
+        coverage_full=state.get("corpus_small", False),
         citation_count=len(chunks),
         contradiction_detected=detected,
         retry_success=retry_success_c,

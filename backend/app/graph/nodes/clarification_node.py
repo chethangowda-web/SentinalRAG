@@ -13,7 +13,7 @@ async def clarification_node(state: GraphState) -> dict:
     question = state.get("rewritten_question") or state["question"]
     chunks = state.get("retrieved_chunks", [])
 
-    clarification = await asyncio.to_thread(detect_ambiguity, question, chunks)
+    clarification = None if state.get("skip_clarification") else await asyncio.to_thread(detect_ambiguity, question, chunks)
 
     elapsed = round((time.perf_counter() - start) * 1000, 1)
     latencies = dict(state.get("latencies", {}))

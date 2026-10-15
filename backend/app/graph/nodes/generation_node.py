@@ -54,6 +54,7 @@ async def generation_node(state: GraphState) -> dict:
         vector_scores=final_vector_scores,
         rerank_scores=final_rerank_scores,
         total_results=len(chunks),
+        coverage_full=state.get("corpus_small", False),
         citation_count=len(citations),
         contradiction_detected=contradiction_detected_final,
         retry_success=retry_success_final,

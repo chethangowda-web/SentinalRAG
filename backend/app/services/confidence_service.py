@@ -28,6 +28,7 @@ def _compute_weighted_confidence(
     rerank_scores: list[float],
     total_results: int,
     citation_count: int = 0,
+    coverage_full: bool = False,
 ) -> tuple[float, float, float, float, float]:
     weights = [1.0, 0.6, 0.4, 0.25, 0.15]
 
@@ -49,7 +50,9 @@ def _compute_weighted_confidence(
     avg_vector = weighted_vec_sum / weight_sum
     avg_rerank = weighted_rerank_sum / weight_sum
 
-    coverage = min(total_results / 5.0, 1.0)
+    # Coverage asks "did we find enough supporting passages?". When the whole index holds fewer than
+    # five candidates there is nothing more to find, so a small document must not be penalised for it.
+    coverage = 1.0 if coverage_full else min(total_results / 5.0, 1.0)
     citation_factor = min(citation_count / 5.0, 1.0)
 
     vector_contrib = avg_vector * 0.30
@@ -66,6 +69,7 @@ def calculate_confidence(
     vector_scores: list[float],
     rerank_scores: list[float],
     total_results: int,
+    coverage_full: bool = False,
 ) -> ConfidenceResult:
     start = time.perf_counter()
 
@@ -74,7 +78,7 @@ def calculate_confidence(
         return ConfidenceResult(score=0.0, level="LOW")
 
     score, avg_vector, avg_rerank, coverage, _ = _compute_weighted_confidence(
-        vector_scores, rerank_scores, total_results,
+        vector_scores, rerank_scores, total_results, coverage_full=coverage_full,
     )
 
     score_pct = round(score * 100, 1)
@@ -102,6 +106,7 @@ def calculate_confidence_with_breakdown(
     citation_count: int = 0,
     contradiction_detected: bool = False,
     retry_success: bool = False,
+    coverage_full: bool = False,
 ) -> tuple[ConfidenceResult, dict]:
     if total_results == 0 or not vector_scores:
         return ConfidenceResult(score=0.0, level="LOW"), {
@@ -114,7 +119,7 @@ def calculate_confidence_with_breakdown(
         }
 
     score, avg_vector, avg_rerank, coverage, citation_factor = _compute_weighted_confidence(
-        vector_scores, rerank_scores, total_results, citation_count,
+        vector_scores, rerank_scores, total_results, citation_count, coverage_full=coverage_full,
     )
 
     vector_contrib = round(avg_vector * 0.30 * 100, 2)
