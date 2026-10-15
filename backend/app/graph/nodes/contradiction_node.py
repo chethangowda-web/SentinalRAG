@@ -12,7 +12,7 @@ def contradiction_node(state: GraphState) -> dict:
     start = time.perf_counter()
     chunks = state.get("retrieved_chunks", [])
 
-    detected, reason = detect_contradictions(chunks)
+    detected, reason = detect_contradictions(chunks, question=state.get("question"))
 
     elapsed = round((time.perf_counter() - start) * 1000, 1)
     latencies = dict(state.get("latencies", {}))

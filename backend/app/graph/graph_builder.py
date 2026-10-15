@@ -2,7 +2,7 @@ import logging
 
 from langgraph.graph import END, StateGraph
 
-from app.graph.nodes.clarification_node import clarification_node
+from app.graph.nodes.clarification_node import clarification_node, route_after_clarification
 from app.graph.nodes.confidence_node import (
     confidence_node,
     route_after_confidence,
@@ -68,7 +68,14 @@ def build_graph() -> StateGraph:
         },
     )
 
-    workflow.add_edge("clarification", END)
+    workflow.add_conditional_edges(
+        "clarification",
+        route_after_clarification,
+        {
+            "end": END,
+            "generate_answer": "generate_answer",
+        },
+    )
     workflow.add_edge("generate_answer", END)
     workflow.add_edge("fallback", END)
 

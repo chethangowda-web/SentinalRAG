@@ -30,8 +30,8 @@ async def clarification_node(state: GraphState) -> dict:
         "execution_time_ms": elapsed,
         "input": f"question={question[:80]}, {len(chunks)} chunks",
         "output": f"needed={needed}" + (f": {clarification[:80]}" if clarification else ""),
-        "decision": "complete -> END",
-        "next_node": "END",
+        "decision": "clarification needed -> END" if needed else "nothing to clarify -> generate_answer",
+        "next_node": "END" if needed else "generate_answer",
         "retry_count": state.get("retry_count", 0),
     })
 
@@ -47,3 +47,12 @@ async def clarification_node(state: GraphState) -> dict:
         "reasoning_path": reasoning_path,
         "graph_execution": graph_execution,
     }
+
+
+def route_after_clarification(state: GraphState) -> str:
+    """Stop with a clarifying question only if there is one; otherwise still answer the question."""
+    if state.get("clarification_needed"):
+        logger.info("Clarification needed -> ending with a question")
+        return "end"
+    logger.info("Nothing to clarify -> routing to generate_answer")
+    return "generate_answer"
