@@ -11,6 +11,7 @@ import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import toast from "react-hot-toast";
+import { useAuth } from "@/contexts/auth-context";
 import {
   Cpu,
   Shield,
@@ -107,6 +108,7 @@ function SettingField({
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        disabled
         className="max-w-xs h-9"
       />
     </div>
@@ -151,6 +153,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [edits, setEdits] = useState<Record<string, string>>({});
+  const { user } = useAuth();
+  const isAdmin = !!user?.is_admin;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -166,7 +170,8 @@ export default function SettingsPage() {
         setSettings(settingsData);
 
         let metricsData: any = {};
-        try {
+        // Process-wide metrics are admin-only; skip the call (and its 403) for everyone else.
+        if (isAdmin) try {
           const { api } = await import("@/services/api");
           const { data } = await api.get("/api/v1/metrics");
           metricsData = data;
@@ -186,7 +191,7 @@ export default function SettingsPage() {
       }
     };
     fetchData();
-  }, []);
+  }, [isAdmin]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -259,7 +264,7 @@ export default function SettingsPage() {
                     Pipeline Configuration
                   </CardTitle>
                   <CardDescription>
-                    Adjust chunking, LLM, and OCR parameters. Changes take effect on the next document upload.
+                    Current chunking, LLM, and OCR parameters. These are set by the server's environment variables (CHUNK_SIZE, LLM_TEMPERATURE, MAX_RETRIES, OCR_LANGUAGE, ...) and are shown read-only.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
@@ -278,19 +283,6 @@ export default function SettingsPage() {
                     );
                   })}
 
-                  <div className="flex items-center gap-3 pt-2">
-                    <Button onClick={handleSave} disabled={saving || isUnchanged} className="gap-2">
-                      {saving ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Save className="h-4 w-4" />
-                      )}
-                      Save Changes
-                    </Button>
-                    {isUnchanged && (
-                      <span className="text-xs text-muted-foreground">No unsaved changes</span>
-                    )}
-                  </div>
                 </CardContent>
               </Card>
 

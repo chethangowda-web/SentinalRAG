@@ -138,7 +138,7 @@ function formatLatency(ms: number): string {
 }
 
 function getSourceFilename(cit: CitationItem) {
-  return cit.document_id?.substring(0, 12) + "…";
+  return cit.filename || cit.document_id?.substring(0, 12) + "…";
 }
 
 function confidenceColor(level: string) {
@@ -605,7 +605,11 @@ export default function ChatPage() {
   const chatDocumentId = searchParams.get("document_id");
 
   /* state */
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Closed until we know the screen is wide enough: a 280px panel leaves no room for chat on a phone.
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  useEffect(() => {
+    if (window.matchMedia("(min-width: 1024px)").matches) setSidebarOpen(true);
+  }, []);
   const [searchQuery, setSearchQuery] = useState("");
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -1557,7 +1561,7 @@ export default function ChatPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-sm">
               <FileText className="h-4 w-4 text-primary" />
-              Source: {showPreview?.document_id?.slice(0, 12)}…
+              Source: {showPreview?.filename || `${showPreview?.document_id?.slice(0, 12)}…`}
             </DialogTitle>
           </DialogHeader>
           {showPreview?.text && (

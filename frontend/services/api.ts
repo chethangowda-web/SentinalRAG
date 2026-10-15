@@ -43,7 +43,11 @@ api.interceptors.response.use(
     if (!error.response) {
       throw new Error("Cannot connect to server. Please check if the backend is running.");
     }
-    const message = error.response?.data?.detail || error.message || "An unexpected error occurred";
+    // FastAPI sends validation errors (422) as a list of {msg}; everything else as a string.
+    const detail = error.response?.data?.detail;
+    const message = Array.isArray(detail)
+      ? detail.map((d: { msg?: string }) => (d.msg ?? "").replace(/^Value error, /, "")).filter(Boolean).join(". ")
+      : detail || error.message || "An unexpected error occurred";
 
     if (error.response?.status === 401) {
       clearStoredToken();

@@ -16,9 +16,9 @@ export function useUpload() {
       const result = await uploadDocument(file, (pct) => setProgress(pct));
       setStep("embedding");
       setProgress(0);
-      await embedDocument(result.document_id);
+      const embedded = await embedDocument(result.document_id);
       setStep("done");
-      return result;
+      return { ...result, total_chunks: embedded.total_chunks, embedded_chunks: embedded.embedded_chunks };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });

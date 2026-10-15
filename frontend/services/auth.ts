@@ -8,6 +8,7 @@ export interface UserResponse {
   total_documents?: number;
   total_sessions?: number;
   total_evaluations?: number;
+  is_admin?: boolean;
 }
 
 export interface TokenResponse {

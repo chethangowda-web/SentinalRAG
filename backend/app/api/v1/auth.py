@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.auth import create_access_token, get_current_user, hash_password, verify_password
 from app.core.database import get_db
 from app.core.exceptions import AppException
@@ -76,4 +77,5 @@ async def get_me(
         total_documents=doc_count.scalar() or 0,
         total_sessions=session_count.scalar() or 0,
         total_evaluations=eval_count.scalar() or 0,
+        is_admin=current_user.email.lower() in settings.admin_emails,
     )

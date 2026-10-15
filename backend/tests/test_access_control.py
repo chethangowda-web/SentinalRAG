@@ -37,3 +37,10 @@ async def test_search_is_scoped_to_current_user(async_client):
 
     assert response.status_code == 200
     assert mock_retrieve.call_args.kwargs["user_id"] == "test-user-id"
+
+
+@pytest.mark.asyncio
+async def test_me_reports_whether_the_user_is_an_admin(async_client, monkeypatch):
+    assert (await async_client.get("/api/v1/auth/me")).json()["is_admin"] is False
+    monkeypatch.setattr(settings, "ADMIN_EMAILS", "TEST@example.com")
+    assert (await async_client.get("/api/v1/auth/me")).json()["is_admin"] is True

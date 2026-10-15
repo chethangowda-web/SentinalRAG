@@ -59,7 +59,7 @@ def generate_answer(question: str, chunks: list[dict]) -> str:
     )
 
     try:
-        response = invoke_with_retry(llm, prompt)
+        response = invoke_with_retry(llm, prompt, rate_limit_retries=2)
         answer = response.content.strip()
         elapsed = round((time.perf_counter() - start) * 1000, 1)
         logger.info("Answer generated in %.1fms from %d chunks", elapsed, len(chunks))

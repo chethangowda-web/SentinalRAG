@@ -171,6 +171,7 @@ export default function DocumentsPage() {
   }, [documents, search, sortBy, filterStatus, filterOcr]);
 
   const handleDelete = async (id: string, filename: string) => {
+    if (!window.confirm(`Delete "${filename}" and all of its indexed chunks? This cannot be undone.`)) return;
     try {
       await deleteDoc.mutateAsync(id);
       toast.success(`Deleted "${filename}"`);
@@ -356,7 +357,7 @@ export default function DocumentsPage() {
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setSelectedDoc(doc)}>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" aria-label="Preview document" onClick={() => setSelectedDoc(doc)}>
                                   <Eye className="h-3.5 w-3.5" />
                                 </Button>
                               </TooltipTrigger>
@@ -367,7 +368,7 @@ export default function DocumentsPage() {
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Link href={getChatRoute(doc)}>
-                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" aria-label="Chat with this document">
                                     <MessageSquare className="h-3.5 w-3.5" />
                                   </Button>
                                 </Link>
@@ -379,7 +380,7 @@ export default function DocumentsPage() {
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Link href={getEvalRoute(doc)}>
-                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" aria-label="Evaluate this document">
                                     <BarChart3 className="h-3.5 w-3.5" />
                                   </Button>
                                 </Link>
@@ -397,6 +398,7 @@ export default function DocumentsPage() {
                                 className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                                 onClick={(e) => { e.stopPropagation(); handleDelete(doc.id, doc.filename); }}
                                 disabled={deleteDoc.isPending}
+                                aria-label="Delete document"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>

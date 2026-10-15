@@ -183,9 +183,9 @@ export default function DashboardPage() {
                 mono
               />
               <StatCard
-                title="Avg Response Time"
+                title="Server Uptime"
                 value={uptime > 0 ? uptimeFormatted : "--"}
-                subtitle="system uptime"
+                subtitle="since last restart"
                 icon={Clock}
                 color="hsl(var(--chart-3))"
               />
