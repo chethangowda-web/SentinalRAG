@@ -89,3 +89,14 @@ async def test_vague_question_ends_the_graph_with_a_question_and_no_retrieval_sc
     assert result["clarification_question"] == "Which aspect of the network?"
     assert result["reasoning_path"] == ["retrieve", "ambiguity_check"]
     assert not result.get("answer")
+
+
+@pytest.mark.asyncio
+async def test_the_judgement_does_not_see_retrieved_passages():
+    llm = _llm_replying("CLEAR")
+    state = _state("When is maintenance scheduled?")
+    state["retrieved_chunks"] = [{"text": "Standard plan ... Premium plan ... Enterprise plan"}]
+    with patch.object(cs, "_get_llm", return_value=llm):
+        await ambiguity_node(state)
+    prompt = llm.invoke.call_args.args[0]
+    assert "Premium plan" not in prompt
