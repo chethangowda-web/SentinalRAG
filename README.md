@@ -403,6 +403,8 @@ npm run dev
 | `ADMIN_EMAILS` | No | — | Comma-separated emails allowed to view global metrics and change settings |
 | `PRELOAD_MODELS` | No | `false` | Load embedding + reranker models at startup (~1 GB RAM) instead of on first use |
 | `LLM_MAX_TOKENS` | No | `1024` | Max tokens per generated answer |
+| `AUTO_INDEX_ON_UPLOAD` | No | `true` | Chunk + embed a document in the background right after upload (one at a time) |
+| `AUTO_EVALUATE_ON_UPLOAD` | No | `false` | Also run the per-document quality evaluation after indexing (~8 LLM calls per upload) |
 | `REGISTRATION_CODE` | No | — | If set, sign-up requires this invite code |
 | `MAX_DOCUMENTS_PER_USER` / `MAX_STORAGE_MB_PER_USER` | No | `25` / `200` | Per-user upload limits |
 | `MAX_CHATS_PER_USER_PER_DAY` | No | `100` | Questions per user per 24 h (protects the LLM quota) |

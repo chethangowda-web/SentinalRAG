@@ -87,6 +87,11 @@ class Settings(BaseSettings):
 
     LLM_MAX_TOKENS: int = 1024
 
+    # Index (chunk + embed) a document in the background right after upload.
+    AUTO_INDEX_ON_UPLOAD: bool = True
+    # Run the per-document quality evaluation after indexing. Off by default: it spends ~8 LLM calls per upload.
+    AUTO_EVALUATE_ON_UPLOAD: bool = False
+
     # Abuse protection. Registration is open by default; set REGISTRATION_CODE to require an invite.
     REGISTRATION_CODE: str = ""
     MAX_DOCUMENTS_PER_USER: int = 25

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useDocuments, useDocumentChunks, useDeleteDocument } from "@/hooks/use-documents";
+import { useDocuments, useDocumentChunks, useDeleteDocument, useReindexDocument } from "@/hooks/use-documents";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -65,6 +65,7 @@ import {
   MoreHorizontal,
   ExternalLink,
   X,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import type { Document } from "@/types";
@@ -119,11 +120,13 @@ function ProcessingStatus({ status }: { status: string }) {
     pending: { label: "Pending", color: "text-muted-foreground", bg: "bg-muted" },
     failed: { label: "Failed", color: "text-destructive", bg: "bg-destructive/10" },
     uploaded: { label: "Uploaded", color: "text-primary", bg: "bg-primary/10" },
+    processed: { label: "Not indexed", color: "text-warning", bg: "bg-warning/10" },
+    embedding: { label: "Indexing…", color: "text-primary", bg: "bg-primary/10" },
   };
   const c = config[status.toLowerCase()] ?? { label: status, color: "text-muted-foreground", bg: "bg-muted" };
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${c.color} ${c.bg}`}>
-      {status.toLowerCase() === "processing" && <span className="h-1.5 w-1.5 rounded-full bg-warning animate-pulse-soft" />}
+      {(status.toLowerCase() === "processing" || status.toLowerCase() === "embedding") && <span className="h-1.5 w-1.5 rounded-full bg-warning animate-pulse-soft" />}
       {status.toLowerCase() === "completed" && <CheckCircle2 className="h-3 w-3" />}
       {status.toLowerCase() === "failed" && <X className="h-3 w-3" />}
       {c.label}
@@ -141,6 +144,7 @@ function formatFileSize(bytes?: number | null): string {
 export default function DocumentsPage() {
   const { data: documents, isLoading } = useDocuments();
   const deleteDoc = useDeleteDocument();
+  const reindexDoc = useReindexDocument();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortBy>("date");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -389,6 +393,19 @@ export default function DocumentsPage() {
                             </Tooltip>
                           </TooltipProvider>
                         </div>
+                        {(doc.status === "processed" || doc.status === "failed") && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => reindexDoc.mutate(doc.id)}
+                            disabled={reindexDoc.isPending}
+                            aria-label="Retry indexing this document"
+                          >
+                            <RefreshCw className="mr-1 h-3 w-3" />
+                            Retry indexing
+                          </Button>
+                        )}
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>

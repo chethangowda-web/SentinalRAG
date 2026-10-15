@@ -3,7 +3,7 @@ import gc
 import logging
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -40,6 +40,9 @@ async def embed_document(document_id: str, db: AsyncSession, user_id: str | None
             embedded_chunks=0,
             status="embedded",
         )
+
+    document.status = "embedding"
+    await db.commit()
 
     text = document.text_content
     if not text:
@@ -148,11 +151,9 @@ async def embed_document(document_id: str, db: AsyncSession, user_id: str | None
         document_id, total_chunks, processed_chunks,
     )
 
-    try:
+    if settings.AUTO_EVALUATE_ON_UPLOAD:
         asyncio.create_task(_auto_evaluate(document_id, document.user_id))
         logger.info("Auto-evaluation triggered for document %s", document_id)
-    except Exception as e:
-        logger.warning("Failed to trigger auto-evaluation for %s: %s", document_id, e)
 
     force_gc()
     log_memory_usage("embedding_done", mem_before)
@@ -176,3 +177,36 @@ async def _auto_evaluate(document_id: str, user_id: str | None) -> None:
             logger.info("Auto-evaluation completed for document %s", document_id)
     except Exception as e:
         logger.error("Auto-evaluation failed for document %s: %s", document_id, e)
+
+
+# Embedding is memory-hungry (torch + two models on a ~1 GB host), so index one document at a time.
+_index_lock = asyncio.Semaphore(1)
+_background_tasks: set[asyncio.Task] = set()
+
+
+async def _index_in_background(document_id: str, user_id: str | None) -> None:
+    from app.core.database import get_session_maker
+
+    async with _index_lock:
+        async with get_session_maker()() as db:
+            try:
+                await embed_document(document_id, db, user_id=user_id)
+            except Exception as exc:  # embed_document already marks the document "failed"
+                logger.error("Background indexing failed for %s: %s", document_id, exc)
+
+
+def schedule_embedding(document_id: str, user_id: str | None) -> None:
+    """Index a document without holding the HTTP request open, and without tying it to the browser tab."""
+    task = asyncio.create_task(_index_in_background(document_id, user_id))
+    _background_tasks.add(task)  # keep a reference so the task is not garbage-collected mid-run
+    task.add_done_callback(_background_tasks.discard)
+
+
+async def recover_interrupted_indexing(db: AsyncSession) -> int:
+    """Mark documents left in "embedding" by a restart as failed so the user can retry them.
+
+    Indexing runs inside this process, so after a restart nothing is still working on them.
+    """
+    result = await db.execute(update(Document).where(Document.status == "embedding").values(status="failed"))
+    await db.commit()
+    return result.rowcount or 0

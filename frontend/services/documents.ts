@@ -11,6 +11,16 @@ export async function getDocumentChunks(documentId: string): Promise<ChunkListRe
   return data;
 }
 
+export async function getDocument(documentId: string): Promise<Document & { chunk_count: number }> {
+  const { data } = await api.get(`/api/v1/documents/${documentId}`);
+  return data;
+}
+
+export async function reindexDocument(documentId: string): Promise<{ status: string }> {
+  const { data } = await api.post(`/api/v1/documents/${documentId}/reindex`);
+  return data;
+}
+
 export async function deleteDocument(documentId: string): Promise<void> {
   await api.delete(`/api/v1/documents/${documentId}`);
 }

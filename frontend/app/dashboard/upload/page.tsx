@@ -148,6 +148,15 @@ export default function UploadPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
+                  {upload.data.is_duplicate && upload.data.duplicate_info && (
+                    <div role="alert" className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+                      <p className="font-medium">This looks like a duplicate</p>
+                      <p className="text-muted-foreground">
+                        It matches &ldquo;{upload.data.duplicate_info.existing_filename}&rdquo; ({Math.round(upload.data.duplicate_info.similarity)}% via{" "}
+                        {upload.data.duplicate_info.method.replace(/_/g, " ")}). Both copies are indexed; delete one on the Documents page to avoid duplicate answers.
+                      </p>
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <SummaryMetric label="Pages" value={upload.data.pages?.toString() ?? "--"} icon={FileText} color="hsl(var(--chart-1))" />
                     <SummaryMetric label="Words" value={upload.data.words?.toLocaleString() ?? "--"} icon={Brain} color="hsl(var(--chart-2))" />

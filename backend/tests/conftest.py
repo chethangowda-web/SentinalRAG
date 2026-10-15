@@ -15,6 +15,8 @@ from app.core.config import settings  # noqa: E402
 
 settings.DATABASE_URL = TEST_DATABASE_URL
 settings.SECRET_KEY = "test-secret-key-not-for-production"
+# Tests must never start real background embedding (it would load torch and race test teardown).
+settings.AUTO_INDEX_ON_UPLOAD = False
 
 db_module._engine = None
 db_module._async_session_maker = None

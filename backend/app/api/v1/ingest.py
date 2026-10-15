@@ -10,7 +10,9 @@ from app.core.database import get_db
 from app.core.exceptions import AppException
 from app.models.user import User
 from app.schemas.document import IngestResponse
+from app.core.config import settings
 from app.services.document_service import ingest_document
+from app.services.indexing_service import schedule_embedding
 from app.services.quota_service import check_upload_quota
 from app.services.file_service import save_upload_stream
 from app.utils.file_utils import get_upload_path
@@ -70,5 +72,8 @@ async def upload_document(
         raise AppException(status_code=500, detail=f"Unhandled error: {exc}")
     finally:
         gc.collect()
+
+    if settings.AUTO_INDEX_ON_UPLOAD:
+        schedule_embedding(result.document_id, current_user.id)
 
     return result
