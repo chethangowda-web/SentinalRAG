@@ -415,6 +415,7 @@ npm run dev
 | `GET` | `/api/v1/ready` | Full readiness check (DB, Qdrant, OCR, Embeddings, LLM) |
 | `GET` | `/api/v1/metrics` | Detailed system metrics |
 | `POST` | `/api/v1/chat` | Self-correcting Q&A with citations |
+| `POST` | `/api/v1/chat/stream` | Same, streamed as Server-Sent Events (live pipeline steps, then the answer) |
 | `POST` | `/api/v1/search` | Hybrid search with confidence scoring |
 | `POST` | `/api/v1/ingest` | Upload document (PDF/PNG/JPG, max 100MB) |
 | `POST` | `/api/v1/embed/{document_id}` | Generate embeddings for document |
@@ -479,7 +480,7 @@ See [PERFORMANCE.md](./PERFORMANCE.md) for detailed benchmarks, load test result
 - [x] Standardized error responses (request_id, trace_id, error_code)
 - [x] Token counting (tiktoken integration)
 - [ ] Multi-modal RAG (images, tables, charts)
-- [ ] Streaming responses (Server-Sent Events)
+- [x] Streaming pipeline progress (Server-Sent Events)
 - [x] User authentication and per-user data isolation (JWT)
 - [ ] Agentic tool use (calculator, DB queries, API calls)
 - [ ] Fine-tuned embeddings for domain-specific retrieval

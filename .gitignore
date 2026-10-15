@@ -57,3 +57,6 @@ backend/req.txt
 *.whl
 *.exe
 *.cmd
+backend/evaluation/reports/evaluation_report.md
+backend/evaluation/reports/evaluation_results.csv
+backend/evaluation/reports/evaluation_results.json

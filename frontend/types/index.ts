@@ -10,6 +10,14 @@ export interface ChatRequest {
   document_id?: string | null;
 }
 
+/** One pipeline node finishing, as streamed by POST /api/v1/chat/stream. */
+export interface ChatStepEvent {
+  node: string;
+  execution_time_ms: number | null;
+  decision: string | null;
+  output: string | null;
+}
+
 export interface CitationItem {
   document_id: string;
   chunk_id: string;

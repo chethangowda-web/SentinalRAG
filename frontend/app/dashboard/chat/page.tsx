@@ -19,7 +19,7 @@ import {
   useDeleteSession,
   useClearSessionMessages,
 } from "@/hooks/use-chat";
-import { sendChatMessage } from "@/services/chat";
+import { streamChatMessage } from "@/services/chat";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { Button } from "@/components/ui/button";
@@ -78,11 +78,24 @@ import {
 } from "lucide-react";
 import type {
   ChatResponse,
+  ChatStepEvent,
   CitationItem,
   GraphExecutionStep,
   ChatSession,
   RetrievalDetailItem,
 } from "@/types";
+
+/** Plain-language labels for the pipeline nodes streamed while an answer is produced. */
+const STEP_LABELS: Record<string, string> = {
+  retrieve: "Searched your documents",
+  confidence_evaluate: "Checked retrieval confidence",
+  rewrite_query: "Rewrote the question for a better search",
+  retry_retrieve: "Searched again with the rewritten question",
+  contradiction_detect: "Checked sources for contradictions",
+  clarification: "Looked for ambiguity in the question",
+  generate_answer: "Wrote the answer from the sources",
+  fallback: "Not enough evidence — preparing a safe reply",
+};
 
 /* ─── types ─────────────────────────────────────────── */
 
@@ -604,6 +617,7 @@ export default function ChatPage() {
     Record<string, "up" | "down" | null>
   >({});
   const [isStreaming, setIsStreaming] = useState(false);
+  const [liveSteps, setLiveSteps] = useState<ChatStepEvent[]>([]);
   const [streamError, setStreamError] = useState<string | null>(null);
   const [expandedReasoning, setExpandedReasoning] = useState<
     Record<string, boolean>
@@ -662,17 +676,21 @@ export default function ChatPage() {
 
     setInput("");
     setIsStreaming(true);
+    setLiveSteps([]);
     setStreamError(null);
 
     const userMsg: Message = { role: "user", content: question };
     setMessages((prev) => [...prev, userMsg]);
 
     try {
-      const response = await sendChatMessage({
-        question,
-        session_id: activeSessionId,
-        document_id: chatDocumentId || undefined,
-      });
+      const response = await streamChatMessage(
+        {
+          question,
+          session_id: activeSessionId,
+          document_id: chatDocumentId || undefined,
+        },
+        (step) => setLiveSteps((prev) => [...prev, step])
+      );
 
       const assistantMsg: Message = {
         role: "assistant",
@@ -704,6 +722,7 @@ export default function ChatPage() {
       ]);
     } finally {
       setIsStreaming(false);
+      setLiveSteps([]);
     }
   }, [input, isStreaming, activeSessionId, qc]);
 
@@ -1398,31 +1417,31 @@ export default function ChatPage() {
                               />
                             </div>
                             <span className="text-sm text-muted-foreground">
-                              Processing your question through the pipeline…
+                              {liveSteps.length === 0
+                                ? "Starting the pipeline…"
+                                : "Working on your question…"}
                             </span>
                           </div>
-                          <div className="mt-2 grid grid-cols-4 gap-1.5">
-                            {["Searching", "Analyzing", "Generating", "Verifying"].map((step, si) => (
-                              <motion.div
-                                key={step}
-                                className="h-1 rounded-full bg-secondary overflow-hidden"
-                              >
-                                <motion.div
-                                  className="h-full rounded-full bg-primary"
-                                  initial={{ width: "0%" }}
-                                  animate={{
-                                    width: ["0%", "100%", "100%", "100%", "100%"],
-                                  }}
-                                  transition={{
-                                    duration: 3,
-                                    repeat: Infinity,
-                                    delay: si * 0.75,
-                                    ease: "easeInOut",
-                                  }}
-                                />
-                              </motion.div>
-                            ))}
-                          </div>
+                          {liveSteps.length > 0 && (
+                            <ul className="mt-3 space-y-1.5">
+                              {liveSteps.map((step, si) => (
+                                <motion.li
+                                  key={`${step.node}-${si}`}
+                                  initial={{ opacity: 0, x: -6 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  className="flex items-center gap-2 text-xs text-muted-foreground"
+                                >
+                                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+                                  <span>{STEP_LABELS[step.node] ?? step.node}</span>
+                                  {step.execution_time_ms != null && (
+                                    <span className="ml-auto tabular-nums">
+                                      {Math.round(step.execution_time_ms)} ms
+                                    </span>
+                                  )}
+                                </motion.li>
+                              ))}
+                            </ul>
+                          )}
                         </CardContent>
                       </Card>
                     </motion.div>
