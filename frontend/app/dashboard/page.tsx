@@ -251,7 +251,7 @@ export default function DashboardPage() {
                     </div>
                   ) : (
                     <div className="flex flex-col items-center py-8 text-center">
-                      <BarChart3 className="h-8 w-8 text-muted-foreground/50 mb-3" />
+                      <BarChart3 className="h-8 w-8 text-muted-foreground mb-3" />
                       <p className="text-sm text-muted-foreground">No evaluation data yet.</p>
                       <Link href="/dashboard/evaluation">
                         <Button variant="outline" size="sm" className="mt-3">
@@ -286,7 +286,7 @@ export default function DashboardPage() {
                     </div>
                   ) : (
                     <div className="flex flex-col items-center py-8 text-center">
-                      <BookOpen className="h-8 w-8 text-muted-foreground/50 mb-3" />
+                      <BookOpen className="h-8 w-8 text-muted-foreground mb-3" />
                       <p className="text-sm text-muted-foreground">No documents categorized yet.</p>
                     </div>
                   )}
@@ -332,7 +332,7 @@ export default function DashboardPage() {
                     </div>
                   ) : (
                     <div className="flex flex-col items-center py-8 text-center">
-                      <FileText className="h-8 w-8 text-muted-foreground/50 mb-3" />
+                      <FileText className="h-8 w-8 text-muted-foreground mb-3" />
                       <p className="text-sm text-muted-foreground">No documents yet.</p>
                       <Link href="/dashboard/upload">
                         <Button variant="outline" size="sm" className="mt-3">

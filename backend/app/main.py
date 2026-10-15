@@ -23,6 +23,15 @@ from app.utils.memory import log_memory_usage
 setup_logging()
 logger = logging.getLogger(__name__)
 
+if settings.SENTRY_DSN:
+    try:
+        import sentry_sdk
+
+        sentry_sdk.init(dsn=settings.SENTRY_DSN, send_default_pii=False, traces_sample_rate=0.0)
+        logger.info("Sentry error tracking enabled")
+    except ImportError:
+        logger.warning("SENTRY_DSN is set but sentry-sdk is not installed; error tracking is off")
+
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):

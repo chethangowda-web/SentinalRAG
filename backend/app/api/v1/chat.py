@@ -382,9 +382,12 @@ async def chat_stream_endpoint(
                 except Exception as exc:  # a broken quota lookup must not take chat down
                     logger.warning("Chat quota check failed, allowing the request: %s", exc)
                 state = dict(await _prepare_state(db, body, trace_id))
-                async for update in _get_graph().astream(
-                    state, _graph_config(db, current_user, body), stream_mode="updates"
+                async for mode, update in _get_graph().astream(
+                    state, _graph_config(db, current_user, body), stream_mode=["updates", "custom"]
                 ):
+                    if mode == "custom":
+                        yield _sse("token", {"text": update.get("token", "")})
+                        continue
                     for node, delta in update.items():
                         delta = delta or {}
                         state.update(delta)

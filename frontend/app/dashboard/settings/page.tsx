@@ -106,6 +106,7 @@ function SettingField({
       <p className="text-xs text-muted-foreground">{desc}</p>
       <Input
         type={type}
+        aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled

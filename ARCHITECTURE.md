@@ -102,7 +102,7 @@ On PostgreSQL the app runs `alembic upgrade head` at startup (SQLite, used for l
 
 A dedicated `TraceService` persists every pipeline execution as a `Trace` ORM record (SQLAlchemy + Alembic migrations). Traces include question, answer, confidence score, reasoning path, retrieval details, latencies, llm_observability, and graph execution data. Export endpoints support CSV, Markdown, and JSON formats.
 
-**Why 9 nodes and not simpler?** Each node has a single responsibility, making testing, logging, and debugging straightforward. The cost is slightly more indirection, but the ability to time, trace, and test each step independently justifies the design.
+**Why 10 nodes and not simpler?** Each node has a single responsibility, making testing, logging, and debugging straightforward. The cost is slightly more indirection, but the ability to time, trace, and test each step independently justifies the design.
 
 ### 2.5 API Layer (`app/api/v1/`)
 

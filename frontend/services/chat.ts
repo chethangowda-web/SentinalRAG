@@ -17,13 +17,15 @@ export async function sendChatMessage(
 
 /**
  * Ask a question and receive pipeline progress as it happens (Server-Sent Events).
- * Resolves with the final answer; `onStep` fires once per finished pipeline node.
+ * Resolves with the final answer; `onStep` fires once per finished pipeline node and `onToken`
+ * for each piece of the answer as the model writes it.
  * If the stream cannot be opened at all (e.g. an older backend), falls back to the
  * regular request so the caller never has to care.
  */
 export async function streamChatMessage(
   request: ChatRequest,
   onStep?: (step: ChatStepEvent) => void,
+  onToken?: (text: string) => void,
   signal?: AbortSignal
 ): Promise<ChatResponse> {
   const token = getStoredToken();
@@ -70,6 +72,7 @@ export async function streamChatMessage(
     if (data.length === 0) return;
     const payload = JSON.parse(data.join("\n"));
     if (event === "step") onStep?.(payload as ChatStepEvent);
+    else if (event === "token") onToken?.(String(payload.text ?? ""));
     else if (event === "result") result = payload as ChatResponse;
     else if (event === "error") throw new Error(payload.detail || "The pipeline failed");
   };

@@ -40,7 +40,7 @@ export function ChunkCard({ chunk, index }: ChunkCardProps) {
         {chunk.text}
       </p>
       {chunk.section && (
-        <p className="mt-1 text-[10px] text-muted-foreground/60">Section: {chunk.section}</p>
+        <p className="mt-1 text-[10px] text-muted-foreground">Section: {chunk.section}</p>
       )}
     </div>
   );

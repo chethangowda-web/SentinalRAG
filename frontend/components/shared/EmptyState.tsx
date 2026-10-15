@@ -28,7 +28,7 @@ export function EmptyState({
       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted mb-6 ring-1 ring-border/50">
         <Icon className="h-8 w-8 text-muted-foreground" />
       </div>
-      <h3 className="text-xl font-semibold tracking-tight">{title}</h3>
+      <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
       {description && (
         <p className="mt-2 max-w-md text-sm text-muted-foreground leading-relaxed">{description}</p>
       )}

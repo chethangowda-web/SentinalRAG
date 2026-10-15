@@ -3,6 +3,8 @@ import re
 import logging
 import time
 
+from langgraph.config import get_stream_writer
+
 from app.graph.state import GraphState
 from app.services.answer_generator import generate_answer, get_usage_tokens
 from app.services.confidence_service import calculate_confidence_with_breakdown
@@ -17,7 +19,13 @@ async def generation_node(state: GraphState) -> dict:
     chunks = state.get("retrieved_chunks", [])
 
     # generate_answer makes a blocking HTTP call to the LLM; keep it off the event loop.
-    answer = await asyncio.to_thread(generate_answer, question, chunks)
+    # Tokens reach the client through LangGraph's custom stream; outside a streaming run there is no writer
+    try:
+        writer = get_stream_writer()
+    except Exception:
+        writer = None
+    on_token = (lambda text: writer({"token": text})) if writer else None
+    answer = await asyncio.to_thread(generate_answer, question, chunks, on_token)
 
     no_answer = answer.strip().lower().startswith("i don't have enough information")
     # Keep only the passages the answer actually cites; a refusal cites nothing
