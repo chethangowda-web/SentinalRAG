@@ -2,6 +2,7 @@ import asyncio
 import gc
 import logging
 import time
+import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -100,7 +101,8 @@ def create_app() -> FastAPI:
     async def record_metrics_middleware(request, call_next):
         collector = get_metrics_collector()
         start = time.perf_counter()
-        request_id = getattr(request.state, "request_id", "unknown")
+        request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex
+        request.state.request_id = request_id
         endpoint = f"{request.method} {request.url.path}"
         logger.info("Incoming request: method=%s path=%s request_id=%s", request.method, request.url.path, request_id)
         try:

@@ -86,6 +86,14 @@ class Settings(BaseSettings):
     ADMIN_EMAILS: str = ""
 
     LLM_MAX_TOKENS: int = 1024
+
+    # Abuse protection. Registration is open by default; set REGISTRATION_CODE to require an invite.
+    REGISTRATION_CODE: str = ""
+    MAX_DOCUMENTS_PER_USER: int = 25
+    MAX_STORAGE_MB_PER_USER: int = 200
+    MAX_CHATS_PER_USER_PER_DAY: int = 100
+    REGISTER_LIMIT_PER_HOUR: int = 5       # sign-ups per client IP
+    LOGIN_FAILURES_PER_10_MIN: int = 8     # failed logins per client IP and per email
     # Optional reasoning_effort passed to the LLM (e.g. "none" to stop Gemini spending tokens on hidden thinking)
     LLM_REASONING_EFFORT: str = ""
 

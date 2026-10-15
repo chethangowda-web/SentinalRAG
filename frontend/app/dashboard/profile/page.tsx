@@ -1,13 +1,36 @@
 "use client";
 
+import { useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { Input } from "@/components/ui/input";
+import { deleteAccount } from "@/services/auth";
+import { clearStoredToken } from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Shield, Mail, Calendar, FileText, MessageSquare, BarChart3, LogOut } from "lucide-react";
+import { Shield, Mail, Calendar, FileText, MessageSquare, BarChart3, LogOut, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) {
+      toast.error("Enter your password to confirm");
+      return;
+    }
+    if (!window.confirm("Permanently delete your account, all documents, chats and evaluations? This cannot be undone.")) return;
+    setDeleting(true);
+    try {
+      await deleteAccount(deletePassword);
+      clearStoredToken();
+      window.location.href = "/";
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not delete the account");
+      setDeleting(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -83,6 +106,31 @@ export default function ProfilePage() {
           <Button variant="destructive" className="w-full" onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
             Logout
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border-destructive/40">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base text-destructive">
+            <Trash2 className="h-4 w-4" />
+            Delete account
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Permanently removes your account, uploaded documents, indexed chunks, chats and evaluations.
+          </p>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row">
+          <Input
+            type="password"
+            placeholder="Confirm with your password"
+            aria-label="Password to confirm account deletion"
+            value={deletePassword}
+            onChange={(e) => setDeletePassword(e.target.value)}
+            className="sm:max-w-xs"
+          />
+          <Button variant="destructive" onClick={handleDeleteAccount} disabled={deleting}>
+            {deleting ? "Deleting..." : "Delete my account"}
           </Button>
         </CardContent>
       </Card>

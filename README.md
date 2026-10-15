@@ -403,6 +403,10 @@ npm run dev
 | `ADMIN_EMAILS` | No | — | Comma-separated emails allowed to view global metrics and change settings |
 | `PRELOAD_MODELS` | No | `false` | Load embedding + reranker models at startup (~1 GB RAM) instead of on first use |
 | `LLM_MAX_TOKENS` | No | `1024` | Max tokens per generated answer |
+| `REGISTRATION_CODE` | No | — | If set, sign-up requires this invite code |
+| `MAX_DOCUMENTS_PER_USER` / `MAX_STORAGE_MB_PER_USER` | No | `25` / `200` | Per-user upload limits |
+| `MAX_CHATS_PER_USER_PER_DAY` | No | `100` | Questions per user per 24 h (protects the LLM quota) |
+| `REGISTER_LIMIT_PER_HOUR` / `LOGIN_FAILURES_PER_10_MIN` | No | `5` / `8` | Sign-ups per IP per hour; failed logins per IP and per email |
 | `LOG_LEVEL` | No | `INFO` | Logging level |
 | `MAX_FILE_SIZE` | No | `104857600` | Max upload size (100MB) |
 | `RATE_LIMIT_MAX_REQUESTS` | No | `100` | Max requests per window |
