@@ -88,6 +88,7 @@ import type {
 /** Plain-language labels for the pipeline nodes streamed while an answer is produced. */
 const STEP_LABELS: Record<string, string> = {
   retrieve: "Searched your documents",
+  ambiguity_check: "Checked the question is specific enough",
   confidence_evaluate: "Checked retrieval confidence",
   rewrite_query: "Rewrote the question for a better search",
   retry_retrieve: "Searched again with the rewritten question",

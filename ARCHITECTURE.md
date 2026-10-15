@@ -70,6 +70,8 @@ LangGraph was chosen over a simple if-else chain because it provides:
 
 **Node 1: Retrieve** — Executes hybrid search (vector + BM25 + RRF + Cross-Encoder) and stores results as structured dicts in `retrieved_chunks`.
 
+**Node 1b: Ambiguity Check** — Runs right after retrieval, only for short questions (6 words or fewer, where vagueness lives): the LLM decides whether the question names a specific topic. If it is too vague the run ends with a clarifying question; otherwise (and always for longer questions, at no cost) it continues.
+
 **Node 2: Confidence Evaluate** — Calculates a composite score from vector similarity (30%), reranker confidence (50%), and result coverage (20%). Reranker scores are min-max normalised per query before weighting, and vector scores are weighted by rank. Routes to generate if HIGH (≥65), or to rewrite if LOW/MEDIUM (<65).
 
 **Node 3: Query Rewrite** — Uses the LLM to rewrite the user's question for better retrieval. The prompt instructs the LLM to expand vague pronouns, fix grammar, and add context.
@@ -100,7 +102,7 @@ On PostgreSQL the app runs `alembic upgrade head` at startup (SQLite, used for l
 
 A dedicated `TraceService` persists every pipeline execution as a `Trace` ORM record (SQLAlchemy + Alembic migrations). Traces include question, answer, confidence score, reasoning path, retrieval details, latencies, llm_observability, and graph execution data. Export endpoints support CSV, Markdown, and JSON formats.
 
-**Why 8 nodes and not simpler?** Each node has a single responsibility, making testing, logging, and debugging straightforward. The cost is slightly more indirection, but the ability to time, trace, and test each step independently justifies the design.
+**Why 9 nodes and not simpler?** Each node has a single responsibility, making testing, logging, and debugging straightforward. The cost is slightly more indirection, but the ability to time, trace, and test each step independently justifies the design.
 
 ### 2.5 API Layer (`app/api/v1/`)
 

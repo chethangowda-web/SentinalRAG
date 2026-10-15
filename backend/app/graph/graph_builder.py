@@ -2,6 +2,7 @@ import logging
 
 from langgraph.graph import END, StateGraph
 
+from app.graph.nodes.ambiguity_node import ambiguity_node, route_after_ambiguity
 from app.graph.nodes.clarification_node import clarification_node, route_after_clarification
 from app.graph.nodes.confidence_node import (
     confidence_node,
@@ -25,6 +26,7 @@ def build_graph() -> StateGraph:
     workflow = StateGraph(GraphState)
 
     workflow.add_node("retrieve", retrieve_node)
+    workflow.add_node("ambiguity_check", ambiguity_node)
     workflow.add_node("confidence_evaluate", confidence_node)
     workflow.add_node("rewrite_query", rewrite_node)
     workflow.add_node("retry_retrieve", retry_node)
@@ -35,7 +37,16 @@ def build_graph() -> StateGraph:
 
     workflow.set_entry_point("retrieve")
 
-    workflow.add_edge("retrieve", "confidence_evaluate")
+    workflow.add_edge("retrieve", "ambiguity_check")
+
+    workflow.add_conditional_edges(
+        "ambiguity_check",
+        route_after_ambiguity,
+        {
+            "end": END,
+            "confidence_evaluate": "confidence_evaluate",
+        },
+    )
 
     workflow.add_conditional_edges(
         "confidence_evaluate",
@@ -80,5 +91,5 @@ def build_graph() -> StateGraph:
     workflow.add_edge("fallback", END)
 
     compiled = workflow.compile()
-    logger.info("LangGraph compiled with 8 nodes")
+    logger.info("LangGraph compiled with 9 nodes")
     return compiled
