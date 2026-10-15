@@ -60,3 +60,4 @@ backend/req.txt
 backend/evaluation/reports/evaluation_report.md
 backend/evaluation/reports/evaluation_results.csv
 backend/evaluation/reports/evaluation_results.json
+*.log

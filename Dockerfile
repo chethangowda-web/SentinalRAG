@@ -76,6 +76,9 @@ RUN mkdir -p /data/uploads /data/processed && \
 ENV PYTHONPATH=/app \
     PYTHONUNBUFFERED=1
 
+# Run as the unprivileged user created above (owns /app and /data)
+USER sentinel
+
 EXPOSE 8000
 
 CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
