@@ -127,8 +127,17 @@ def render(report: dict, base_url: str, model: str) -> str:
         f" baseline {len(base_fb)}/{report['total_questions']}, SentinelRAG {len(sent_fb)}/{report['total_questions']}"
         f"{' (questions ' + ', '.join(sent_fb) + ')' if sent_fb else ''}. These count against the pipeline that hit them.",
     ]
-    unanswered = [pq["id"] for pq in report["per_question"] if pq["sentinel"].get("answer") is None]
-    lines.append(f"Questions where SentinelRAG returned no answer at all: {len(unanswered)}/{report['total_questions']}.")
+    sentinel_rows = [pq["sentinel"] for pq in report["per_question"]]
+    clarified = [pq["id"] for pq in report["per_question"] if pq["sentinel"].get("clarification_needed")]
+    unanswered = [
+        pq["id"] for pq in report["per_question"]
+        if pq["sentinel"].get("answer") is None and not pq["sentinel"].get("clarification_needed")
+    ]
+    lines.append(
+        f"SentinelRAG asked a clarifying question instead of answering for {len(clarified)}/{report['total_questions']}"
+        f"{' (questions ' + ', '.join(clarified) + ')' if clarified else ''}; it returned nothing at all for "
+        f"{len(unanswered)}/{len(sentinel_rows)}."
+    )
 
     lines += ["", "## Behaviour by category", "", "| Category | Questions | Retried | Contradiction flagged | Clarification asked | Refused (no evidence) |", "|---|---|---|---|---|---|"]
     by_cat: dict[str, list[dict]] = {}
