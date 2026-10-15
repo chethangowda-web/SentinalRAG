@@ -3,6 +3,7 @@ import time
 import traceback
 
 from app.core.config import settings
+from app.services.llm import build_llm, invoke_with_retry
 from app.services.token_counter import count_tokens
 
 logger = logging.getLogger(__name__)
@@ -12,18 +13,8 @@ _llm = None
 
 def _get_llm():
     global _llm
-    if _llm is None and settings.effective_llm_api_key:
-        from langchain_openai import ChatOpenAI
-
-        _llm = ChatOpenAI(
-            model=settings.effective_llm_model,
-            api_key=settings.effective_llm_api_key,
-            base_url=settings.effective_llm_base_url,
-            temperature=0.05,
-            max_tokens=settings.LLM_MAX_TOKENS,
-            timeout=30,
-            max_retries=1,
-        )
+    if _llm is None:
+        _llm = build_llm(max_tokens=settings.LLM_MAX_TOKENS, timeout=60, temperature=0.05)
     return _llm
 
 
@@ -68,7 +59,7 @@ def generate_answer(question: str, chunks: list[dict]) -> str:
     )
 
     try:
-        response = llm.invoke(prompt)
+        response = invoke_with_retry(llm, prompt)
         answer = response.content.strip()
         elapsed = round((time.perf_counter() - start) * 1000, 1)
         logger.info("Answer generated in %.1fms from %d chunks", elapsed, len(chunks))
