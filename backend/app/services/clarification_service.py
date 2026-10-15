@@ -60,8 +60,12 @@ def detect_ambiguity(question: str, chunks: list[dict], use_keywords: bool = Tru
 
     prompt = (
         "Decide whether the following question is too vague to answer from documents. "
-        "It is ambiguous only if it names no specific topic or could refer to several unrelated things. "
-        "A short question that names a specific topic (a policy, a number, a process, a plan) is CLEAR.\n"
+        "Be conservative: only call a question ambiguous if you cannot tell WHAT it is asking about. "
+        "A question that names its subject (a policy, event, number, process or plan) is CLEAR, even if short "
+        "or if the document might cover several plans or services; do not ask which one.\n"
+        "CLEAR examples: 'What is the notice period for contract termination?', 'Who approves travel expenses?', "
+        "'When do invoices get issued?'.\n"
+        "AMBIGUOUS examples: 'What's the deadline?', 'Can you explain the process?', 'Tell me about the policy'.\n"
         "If ambiguous, write one short clarifying question. If clear, output exactly CLEAR.\n\n"
         f"Question: {question}\n\n"
         f"Context: {context}\n\n"
