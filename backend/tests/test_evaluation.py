@@ -745,7 +745,8 @@ class TestEvaluationAPI:
 
     @pytest.mark.asyncio
     async def test_evaluate_endpoint(self, async_client):
-        with patch("evaluation.services.runner.EvaluationRunner.run", new_callable=AsyncMock) as mock_run:
+        ready = {"ready": True, "loading": False, "documents": []}
+        with patch("app.api.v1.evaluation.benchmark_status", new_callable=AsyncMock, return_value=ready),                 patch("evaluation.services.runner.EvaluationRunner.run", new_callable=AsyncMock) as mock_run:
             mock_run.return_value = {
                 "evaluation_id": "test-123",
                 "timestamp": "2026-07-18T12:00:00",

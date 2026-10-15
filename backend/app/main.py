@@ -58,6 +58,11 @@ async def lifespan(application: FastAPI):
             recovered = await recover_interrupted_indexing(session)
         if recovered:
             logger.warning("Marked %d interrupted indexing job(s) as failed so they can be retried", recovered)
+        from app.api.v1.evaluation import recover_interrupted_runs
+
+        async with get_session_maker()() as session:
+            if await recover_interrupted_runs(session):
+                logger.warning("Marked interrupted evaluation run(s) as failed")
     except Exception as e:
         logger.warning("Could not check for interrupted indexing jobs: %s", e)
 

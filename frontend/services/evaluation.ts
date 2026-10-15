@@ -15,6 +15,29 @@ export interface EvalStatusResponse {
   error: string | null;
 }
 
+export interface BenchmarkStatus {
+  ready: boolean;
+  loading: boolean;
+  documents: { filename: string; status: string }[];
+}
+
+export interface EvaluationLatest {
+  report: EvaluationResult | null;
+  run: EvalStatusResponse | null;
+  benchmark: BenchmarkStatus;
+}
+
+/** Last report, any run in flight, and benchmark readiness in one call (never 404s). */
+export async function getEvaluationLatest(): Promise<EvaluationLatest> {
+  const { data } = await api.get<EvaluationLatest>("/api/v1/evaluation/latest");
+  return data;
+}
+
+export async function setupBenchmark(): Promise<BenchmarkStatus> {
+  const { data } = await api.post<BenchmarkStatus>("/api/v1/evaluation/benchmark/setup");
+  return data;
+}
+
 export async function runEvaluation(): Promise<EvalTaskResponse> {
   const { data } = await api.post<EvalTaskResponse>("/api/v1/evaluate");
   return data;
