@@ -393,7 +393,7 @@ npm run dev
 | `DATABASE_URL` | No | `postgresql+asyncpg://sentinel:sentinel@localhost:5432/sentinelrag` | PostgreSQL connection |
 | `REDIS_URL` | No | `redis://localhost:6379/0` | Redis connection |
 | `QDRANT_URL` | No | `http://localhost:6333` | Qdrant connection |
-| `SECRET_KEY` | Yes | — | Signs login tokens. Must be a random 32+ char value; the server refuses to start on PostgreSQL with the old default or a short key |
+| `SECRET_KEY` | Yes | — | Signs login tokens. Must be a random 32+ char value; the server refuses to start with the old default or a short key (set `DEBUG=true` to bypass this for local development only) |
 | `JWT_SECRET` | No | `SECRET_KEY` | Separate signing key for JWTs |
 | `ADMIN_EMAILS` | No | — | Comma-separated emails allowed to view global metrics and change settings |
 | `PRELOAD_MODELS` | No | `false` | Load embedding + reranker models at startup (~1 GB RAM) instead of on first use |

@@ -144,7 +144,10 @@ _validation_errors = settings.validate()
 for e in _validation_errors:
     logger.error("Configuration error: %s", e)
 if _validation_errors:
-    if settings.DEBUG or settings.is_sqlite:
+    # A weak signing key lets anyone forge login tokens, so it is fatal on SQLite too
+    # (a SQLite deploy can still be public). Only DEBUG tolerates it.
+    secret_problem = any("SECRET_KEY" in e for e in _validation_errors)
+    if settings.DEBUG or (settings.is_sqlite and not secret_problem):
         logger.warning("Proceeding despite configuration errors (debug/dev mode)")
     else:
         raise SystemExit(
