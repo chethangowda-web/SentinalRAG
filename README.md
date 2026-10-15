@@ -445,21 +445,21 @@ Full interactive API documentation is available at `/docs` (Swagger UI) when the
 
 SentinelRAG ships a benchmark that runs a baseline RAG (one hybrid retrieval + one answer) and the full self-correcting pipeline over the same 18 questions (`backend/evaluation/datasets/benchmark.json`) against a six-document corpus (`backend/evaluation/corpus/`: easy, medium, multi-step, contradictory, missing-context and ambiguous questions).
 
-Latest run on the live deployment with `gemini-3.1-flash-lite` (full report: [BENCHMARK.md](./BENCHMARK.md)):
+Latest run on the live deployment with `gemini-3.1-flash-lite` (full report and per-question answers: [BENCHMARK.md](./BENCHMARK.md)):
 
-| Metric | Baseline | SentinelRAG |
+| What the question should produce | Baseline | SentinelRAG |
 |---|---|---|
-| Faithfulness | 78.7% | **81.2%** |
-| Hallucination rate (lower is better) | 21.3% | **18.8%** |
-| Answer relevancy | 23.7% | **27.6%** |
-| Correctness | 61.5% | **62.9%** |
-| Context precision | 74.9% | **75.5%** |
-| Questions with no answer | 0 | 0 |
-| Mean latency | **3.7 s** | 10.1 s |
+| Specific questions answered | 9/11 | 9/11 |
+| Unanswerable questions refused ("I don't have enough information") | 2/3 | **3/3** |
+| Conflicting sources surfaced | 2/2 | 2/2 |
+| Vague questions get a clarifying question | 0/2 | **2/2** |
+| Mean latency | **6.9 s** | 9.8 s |
 
-These are keyword-overlap heuristics on 18 questions, not LLM-judged scores, so read them as rough relative signals: the differences are small, and 3 of SentinelRAG's and 2 of the baseline's 18 answers fell back to raw text when the free Gemini tier rate-limited a call. The self-correcting path costs about 2.7x the latency.
+The two "specific" misses on each side are answers where the free Gemini tier rate-limited an LLM call and the system fell back to raw retrieved text. Where self-correction clearly helps is *knowing when not to answer*: refusing out-of-scope questions and asking about vague ones. The keyword-overlap quality metrics (faithfulness, correctness, relevancy, in BENCHMARK.md) are too noisy on 18 questions to separate the two pipelines: the gaps changed sign between runs, so don't read them as a win or a loss.
 
-**What the benchmark caught.** The first real run showed SentinelRAG returning *no answer* for 7 of 18 questions (correctness 40.8%, far below the baseline): every question that triggered a retry was falsely flagged "contradictory" by the keyword heuristic, which sent it to a clarification step that had nothing to ask. The fix (clarification now continues to answer generation, and a keyword hit must be confirmed by the LLM) took that to 0 of 18 and correctness to 62.9%. Known gap: ambiguous questions are no longer asked to clarify, because the ambiguity check only runs after a contradiction was found.
+**What the benchmark caught along the way** (all fixed, with regression tests):
+1. SentinelRAG returned *no answer* for 7 of 18 questions: every retried question was falsely flagged "contradictory" by a keyword heuristic and routed to a clarification step with nothing to ask. Clarification now continues to answering, and a flagged contradiction must be confirmed by the LLM.
+2. That left vague questions never being clarified, so an early `ambiguity_check` node now judges short questions (6 words or fewer) from the question text alone.
 
 Reproduce it against any deployment: `python scripts/run_benchmark.py --base-url https://your-app.up.railway.app`.
 
