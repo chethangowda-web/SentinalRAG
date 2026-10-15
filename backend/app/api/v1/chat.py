@@ -202,6 +202,8 @@ async def _build_response(
     )
 
     raw_conf = result.get("confidence_score", 0.0)
+    if result.get("clarification_needed") and not result.get("answer"):
+        raw_conf = 0.0  # no answer was given, so there is nothing to be confident about
     confidence = _normalize_confidence(raw_conf)
     if confidence >= 65:
         confidence_level = "HIGH"
