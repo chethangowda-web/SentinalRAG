@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     # Off by default: both models together need ~1 GB RAM, which small hosts can't spare.
     PRELOAD_MODELS: bool = False
 
+    # Directory holding the exported frontend to serve at "/" (default: ./static if it exists)
+    FRONTEND_DIST: str = ""
+
     # Google Gemini (preferred when its key is set), via Google's OpenAI-compatible endpoint
     GEMINI_API_KEY: str = ""
     GEMINI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"

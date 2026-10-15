@@ -141,6 +141,15 @@ open http://localhost
 | Persistence | None (cache-only; currently reserved for future use) |
 | Health Check | `redis-cli ping` (5s interval) |
 
+### Railway: single service (API + web UI)
+
+The repo-root `Dockerfile` builds the Next.js app as a static export and bakes it into the API image; the API serves it at `/` (see `backend/app/core/frontend.py`). One service therefore runs the whole app, which also fits Railway's free-plan limit of three services (app, PostgreSQL, Qdrant).
+
+- Service **Root Directory**: the repo root (`/`), so the root `Dockerfile` and `railway.json` are used.
+- Variables on the app service: `SECRET_KEY` (32+ chars), `GEMINI_API_KEY`, `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `QDRANT_URL=http://${{qdrant.RAILWAY_PRIVATE_DOMAIN}}:6333`, optionally `ADMIN_EMAILS`.
+- Qdrant: image `qdrant/qdrant:v1.16.2` with a volume mounted at `/qdrant/storage`.
+- The browser talks to the same origin, so no CORS or `NEXT_PUBLIC_API_URL` is needed.
+
 ### Qdrant v1.16.2
 
 | Detail | Value |
