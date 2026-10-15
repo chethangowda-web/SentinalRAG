@@ -115,3 +115,7 @@ jobs:
       - run: docker build -t sentinelrag:ci .
       - name: Web UI is baked into the image
         run: docker run --rm --entrypoint sh sentinelrag:ci -c 'test -f /app/static/index.html && test -f /app/static/login/index.html && ls /app/static'
+      - name: Runs as an unprivileged user that can write where the app needs to
+        run: >-
+          docker run --rm --entrypoint sh sentinelrag:ci -c
+          'test "$(id -un)" = sentinel && touch /data/uploads/probe /data/processed/probe /app/uploads_probe && mkdir -p "$HOME/.cache/huggingface"'

@@ -34,7 +34,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user (owned files but we run as root initially for Railway compat)
+# Unprivileged user that owns the app and data directories
 RUN groupadd -r sentinel && \
     useradd -r -g sentinel -d /app -s /bin/bash sentinel
 
@@ -56,6 +56,8 @@ RUN mkdir -p /data/uploads /data/processed && \
 
 ENV PYTHONPATH=/app \
     PYTHONUNBUFFERED=1
+
+USER sentinel
 
 EXPOSE 8000
 
