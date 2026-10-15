@@ -1,0 +1,10 @@
+Security Whitepaper (2023 edition)
+
+1. Logging
+System and access logs are retained for 30 days before they are deleted.
+
+2. Encryption
+Customer data is encrypted at rest and in transit using industry standard algorithms.
+
+3. Access Control
+Staff access to production systems requires multi-factor authentication.

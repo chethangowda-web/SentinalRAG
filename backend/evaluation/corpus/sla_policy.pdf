@@ -1,0 +1,65 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 1896 >>
+stream
+BT /F1 11 Tf 15 TL 56 732 Td
+(Network Services Service Level Agreement - Standard Plan) Tj T*
+() Tj T*
+(1. Availability) Tj T*
+(The minimum uptime requirement for network services on the Standard plan is 99.9%,) Tj T*
+(measured on a monthly basis. Uptime is calculated as the total minutes in the month) Tj T*
+(minus minutes of unplanned downtime, divided by the total minutes in the month.) Tj T*
+() Tj T*
+(2. Performance Targets) Tj T*
+(Round-trip latency within a single region must stay below 50 milliseconds. Packet loss) Tj T*
+(must stay below 0.1% averaged over the month.) Tj T*
+() Tj T*
+(3. Scheduled Maintenance) Tj T*
+(Planned maintenance takes place every Sunday between 02:00 and 04:00 UTC. Customers) Tj T*
+(receive at least 72 hours of notice before any maintenance window. Time spent in) Tj T*
+(announced maintenance windows does not count as downtime.) Tj T*
+() Tj T*
+(4. Incident Response Times \(Standard Plan\)) Tj T*
+(Critical incidents receive a first response within 1 hour. High priority incidents) Tj T*
+(receive a first response within 4 hours. Normal priority incidents receive a first) Tj T*
+(response within 1 business day.) Tj T*
+() Tj T*
+(5. Service Credits) Tj T*
+(If monthly uptime falls below 99.9% but is at least 99.0%, the customer receives a) Tj T*
+(service credit of 10% of that month's network fees. If monthly uptime falls below 99.0%,) Tj T*
+(the customer receives a service credit of 25% of that month's network fees. Credits must) Tj T*
+(be claimed within 30 days of the end of the affected month by opening a billing ticket.) Tj T*
+(Credits are applied to the next invoice and are not paid out in cash.) Tj T*
+() Tj T*
+(6. Exclusions) Tj T*
+(Downtime caused by force majeure events, by the customer's own equipment or) Tj T*
+(configuration changes, or by third-party services outside our network is excluded from) Tj T*
+(uptime calculations.) Tj T*
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000185 00000 n 
+0000000311 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+2259
+%%EOF

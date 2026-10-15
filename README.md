@@ -496,55 +496,34 @@ See [PERFORMANCE.md](./PERFORMANCE.md) for detailed benchmarks, load test result
 
 ## Deployment
 
-### Live Deployments
+### Live Deployment
 
-| Service | URL |
+| | URL |
 |---|---|
-| Frontend | [https://frontend-production-10b2.up.railway.app](https://frontend-production-10b2.up.railway.app) |
-| Backend API | [https://sentinalrag-production.up.railway.app](https://sentinalrag-production.up.railway.app) |
-| API Health | [https://sentinalrag-production.up.railway.app/api/v1/health](https://sentinalrag-production.up.railway.app/api/v1/health) |
-| Swagger Docs | [https://sentinalrag-production.up.railway.app/docs](https://sentinalrag-production.up.railway.app/docs) |
+| App (web UI + API) | [https://sentinalrag-production-37c9.up.railway.app](https://sentinalrag-production-37c9.up.railway.app) |
+| API health | [/api/v1/health](https://sentinalrag-production-37c9.up.railway.app/api/v1/health), readiness: [/api/v1/ready](https://sentinalrag-production-37c9.up.railway.app/api/v1/ready) |
+| Swagger docs | [/docs](https://sentinalrag-production-37c9.up.railway.app/docs) |
 
-### Railway (Recommended)
+### Railway (single service)
 
-[Railway](https://railway.app) provides one-click deployment with PostgreSQL and persistent volumes.
+The repo-root `Dockerfile` builds the Next.js app as a static export and bakes it into the API image, so **one service runs the whole app** (the API serves the UI at `/`). A project needs three services: the app, PostgreSQL, and Qdrant. That also fits Railway's free-plan limit.
 
-**Deploy via Railway Dashboard:**
+1. Create a Railway project and add a **PostgreSQL** service.
+2. Add a **Qdrant** service from the image `qdrant/qdrant:v1.16.2` and attach a volume at `/qdrant/storage`.
+3. Add the app service from this GitHub repo. Leave its **Root Directory** at the repo root (`/`); `railway.json` selects the Dockerfile build.
+4. Set these variables on the app service:
 
-1. Fork the repo: `https://github.com/chethangowda-web/SentinalRAG`
-2. Create a new Railway project → **Deploy from GitHub repo**
-3. Add a **PostgreSQL** plugin → copy the `DATABASE_URL` (change `postgresql://` to `postgresql+asyncpg://`)
-4. Set required environment variables:
-   - `GEMINI_API_KEY` — your Google Gemini API key
-   - `DATABASE_URL` — Railway PostgreSQL URL (with `+asyncpg`)
-   - `SECRET_KEY` — generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"`
-   - `QDRANT_URL` — leave default (Qdrant is embedded in-app)
-5. Set build command: `cd backend && pip install -r requirements.txt`
-6. Set start command: `cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-7. For **Frontend**, create a separate Railway service:
-   - Root directory: `frontend`
-   - Build command: `npm install && npm run build`
-   - Start command: `npm start`
-   - Set `NEXT_PUBLIC_API_URL` to your backend URL
+   | Variable | Value |
+   |---|---|
+   | `SECRET_KEY` | random 32+ chars: `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
+   | `GEMINI_API_KEY` | your Google Gemini key |
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+   | `QDRANT_URL` | `http://${{qdrant.RAILWAY_PRIVATE_DOMAIN}}:6333` |
+   | `ADMIN_EMAILS` | optional: your email, after you have registered it |
 
-**Railway Configuration (railway.json):**
+5. Generate a public domain for the app service. Deploys run migrations automatically at startup.
 
-A `railway.json` is included in the repo root for automatic service detection.
-
-```json
-{
-  "$schema": "https://railway.app/railway.schema.json",
-  "build": {
-    "builder": "NIXPACKS"
-  },
-  "deploy": {
-    "startCommand": "cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT",
-    "healthcheckPath": "/api/v1/health",
-    "healthcheckTimeout": 30,
-    "restartPolicyType": "ALWAYS"
-  }
-}
-```
+The browser and API share one origin, so no CORS or `NEXT_PUBLIC_API_URL` setup is needed.
 
 ### Docker Compose (Self-Hosted)
 

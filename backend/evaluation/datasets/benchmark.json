@@ -8,50 +8,193 @@
     "has_contradiction": false,
     "needs_clarification": false,
     "has_context": true,
-    "tags": ["uptime", "sla", "network"]
+    "tags": ["uptime", "sla"]
+  },
+  {
+    "id": "2",
+    "question": "When does scheduled maintenance take place?",
+    "ground_truth": "Planned maintenance takes place every Sunday between 02:00 and 04:00 UTC, with at least 72 hours of notice.",
+    "expected_documents": ["sla_policy.pdf"],
+    "category": "easy",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["maintenance", "sla"]
+  },
+  {
+    "id": "3",
+    "question": "How long is the refund window under the satisfaction guarantee?",
+    "ground_truth": "Customers may request a refund within 30 days of purchase.",
+    "expected_documents": ["refund_policy.pdf"],
+    "category": "easy",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["refund"]
   },
   {
     "id": "4",
+    "question": "Which languages does customer support offer?",
+    "ground_truth": "Support is offered in English, Spanish and German.",
+    "expected_documents": ["customer_service_guide.pdf"],
+    "category": "easy",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["support", "languages"]
+  },
+  {
+    "id": "5",
     "question": "Explain the process for requesting a refund under the satisfaction guarantee.",
-    "ground_truth": "Customers may request a refund within 30 days of purchase by contacting customer support. The refund will be processed within 5-7 business days after approval. Refunds are issued to the original payment method.",
+    "ground_truth": "Customers may request a refund within 30 days of purchase by contacting customer support, for example by opening a Billing then Refund ticket in the support portal. The refund will be processed within 5-7 business days after approval and is issued to the original payment method.",
     "expected_documents": ["refund_policy.pdf", "customer_service_guide.pdf"],
     "category": "medium",
     "has_contradiction": false,
     "needs_clarification": false,
     "has_context": true,
-    "tags": ["refund", "satisfaction_guarantee", "process"]
+    "tags": ["refund", "process"]
   },
   {
-    "id": "13",
+    "id": "6",
+    "question": "Which items cannot be refunded?",
+    "ground_truth": "Custom hardware orders and setup fees are not refundable once the service has been activated.",
+    "expected_documents": ["refund_policy.pdf"],
+    "category": "medium",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["refund", "exclusions"]
+  },
+  {
+    "id": "7",
+    "question": "How are unresolved support tickets escalated?",
+    "ground_truth": "Tickets start at Tier 1. A ticket unresolved after 24 hours is escalated to Tier 2, and one unresolved after 72 hours is escalated to the support manager.",
+    "expected_documents": ["customer_service_guide.pdf"],
+    "category": "medium",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["support", "escalation"]
+  },
+  {
+    "id": "8",
+    "question": "What service credit does a Standard plan customer get if uptime for the month was 99.5%?",
+    "ground_truth": "Uptime below 99.9% but at least 99.0% earns a service credit of 10% of that month's network fees.",
+    "expected_documents": ["sla_policy.pdf"],
+    "category": "medium",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["sla", "credits"]
+  },
+  {
+    "id": "9",
+    "question": "A Standard plan customer had 98.7% uptime last month. What credit applies and how long do they have to claim it?",
+    "ground_truth": "Uptime below 99.0% earns a service credit of 25% of that month's network fees. It must be claimed within 30 days of the end of the affected month by opening a billing ticket.",
+    "expected_documents": ["sla_policy.pdf"],
+    "category": "hard",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["sla", "credits", "multi-step"]
+  },
+  {
+    "id": "10",
+    "question": "How quickly must a critical incident receive a first response on the Standard plan compared with the Premium plan?",
+    "ground_truth": "Standard plan critical incidents receive a first response within 1 hour; Premium plan critical incidents receive one within 15 minutes.",
+    "expected_documents": ["sla_policy.pdf", "premium_addendum.pdf"],
+    "category": "hard",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["sla", "comparison", "multi-document"]
+  },
+  {
+    "id": "11",
+    "question": "A customer cancels an annual plan 45 days after purchase. What refund do they get?",
+    "ground_truth": "Because the 30-day guarantee period has passed, they receive a pro-rated refund for the unused full months, minus a 15% administration fee.",
+    "expected_documents": ["refund_policy.pdf"],
+    "category": "hard",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": true,
+    "tags": ["refund", "annual", "multi-step"]
+  },
+  {
+    "id": "12",
     "question": "One document states the uptime guarantee is 99.9% while another says 99.99%. What is the correct uptime requirement?",
-    "ground_truth": "There is a contradiction in the documents. The SLA policy document states 99.9% uptime for standard services, while the premium service addendum states 99.99% for enterprise customers. The correct requirement depends on the service tier the customer has selected.",
+    "ground_truth": "The documents differ: the Standard SLA states 99.9% uptime, while the Premium addendum states 99.99%. Which applies depends on whether the customer is on the Standard or the Premium plan.",
     "expected_documents": ["sla_policy.pdf", "premium_addendum.pdf"],
     "category": "contradictory",
     "has_contradiction": true,
     "needs_clarification": false,
     "has_context": true,
-    "tags": ["uptime", "contradiction", "sla"]
+    "tags": ["uptime", "conflict"]
   },
   {
-    "id": "16",
-    "question": "Tell me about the network",
-    "ground_truth": "The question is too vague to provide a specific answer. Please specify which aspect of the network you are interested in.",
-    "expected_documents": [],
-    "category": "ambiguous",
-    "has_contradiction": false,
-    "needs_clarification": true,
+    "id": "13",
+    "question": "How long are system and access logs retained?",
+    "ground_truth": "The documents conflict: the 2025 Data Retention Policy says logs are retained for 90 days, while the 2023 Security Whitepaper says 30 days. The newer 2025 policy says 90 days.",
+    "expected_documents": ["data_retention_policy.pdf", "security_whitepaper_2023.pdf"],
+    "category": "contradictory",
+    "has_contradiction": true,
+    "needs_clarification": false,
     "has_context": true,
-    "tags": ["vague", "network"]
+    "tags": ["retention", "conflict"]
   },
   {
-    "id": "10",
+    "id": "14",
     "question": "What is the policy on 5G standalone roaming in Europe?",
-    "ground_truth": "I don't have enough information to answer this question. The uploaded documents do not contain information about 5G standalone roaming policies.",
+    "ground_truth": "I don't have enough information to answer this question. The uploaded documents do not contain information about 5G standalone roaming.",
     "expected_documents": [],
     "category": "missing_context",
     "has_contradiction": false,
     "needs_clarification": false,
     "has_context": false,
-    "tags": ["5g", "roaming", "europe"]
+    "tags": ["out-of-scope"]
+  },
+  {
+    "id": "15",
+    "question": "What is the company's parental leave policy?",
+    "ground_truth": "I don't have enough information to answer this question. The uploaded documents do not contain a parental leave policy.",
+    "expected_documents": [],
+    "category": "missing_context",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": false,
+    "tags": ["out-of-scope"]
+  },
+  {
+    "id": "16",
+    "question": "What is the price per gigabyte of data on the Premium plan?",
+    "ground_truth": "I don't have enough information to answer this question. The uploaded documents do not state any pricing.",
+    "expected_documents": [],
+    "category": "missing_context",
+    "has_contradiction": false,
+    "needs_clarification": false,
+    "has_context": false,
+    "tags": ["out-of-scope", "pricing"]
+  },
+  {
+    "id": "17",
+    "question": "Tell me about the network",
+    "ground_truth": "The question is too vague to answer specifically. Please say which aspect of the network you are interested in, such as uptime, maintenance or performance.",
+    "expected_documents": [],
+    "category": "ambiguous",
+    "has_contradiction": false,
+    "needs_clarification": true,
+    "has_context": true,
+    "tags": ["vague"]
+  },
+  {
+    "id": "18",
+    "question": "How long does it take?",
+    "ground_truth": "The question is too vague to answer. Please say what process you are asking about, such as refund processing or incident response.",
+    "expected_documents": [],
+    "category": "ambiguous",
+    "has_contradiction": false,
+    "needs_clarification": true,
+    "has_context": true,
+    "tags": ["vague"]
   }
 ]
