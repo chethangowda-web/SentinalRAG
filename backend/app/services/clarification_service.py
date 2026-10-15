@@ -2,7 +2,7 @@ import logging
 import re
 import time
 
-from app.core.config import settings
+from app.services.llm import build_llm, invoke_with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -12,16 +12,8 @@ _llm = None
 
 def _get_llm():
     global _llm
-    if _llm is None and settings.effective_llm_api_key:
-        from langchain_openai import ChatOpenAI
-
-        _llm = ChatOpenAI(
-            model=settings.effective_llm_model,
-            api_key=settings.effective_llm_api_key,
-            base_url=settings.effective_llm_base_url,
-            temperature=0.1,
-            max_tokens=256,
-        )
+    if _llm is None:
+        _llm = build_llm(max_tokens=256, timeout=30, temperature=0.1)
     return _llm
 
 
@@ -71,7 +63,7 @@ def detect_ambiguity(question: str, chunks: list[dict]) -> str | None:
     )
 
     try:
-        response = llm.invoke(prompt)
+        response = invoke_with_retry(llm, prompt)
         result = response.content.strip()
         elapsed = round((time.perf_counter() - start) * 1000, 1)
         if result.upper() == "CLEAR":

@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 
-from app.core.config import settings
+from app.services.llm import build_llm
 
 logger = logging.getLogger(__name__)
 
@@ -108,16 +108,4 @@ def _guess_document_type(filename: str, text: str) -> str:
 
 
 def _get_llm():
-    if not settings.effective_llm_api_key:
-        return None
-    from langchain_openai import ChatOpenAI
-
-    return ChatOpenAI(
-        model=settings.effective_llm_model,
-        api_key=settings.effective_llm_api_key,
-        base_url=settings.effective_llm_base_url,
-        temperature=0.1,
-        max_tokens=512,
-        timeout=15,
-        max_retries=1,
-    )
+    return build_llm(max_tokens=512, timeout=15, temperature=0.1)

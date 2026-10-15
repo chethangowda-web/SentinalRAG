@@ -59,7 +59,8 @@ class Settings(BaseSettings):
     # Google Gemini (preferred when its key is set), via Google's OpenAI-compatible endpoint
     GEMINI_API_KEY: str = ""
     GEMINI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    # gemini-3.1-flash-lite has a far higher free-tier request limit than gemini-2.5-flash (5/min)
+    GEMINI_MODEL: str = "gemini-3.1-flash-lite"
 
     # DeepSeek (fallback LLM provider)
     DEEPSEEK_API_KEY: str = ""
@@ -82,6 +83,8 @@ class Settings(BaseSettings):
     ADMIN_EMAILS: str = ""
 
     LLM_MAX_TOKENS: int = 1024
+    # Optional reasoning_effort passed to the LLM (e.g. "none" to stop Gemini spending tokens on hidden thinking)
+    LLM_REASONING_EFFORT: str = ""
 
     @property
     def admin_emails(self) -> set[str]:
@@ -126,6 +129,10 @@ class Settings(BaseSettings):
         if self.llm_provider == "featherless":
             return self.FEATHERLESS_MODEL or self.LLM_MODEL
         return self.LLM_MODEL
+
+    @property
+    def effective_llm_reasoning_effort(self) -> str:
+        return self.LLM_REASONING_EFFORT
 
     @property
     def is_postgres(self) -> bool:

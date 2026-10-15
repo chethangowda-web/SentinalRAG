@@ -210,14 +210,14 @@ class TestClarificationService:
         assert result is not None
 
     def test_specific_question_no_llm(self):
-        with patch("app.services.clarification_service.settings.DEEPSEEK_API_KEY", ""):
+        with patch("app.services.clarification_service._get_llm", return_value=None):
             result = detect_ambiguity("What is the refund period in days?", [])
             assert result is None
 
 
 class TestQueryRewriter:
     def test_no_llm_returns_original(self):
-        with patch("app.services.query_rewriter.settings.DEEPSEEK_API_KEY", ""):
+        with patch("app.services.query_rewriter._get_llm", return_value=None):
             result = rewrite_query("What about refunds?")
             assert result == "What about refunds?"
 

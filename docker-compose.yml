@@ -73,7 +73,7 @@ services:
       UPLOAD_DIR: /data/uploads
       PROCESSED_DIR: /data/processed
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
       FEATHERLESS_API_KEY: ${FEATHERLESS_API_KEY:-}

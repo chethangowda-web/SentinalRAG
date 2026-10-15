@@ -1,7 +1,7 @@
 import logging
 import time
 
-from app.core.config import settings
+from app.services.llm import build_llm, invoke_with_retry
 from app.services.token_counter import count_tokens
 
 logger = logging.getLogger(__name__)
@@ -12,18 +12,8 @@ _llm = None
 
 def _get_llm():
     global _llm
-    if _llm is None and settings.effective_llm_api_key:
-        from langchain_openai import ChatOpenAI
-
-        _llm = ChatOpenAI(
-            model=settings.effective_llm_model,
-            api_key=settings.effective_llm_api_key,
-            base_url=settings.effective_llm_base_url,
-            temperature=settings.LLM_TEMPERATURE,
-            max_tokens=512,
-            timeout=30,
-            max_retries=1,
-        )
+    if _llm is None:
+        _llm = build_llm(max_tokens=512, timeout=30)
     return _llm
 
 
@@ -51,7 +41,7 @@ def rewrite_query(question: str) -> str:
     )
 
     try:
-        response = llm.invoke(prompt)
+        response = invoke_with_retry(llm, prompt)
         rewritten = response.content.strip()
         elapsed = round((time.perf_counter() - start) * 1000, 1)
         logger.info(

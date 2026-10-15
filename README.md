@@ -384,7 +384,8 @@ npm run dev
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `GEMINI_API_KEY` | Yes* | — | Google Gemini API key (preferred provider when set) |
-| `GEMINI_MODEL` | No | `gemini-2.5-flash` | Gemini model name |
+| `GEMINI_MODEL` | No | `gemini-3.1-flash-lite` | Gemini model name. The free tier of `gemini-2.5-flash` allows only 5 requests/min, which one question can exceed (rewrite + clarify + answer) |
+| `LLM_REASONING_EFFORT` | No | — | Passed to the LLM as `reasoning_effort` (e.g. `none` to stop Gemini spending tokens on hidden thinking) |
 | `GEMINI_BASE_URL` | No | `https://generativelanguage.googleapis.com/v1beta/openai/` | Gemini OpenAI-compatible endpoint |
 | `DEEPSEEK_API_KEY` | Yes* | — | DeepSeek LLM API key (fallback) |
 | `DEEPSEEK_BASE_URL` | No | `https://api.deepseek.com/v1` | DeepSeek API base URL |
