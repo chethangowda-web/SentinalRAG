@@ -63,3 +63,13 @@ def test_featherless_takes_priority_over_deepseek():
 
 def test_no_key_means_no_provider():
     assert _llm().llm_provider == "none"
+
+
+def test_migration_url_adds_the_async_driver_to_a_plain_postgres_url(monkeypatch):
+    from app.core import database
+
+    monkeypatch.setattr(database.settings, "DATABASE_URL", "postgresql://u:p@db.internal:5432/app")
+    assert database.get_migration_database_url() == "postgresql+asyncpg://u:p@db.internal:5432/app"
+
+    monkeypatch.setattr(database.settings, "DATABASE_URL", "postgresql+asyncpg://u:p@db.internal:5432/app")
+    assert database.get_migration_database_url() == "postgresql+asyncpg://u:p@db.internal:5432/app"

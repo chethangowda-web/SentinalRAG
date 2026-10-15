@@ -39,6 +39,15 @@ def _normalize_db_url(url: str) -> str:
     return url
 
 
+def get_migration_database_url() -> str:
+    """The URL Alembic connects with: the same driver-qualified URL the app engine uses.
+
+    Hosts such as Railway provide a bare postgresql:// URL; handing that to SQLAlchemy
+    selects the sync psycopg2 driver, which is not installed.
+    """
+    return _normalize_db_url(settings.DATABASE_URL)
+
+
 def get_engine():
     global _engine
     if _engine is None:

@@ -22,14 +22,14 @@ HEAD = "004"
 
 
 @asynccontextmanager
-async def fresh_database():
+async def fresh_database(url=None):
     """Point the app at an empty PostgreSQL schema for the duration of the block.
 
     Opened and disposed inside each test so the engine's connections always belong
     to the test's own event loop, whatever loop fixtures the suite configures.
     """
     original_url = settings.DATABASE_URL
-    settings.DATABASE_URL = PG_URL
+    settings.DATABASE_URL = url or PG_URL
     await _dispose()
     try:
         engine = db.get_engine()
@@ -94,3 +94,10 @@ async def test_migrations_do_not_disable_application_loggers():
     async with fresh_database():
         await _run_alembic_migrations()
     assert not app_logger.disabled
+
+
+async def test_plain_postgresql_url_as_provided_by_railway_works():
+    # Hosts hand out postgresql://...; the async driver has to be added for Alembic too.
+    async with fresh_database(PG_URL.replace("+asyncpg", "")) as pg:
+        await _run_alembic_migrations()
+        await _assert_at_head(pg)
