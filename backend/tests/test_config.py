@@ -28,3 +28,36 @@ def test_dedicated_jwt_secret_satisfies_validation():
 def test_admin_emails_are_parsed_case_insensitively():
     s = _settings(SECRET_KEY="k" * 40, ADMIN_EMAILS=" Admin@Example.com, ops@example.com ,")
     assert s.admin_emails == {"admin@example.com", "ops@example.com"}
+
+
+def _llm(**overrides) -> Settings:
+    return Settings(_env_file=None, SECRET_KEY="k" * 40, **overrides)
+
+
+def test_gemini_is_used_when_its_key_is_set():
+    s = _llm(GEMINI_API_KEY="g", DEEPSEEK_API_KEY="d", FEATHERLESS_API_KEY="f")
+    assert s.llm_provider == "gemini"
+    assert s.effective_llm_api_key == "g"
+    assert s.effective_llm_model == "gemini-2.5-flash"
+    assert s.effective_llm_base_url == "https://generativelanguage.googleapis.com/v1beta/openai/"
+
+
+def test_gemini_model_is_configurable_and_ignores_other_providers_models():
+    s = _llm(GEMINI_API_KEY="g", GEMINI_MODEL="gemini-2.5-pro", LLM_MODEL="deepseek-chat", FEATHERLESS_MODEL="x")
+    assert s.effective_llm_model == "gemini-2.5-pro"
+
+
+def test_deepseek_still_works_without_gemini():
+    s = _llm(DEEPSEEK_API_KEY="d")
+    assert s.llm_provider == "deepseek"
+    assert s.effective_llm_model == "deepseek-chat"
+    assert s.effective_llm_base_url == "https://api.deepseek.com/v1"
+
+
+def test_featherless_takes_priority_over_deepseek():
+    s = _llm(FEATHERLESS_API_KEY="f", FEATHERLESS_BASE_URL="https://f/v1", FEATHERLESS_MODEL="m", DEEPSEEK_API_KEY="d")
+    assert (s.llm_provider, s.effective_llm_base_url, s.effective_llm_model) == ("featherless", "https://f/v1", "m")
+
+
+def test_no_key_means_no_provider():
+    assert _llm().llm_provider == "none"

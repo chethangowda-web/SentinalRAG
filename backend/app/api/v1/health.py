@@ -64,7 +64,7 @@ def _check_embedding() -> dict:
 def _check_llm() -> dict:
     if settings.effective_llm_api_key:
         return {"status": "configured", "model": settings.effective_llm_model}
-    return {"status": "unconfigured", "error": "DEEPSEEK_API_KEY or FEATHERLESS_API_KEY not set"}
+    return {"status": "unconfigured", "error": "GEMINI_API_KEY, DEEPSEEK_API_KEY or FEATHERLESS_API_KEY not set"}
 
 
 def _get_disk_usage() -> dict:

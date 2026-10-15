@@ -1,6 +1,6 @@
 # SentinelRAG — Self-Correcting Retrieval-Augmented Generation
 
-**An enterprise-grade, self-correcting RAG platform powered by DeepSeek V4, LangGraph, and hybrid search that eliminates hallucinations through automatic detection and correction.**
+**An enterprise-grade, self-correcting RAG platform powered by Google Gemini, LangGraph, and hybrid search that eliminates hallucinations through automatic detection and correction.**
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)](https://fastapi.tiangolo.com)
@@ -159,7 +159,7 @@ User Query
 | **Cache** | — | (future: Redis) |
 | **Embeddings** | BAAI/bge-small-en-v1.5 (Sentence Transformers) | 384d |
 | **Reranking** | ms-marco-MiniLM-L-6-v2 (Cross-Encoder) | — |
-| **LLM** | DeepSeek V4 (via langchain-openai) | — |
+| **LLM** | Google Gemini (default; DeepSeek or Featherless as fallbacks), via langchain-openai | — |
 | **OCR** | Tesseract (PyMuPDF + pytesseract) | — |
 | **Infrastructure** | Docker, Docker Compose, NGINX | latest |
 | **CI** | GitHub Actions (ruff + pytest + build) | — |
@@ -345,7 +345,7 @@ cd SentinalRAG
 
 # 2. Configure environment
 cp .env.example .env
-# Edit .env: set your LLM API key (DEEPSEEK_API_KEY or FEATHERLESS_API_KEY)
+# Edit .env: set SECRET_KEY and your LLM API key (GEMINI_API_KEY, or DEEPSEEK_API_KEY / FEATHERLESS_API_KEY)
 
 # 3. Build and start all services
 docker compose up --build
@@ -383,7 +383,10 @@ npm run dev
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `DEEPSEEK_API_KEY` | Yes* | — | DeepSeek LLM API key |
+| `GEMINI_API_KEY` | Yes* | — | Google Gemini API key (preferred provider when set) |
+| `GEMINI_MODEL` | No | `gemini-2.5-flash` | Gemini model name |
+| `GEMINI_BASE_URL` | No | `https://generativelanguage.googleapis.com/v1beta/openai/` | Gemini OpenAI-compatible endpoint |
+| `DEEPSEEK_API_KEY` | Yes* | — | DeepSeek LLM API key (fallback) |
 | `DEEPSEEK_BASE_URL` | No | `https://api.deepseek.com/v1` | DeepSeek API base URL |
 | `LLM_MODEL` | No | `deepseek-chat` | LLM model name |
 | `LLM_TEMPERATURE` | No | `0.1` | LLM temperature |
@@ -403,7 +406,7 @@ npm run dev
 | `RATE_LIMIT_MAX_REQUESTS` | No | `100` | Max requests per window |
 | `RATE_LIMIT_WINDOW_SECONDS` | No | `60` | Rate limit window |
 
-*One of `DEEPSEEK_API_KEY` or `FEATHERLESS_API_KEY` is required for LLM features.
+*One of `GEMINI_API_KEY`, `DEEPSEEK_API_KEY` or `FEATHERLESS_API_KEY` is required for LLM features. Priority: Gemini, then Featherless, then DeepSeek.
 
 ---
 
@@ -511,7 +514,7 @@ See [PERFORMANCE.md](./PERFORMANCE.md) for detailed benchmarks, load test result
 2. Create a new Railway project → **Deploy from GitHub repo**
 3. Add a **PostgreSQL** plugin → copy the `DATABASE_URL` (change `postgresql://` to `postgresql+asyncpg://`)
 4. Set required environment variables:
-   - `DEEPSEEK_API_KEY` — your DeepSeek API key
+   - `GEMINI_API_KEY` — your Google Gemini API key
    - `DATABASE_URL` — Railway PostgreSQL URL (with `+asyncpg`)
    - `SECRET_KEY` — generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"`
    - `QDRANT_URL` — leave default (Qdrant is embedded in-app)
@@ -546,7 +549,7 @@ A `railway.json` is included in the repo root for automatic service detection.
 
 ```bash
 cp .env.example .env
-# Edit .env: set your LLM API key (DEEPSEEK_API_KEY)
+# Edit .env: set SECRET_KEY and GEMINI_API_KEY
 docker compose up --build
 ```
 
