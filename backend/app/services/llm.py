@@ -126,6 +126,27 @@ class FallbackLLM:
         raise LLMQuotaExhausted(status["retry_after_seconds"] or DAILY_QUOTA_THRESHOLD_SECONDS)
 
 
+    def stream(self, prompt: str):
+        """Yield answer chunks as the model writes them. Moves to the next model only if none was received yet."""
+        with _concurrency:
+            for model, client in self._clients.items():
+                if _remaining(model) > 0:
+                    continue
+                started = False
+                try:
+                    for chunk in client.stream(prompt):
+                        started = True
+                        yield chunk
+                    return
+                except Exception as exc:
+                    seconds = daily_quota_seconds(exc)
+                    if started or seconds is None:
+                        raise
+                    mark_exhausted(model, seconds)
+        status = llm_status()
+        raise LLMQuotaExhausted(status["retry_after_seconds"] or DAILY_QUOTA_THRESHOLD_SECONDS)
+
+
 def build_llm(max_tokens: int, timeout: int, temperature: float | None = None):
     """Return a configured chat model, or None when no provider key is set."""
     if not settings.effective_llm_api_key:
@@ -172,6 +193,33 @@ def invoke_with_retry(llm, prompt: str, rate_limit_retries: int = 1):
         except Exception as exc:
             retryable = is_rate_limit_error(exc) or is_transient_error(exc)
             if not retryable or attempt == rate_limit_retries:
+                raise
+            wait = rate_limit_wait_seconds(exc, attempt)
+            logger.warning("LLM rate limited; waiting %.1fs before retry %d/%d", wait, attempt + 1, rate_limit_retries)
+            time.sleep(wait)
+    raise RuntimeError("unreachable")  # pragma: no cover
+
+
+def stream_with_retry(llm, prompt: str, on_token, rate_limit_retries: int = 1) -> str:
+    """Stream an answer, passing each piece of text to `on_token`; returns the full text.
+
+    Per-minute limits and transient errors are retried like invoke_with_retry, but only while nothing
+    has been sent yet: once text has reached the caller a failure is raised instead of restarting.
+    """
+    for attempt in range(rate_limit_retries + 1):
+        parts: list[str] = []
+        try:
+            for chunk in llm.stream(prompt):
+                text = getattr(chunk, "content", "")
+                if isinstance(text, str) and text:
+                    parts.append(text)
+                    on_token(text)
+            return "".join(parts)
+        except LLMQuotaExhausted:
+            raise
+        except Exception as exc:
+            retryable = is_rate_limit_error(exc) or is_transient_error(exc)
+            if parts or not retryable or attempt == rate_limit_retries:
                 raise
             wait = rate_limit_wait_seconds(exc, attempt)
             logger.warning("LLM rate limited; waiting %.1fs before retry %d/%d", wait, attempt + 1, rate_limit_retries)

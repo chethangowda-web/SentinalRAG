@@ -17,6 +17,8 @@ coverage.xml
 node_modules/
 .next/
 out/
+test-results/
+playwright-report/
 *.tsbuildinfo
 next-env.d.ts
 

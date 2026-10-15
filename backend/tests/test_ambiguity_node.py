@@ -87,7 +87,7 @@ async def test_vague_question_ends_the_graph_with_a_question_and_no_retrieval_sc
 
     assert result["clarification_needed"] is True
     assert result["clarification_question"] == "Which aspect of the network?"
-    assert result["reasoning_path"] == ["retrieve", "ambiguity_check"]
+    assert result["reasoning_path"] == ["retrieve", "relevance_gate", "ambiguity_check"]
     assert not result.get("answer")
 
 

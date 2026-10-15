@@ -6,7 +6,7 @@ import traceback
 from collections import OrderedDict
 
 from app.core.config import settings
-from app.services.llm import LLMQuotaExhausted, build_llm, invoke_with_retry
+from app.services.llm import LLMQuotaExhausted, build_llm, invoke_with_retry, stream_with_retry
 from app.services.token_counter import count_tokens
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,8 @@ def _get_llm():
     return _llm
 
 
-def generate_answer(question: str, chunks: list[dict]) -> str:
+def generate_answer(question: str, chunks: list[dict], on_token=None) -> str:
+    """Answer from the passages. When `on_token` is given the text is also passed to it piece by piece."""
     if not chunks:
         logger.info("No chunks to answer from")
         return (
@@ -70,6 +71,8 @@ def generate_answer(question: str, chunks: list[dict]) -> str:
     cached = _cache_get(cache_key)
     if cached is not None:
         logger.info("Answer served from cache")
+        if on_token:
+            on_token(cached)
         return cached
 
     start = time.perf_counter()
@@ -101,8 +104,10 @@ def generate_answer(question: str, chunks: list[dict]) -> str:
     )
 
     try:
-        response = invoke_with_retry(llm, prompt, rate_limit_retries=2)
-        answer = response.content.strip()
+        if on_token and hasattr(llm, "stream"):
+            answer = stream_with_retry(llm, prompt, on_token, rate_limit_retries=2).strip()
+        else:
+            answer = invoke_with_retry(llm, prompt, rate_limit_retries=2).content.strip()
         elapsed = round((time.perf_counter() - start) * 1000, 1)
         logger.info("Answer generated in %.1fms from %d chunks", elapsed, len(chunks))
         if answer:

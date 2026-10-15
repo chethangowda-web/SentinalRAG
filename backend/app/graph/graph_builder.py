@@ -14,6 +14,7 @@ from app.graph.nodes.contradiction_node import (
 )
 from app.graph.nodes.fallback_node import fallback_node
 from app.graph.nodes.generation_node import generation_node
+from app.graph.nodes.relevance_gate_node import relevance_gate_node, route_after_relevance_gate
 from app.graph.nodes.retrieve_node import retrieve_node
 from app.graph.nodes.retry_node import retry_node, route_after_retry
 from app.graph.nodes.rewrite_node import rewrite_node
@@ -26,6 +27,7 @@ def build_graph() -> StateGraph:
     workflow = StateGraph(GraphState)
 
     workflow.add_node("retrieve", retrieve_node)
+    workflow.add_node("relevance_gate", relevance_gate_node)
     workflow.add_node("ambiguity_check", ambiguity_node)
     workflow.add_node("confidence_evaluate", confidence_node)
     workflow.add_node("rewrite_query", rewrite_node)
@@ -37,7 +39,16 @@ def build_graph() -> StateGraph:
 
     workflow.set_entry_point("retrieve")
 
-    workflow.add_edge("retrieve", "ambiguity_check")
+    workflow.add_edge("retrieve", "relevance_gate")
+
+    workflow.add_conditional_edges(
+        "relevance_gate",
+        route_after_relevance_gate,
+        {
+            "end": END,
+            "ambiguity_check": "ambiguity_check",
+        },
+    )
 
     workflow.add_conditional_edges(
         "ambiguity_check",
@@ -91,5 +102,5 @@ def build_graph() -> StateGraph:
     workflow.add_edge("fallback", END)
 
     compiled = workflow.compile()
-    logger.info("LangGraph compiled with 9 nodes")
+    logger.info("LangGraph compiled with 10 nodes")
     return compiled

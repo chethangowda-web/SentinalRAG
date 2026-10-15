@@ -34,7 +34,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <main className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="absolute top-4 left-4">
         <Link href="/">
           <Button variant="ghost" size="sm">
@@ -48,7 +48,7 @@ export default function LoginPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Shield className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-xl">Welcome back</CardTitle>
+          <CardTitle as="h1" className="text-xl">Welcome back</CardTitle>
           <CardDescription>Sign in to your SentinelRAG account</CardDescription>
         </CardHeader>
         <CardContent>
@@ -81,6 +81,7 @@ export default function LoginPage() {
                 />
                 <button
                   type="button"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
@@ -100,6 +101,6 @@ export default function LoginPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }

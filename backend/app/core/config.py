@@ -92,6 +92,12 @@ class Settings(BaseSettings):
     LLM_MAX_CONCURRENCY: int = 4
     # Remember generated answers for identical question + retrieved-passage sets (entries).
     ANSWER_CACHE_SIZE: int = 256
+    # When even the best passage scores below this cross-encoder score the question is treated as
+    # unrelated to the documents and answered without an LLM call (unrelated ~ -11, relevant > -9).
+    OFF_TOPIC_RERANK_THRESHOLD: float | None = -10.0
+
+    # Optional error tracking: set to a Sentry DSN to report unhandled errors (needs sentry-sdk).
+    SENTRY_DSN: str = ""
 
     # Index (chunk + embed) a document in the background right after upload.
     AUTO_INDEX_ON_UPLOAD: bool = True

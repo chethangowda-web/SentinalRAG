@@ -389,13 +389,13 @@ class TestChatAPI:
         assert set(names[:-1]) == {"step"}
         # One step per node on the HIGH-confidence path, in execution order
         assert [d["node"] for n, d in events if n == "step"] == [
-            "retrieve", "ambiguity_check", "confidence_evaluate", "generate_answer",
+            "retrieve", "relevance_gate", "ambiguity_check", "confidence_evaluate", "generate_answer",
         ]
 
         final = events[-1][1]
         assert final["answer"] == "The policy is 30 days."
         assert final["confidence"] > 0
-        assert final["reasoning_path"] == ["retrieve", "ambiguity_check", "confidence_evaluate", "generate_answer"]
+        assert final["reasoning_path"] == ["retrieve", "relevance_gate", "ambiguity_check", "confidence_evaluate", "generate_answer"]
 
     @pytest.mark.asyncio
     async def test_chat_stream_empty_question_returns_single_result(self, async_client, db_session):

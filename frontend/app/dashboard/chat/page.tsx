@@ -97,6 +97,7 @@ const STEP_LABELS: Record<string, string> = {
   clarification: "Looked for ambiguity in the question",
   generate_answer: "Wrote the answer from the sources",
   fallback: "Not enough evidence — preparing a safe reply",
+  relevance_gate: "Checked the documents cover this topic",
 };
 
 /* ─── types ─────────────────────────────────────────── */
@@ -473,12 +474,12 @@ function CitationsRow({
             <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[9px] font-bold text-primary group-hover:bg-primary/20 transition-colors">
               {ci + 1}
             </span>
-            <FileText className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+            <FileText className="h-3 w-3 shrink-0 text-muted-foreground" />
             <span className="max-w-[90px] truncate font-medium">
               {getSourceFilename(cit)}
             </span>
             {cit.page != null && (
-              <span className="text-[10px] text-muted-foreground/60">p.{cit.page}</span>
+              <span className="text-[10px] text-muted-foreground">p.{cit.page}</span>
             )}
           </button>
         ))}
@@ -519,6 +520,7 @@ function ActionButtons({
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0"
+              aria-label="Copy answer"
               onClick={() => onCopy(content, `copy-${index}`)}
             >
               {copiedId === `copy-${index}` ? (
@@ -538,6 +540,7 @@ function ActionButtons({
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0"
+              aria-label="Regenerate answer"
               onClick={onRegenerate}
             >
               <RefreshCw className="h-3.5 w-3.5" />
@@ -554,6 +557,7 @@ function ActionButtons({
                 variant="ghost"
                 size="sm"
                 className="h-7 w-7 p-0"
+                aria-label="Export answer"
                 onClick={() => onExport(response)}
               >
                 <Download className="h-3.5 w-3.5" />
@@ -570,6 +574,8 @@ function ActionButtons({
         <Button
           variant="ghost"
           size="sm"
+          aria-label="Good answer"
+          aria-pressed={feedback === "up"}
           className={cn(
             "h-7 w-7 p-0",
             feedback === "up" && "text-green-500"
@@ -583,6 +589,8 @@ function ActionButtons({
         <Button
           variant="ghost"
           size="sm"
+          aria-label="Poor answer"
+          aria-pressed={feedback === "down"}
           className={cn(
             "h-7 w-7 p-0",
             feedback === "down" && "text-red-500"
@@ -624,6 +632,7 @@ export default function ChatPage() {
   >({});
   const [isStreaming, setIsStreaming] = useState(false);
   const [liveSteps, setLiveSteps] = useState<ChatStepEvent[]>([]);
+  const [liveAnswer, setLiveAnswer] = useState("");
   const [streamError, setStreamError] = useState<string | null>(null);
   const [expandedReasoning, setExpandedReasoning] = useState<
     Record<string, boolean>
@@ -681,6 +690,7 @@ export default function ChatPage() {
 
     setIsStreaming(true);
     setLiveSteps([]);
+    setLiveAnswer("");
     setStreamError(null);
 
     const userMsg: Message = { role: "user", content: question };
@@ -694,7 +704,8 @@ export default function ChatPage() {
           document_id: chatDocumentId || undefined,
           skip_clarification: skipClarification || undefined,
         },
-        (step) => setLiveSteps((prev) => [...prev, step])
+        (step) => setLiveSteps((prev) => [...prev, step]),
+        (text) => setLiveAnswer((prev) => prev + text)
       );
 
       const assistantMsg: Message = {
@@ -728,6 +739,7 @@ export default function ChatPage() {
     } finally {
       setIsStreaming(false);
       setLiveSteps([]);
+      setLiveAnswer("");
     }
   }, [isStreaming, activeSessionId, chatDocumentId, qc]);
 
@@ -855,7 +867,7 @@ export default function ChatPage() {
         {/* ── Sidebar ── */}
         <AnimatePresence>
           {sidebarOpen && (
-            <motion.aside
+            <motion.aside aria-label="Chat history"
               initial={{ width: 0, opacity: 0 }}
               animate={{ width: 280, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
@@ -897,7 +909,7 @@ export default function ChatPage() {
                     </div>
                   ) : sessions.length === 0 ? (
                     <div className="flex flex-col items-center py-8 text-center px-4">
-                      <MessageSquare className="h-8 w-8 text-muted-foreground/50 mb-2" />
+                      <MessageSquare className="h-8 w-8 text-muted-foreground mb-2" />
                       <p className="text-xs text-muted-foreground">
                         {searchQuery
                           ? "No sessions match your search"
@@ -942,7 +954,7 @@ export default function ChatPage() {
                                   {s.title}
                                 </p>
                                 <div className="flex items-center gap-2 mt-0.5">
-                                  <span className="text-[10px] text-muted-foreground/70">
+                                  <span className="text-[10px] text-muted-foreground">
                                     {s.message_count} msgs
                                   </span>
                                   {s.last_confidence_level && (
@@ -958,7 +970,7 @@ export default function ChatPage() {
                                     </span>
                                   )}
                                   {s.pinned && (
-                                    <Pin className="h-2.5 w-2.5 text-muted-foreground/50" />
+                                    <Pin className="h-2.5 w-2.5 text-muted-foreground" />
                                   )}
                                 </div>
                               </div>
@@ -970,6 +982,7 @@ export default function ChatPage() {
                                         variant="ghost"
                                         size="sm"
                                         className="h-6 w-6 p-0"
+                                        aria-label={s.pinned ? "Unpin chat" : "Pin chat"}
                                         onClick={() =>
                                           handleTogglePin(s.id, s.pinned)
                                         }
@@ -993,6 +1006,7 @@ export default function ChatPage() {
                                         variant="ghost"
                                         size="sm"
                                         className="h-6 w-6 p-0"
+                                        aria-label="Rename chat"
                                         onClick={() =>
                                           handleRenameSession(s.id, s.title)
                                         }
@@ -1010,6 +1024,7 @@ export default function ChatPage() {
                                         variant="ghost"
                                         size="sm"
                                         className="h-6 w-6 p-0 text-destructive"
+                                        aria-label="Delete chat"
                                         onClick={() =>
                                           setConfirmDeleteId(s.id)
                                         }
@@ -1042,6 +1057,8 @@ export default function ChatPage() {
                 variant="ghost"
                 size="sm"
                 className="h-8 w-8 p-0"
+                aria-label={sidebarOpen ? "Hide chat history" : "Show chat history"}
+                aria-expanded={sidebarOpen}
                 onClick={() => setSidebarOpen(!sidebarOpen)}
               >
                 {sidebarOpen ? (
@@ -1224,7 +1241,7 @@ export default function ChatPage() {
                                     )}
 
                                     {msg.response.model_used && (
-                                      <div className="ml-auto text-[10px] text-muted-foreground/60 truncate max-w-[120px] hidden sm:block">
+                                      <div className="ml-auto text-[10px] text-muted-foreground truncate max-w-[120px] hidden sm:block">
                                         {msg.response.model_used}
                                       </div>
                                     )}
@@ -1421,8 +1438,8 @@ export default function ChatPage() {
                       </div>
                       <Card className="flex-1 border-border/60 shadow-sm">
                         <CardContent className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="flex gap-1">
+                          <div className="flex items-center gap-3" role="status" aria-live="polite">
+                            <div className="flex gap-1" aria-hidden="true">
                               <motion.span
                                 className="h-2 w-2 rounded-full bg-primary"
                                 animate={{ scale: [1, 1.5, 1] }}
@@ -1442,9 +1459,16 @@ export default function ChatPage() {
                             <span className="text-sm text-muted-foreground">
                               {liveSteps.length === 0
                                 ? "Starting the pipeline…"
-                                : "Working on your question…"}
+                                : liveAnswer
+                                  ? "Writing the answer…"
+                                  : "Working on your question…"}
                             </span>
                           </div>
+                          {liveAnswer && (
+                            <div className="prose prose-sm dark:prose-invert max-w-none mt-3 text-sm">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>{liveAnswer}</ReactMarkdown>
+                            </div>
+                          )}
                           {liveSteps.length > 0 && (
                             <ul className="mt-3 space-y-1.5">
                               {liveSteps.map((step, si) => (
@@ -1520,6 +1544,7 @@ export default function ChatPage() {
                   onClick={handleSend}
                   disabled={!input.trim() || isStreaming}
                   size="icon"
+                  aria-label="Send question"
                   className="absolute right-1.5 bottom-1.5 h-8 w-8 shrink-0 rounded-lg"
                 >
                   {isStreaming ? (
@@ -1529,7 +1554,7 @@ export default function ChatPage() {
                   )}
                 </Button>
               </div>
-              <p className="mt-1.5 text-[10px] text-center text-muted-foreground/60 flex items-center justify-center gap-1.5">
+              <p className="mt-1.5 text-[10px] text-center text-muted-foreground flex items-center justify-center gap-1.5">
                 <Sparkles className="h-3 w-3" />
                 Powered by hybrid search + self-correction pipeline
               </p>

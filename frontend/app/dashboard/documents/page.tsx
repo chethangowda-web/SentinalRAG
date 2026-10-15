@@ -222,7 +222,7 @@ export default function DocumentsPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-              <SelectTrigger className="h-9 w-36 text-xs">
+              <SelectTrigger aria-label="Sort documents" className="h-9 w-36 text-xs">
                 <SortAsc className="h-3.5 w-3.5 mr-2" />
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
@@ -234,7 +234,7 @@ export default function DocumentsPage() {
               </SelectContent>
             </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="h-9 w-36 text-xs">
+              <SelectTrigger aria-label="Filter by status" className="h-9 w-36 text-xs">
                 <Filter className="h-3.5 w-3.5 mr-2" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -245,7 +245,7 @@ export default function DocumentsPage() {
               </SelectContent>
             </Select>
             <Select value={filterOcr} onValueChange={setFilterOcr}>
-              <SelectTrigger className="h-9 w-36 text-xs">
+              <SelectTrigger aria-label="Filter by OCR quality" className="h-9 w-36 text-xs">
                 <Scan className="h-3.5 w-3.5 mr-2" />
                 <SelectValue placeholder="OCR Quality" />
               </SelectTrigger>

@@ -39,7 +39,7 @@ These failure modes are particularly dangerous in regulated industries — finan
 ## Key Features
 
 ### Self-Correcting Pipeline
-A 9-node LangGraph workflow that checks short questions for ambiguity and evaluates confidence after every retrieval. Low-confidence results trigger automatic query rewriting and re-retrieval before resorting to contradiction detection or graceful fallback.
+A 10-node LangGraph workflow that skips the LLM entirely for questions unrelated to your documents, checks short questions for ambiguity and evaluates confidence after every retrieval. Low-confidence results trigger automatic query rewriting and re-retrieval before resorting to contradiction detection or graceful fallback.
 
 ### Hybrid Retrieval
 Combines vector similarity search (Qdrant, 384-dimensional embeddings) with PostgreSQL full-text search (BM25) using Reciprocal Rank Fusion (RRF). Retrieved results are re-ranked by a dedicated cross-encoder model for maximum precision.
@@ -201,7 +201,7 @@ sentinelrag/
 │   │   │   └── qdrant.py             # Qdrant client singleton
 │   │   ├── graph/                    # LangGraph self-correction pipeline
 │   │   │   ├── state.py              # GraphState TypedDict
-│   │   │   ├── graph_builder.py      # 9-node graph construction
+│   │   │   ├── graph_builder.py      # 10-node graph construction
 │   │   │   └── nodes/                # Individual graph nodes
 │   │   │       ├── retrieve_node.py
 │   │   │       ├── ambiguity_node.py
@@ -387,6 +387,8 @@ npm run dev
 | `GEMINI_API_KEY` | Yes* | — | Google Gemini API key (preferred provider when set) |
 | `GEMINI_MODEL` | No | `gemini-3.1-flash-lite` | Gemini model name. The free tier of `gemini-2.5-flash` allows only 5 requests/min, which one question can exceed (rewrite + clarify + answer) |
 | `GEMINI_FALLBACK_MODELS` | No | `gemini-3.5-flash-lite,gemini-3.5-flash` | Tried in order when the primary model has used up its daily quota (each model has its own allowance) |
+| `OFF_TOPIC_RERANK_THRESHOLD` | No | `-10.0` | Questions whose best passage scores below this cross-encoder score are answered "nothing in your documents covers it" without an LLM call |
+| `SENTRY_DSN` | No | _(empty)_ | Turns on Sentry error tracking (the SDK is already installed) |
 | `LLM_MAX_CONCURRENCY` / `ANSWER_CACHE_SIZE` | No | `4` / `256` | Simultaneous LLM calls; cached answers for identical question + passages |
 | `LLM_REASONING_EFFORT` | No | — | Passed to the LLM as `reasoning_effort` (e.g. `none` to stop Gemini spending tokens on hidden thinking) |
 | `GEMINI_BASE_URL` | No | `https://generativelanguage.googleapis.com/v1beta/openai/` | Gemini OpenAI-compatible endpoint |

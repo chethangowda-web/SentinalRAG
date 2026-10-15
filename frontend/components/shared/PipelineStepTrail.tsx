@@ -46,7 +46,7 @@ export function PipelineStepTrail({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-muted-foreground">{step.label}</p>
-                <p className="text-[10px] text-muted-foreground/60">{step.description}</p>
+                <p className="text-[10px] text-muted-foreground">{step.description}</p>
               </div>
             </div>
           );
@@ -91,7 +91,7 @@ export function PipelineStepTrail({
               >
                 {step.label}
               </p>
-              <p className="text-[10px] text-muted-foreground/60">{step.description}</p>
+              <p className="text-[10px] text-muted-foreground">{step.description}</p>
             </div>
             {isStepActive && (
               <div className="flex gap-1 pr-1">
