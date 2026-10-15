@@ -216,7 +216,7 @@ export default function DocumentsPage() {
               className="pl-9 h-9 text-sm"
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
               <SelectTrigger className="h-9 w-36 text-xs">
                 <SortAsc className="h-3.5 w-3.5 mr-2" />
