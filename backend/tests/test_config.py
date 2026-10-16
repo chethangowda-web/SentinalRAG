@@ -2,7 +2,7 @@ from app.core.config import Settings
 
 
 def _settings(**overrides) -> Settings:
-    return Settings(_env_file=None, FEATHERLESS_API_KEY="x", **overrides)
+    return Settings(_env_file=None, GEMINI_API_KEY="x", **overrides)
 
 
 def _secret_errors(s: Settings) -> list[str]:
@@ -32,12 +32,12 @@ def test_admin_emails_are_parsed_case_insensitively():
 
 def _llm(**overrides) -> Settings:
     # Blank every provider key first: the real environment (e.g. CI) may define some of them.
-    keys = {"GEMINI_API_KEY": "", "FEATHERLESS_API_KEY": "", "DEEPSEEK_API_KEY": ""}
+    keys = {"GEMINI_API_KEY": "", "DEEPSEEK_API_KEY": ""}
     return Settings(_env_file=None, SECRET_KEY="k" * 40, **{**keys, **overrides})
 
 
 def test_gemini_is_used_when_its_key_is_set():
-    s = _llm(GEMINI_API_KEY="g", DEEPSEEK_API_KEY="d", FEATHERLESS_API_KEY="f")
+    s = _llm(GEMINI_API_KEY="g", DEEPSEEK_API_KEY="d")
     assert s.llm_provider == "gemini"
     assert s.effective_llm_api_key == "g"
     assert s.effective_llm_model == "gemini-3.1-flash-lite"
@@ -45,7 +45,7 @@ def test_gemini_is_used_when_its_key_is_set():
 
 
 def test_gemini_model_is_configurable_and_ignores_other_providers_models():
-    s = _llm(GEMINI_API_KEY="g", GEMINI_MODEL="gemini-2.5-pro", LLM_MODEL="deepseek-chat", FEATHERLESS_MODEL="x")
+    s = _llm(GEMINI_API_KEY="g", GEMINI_MODEL="gemini-2.5-pro", LLM_MODEL="deepseek-chat")
     assert s.effective_llm_model == "gemini-2.5-pro"
 
 
@@ -54,11 +54,6 @@ def test_deepseek_still_works_without_gemini():
     assert s.llm_provider == "deepseek"
     assert s.effective_llm_model == "deepseek-chat"
     assert s.effective_llm_base_url == "https://api.deepseek.com/v1"
-
-
-def test_featherless_takes_priority_over_deepseek():
-    s = _llm(FEATHERLESS_API_KEY="f", FEATHERLESS_BASE_URL="https://f/v1", FEATHERLESS_MODEL="m", DEEPSEEK_API_KEY="d")
-    assert (s.llm_provider, s.effective_llm_base_url, s.effective_llm_model) == ("featherless", "https://f/v1", "m")
 
 
 def test_no_key_means_no_provider():

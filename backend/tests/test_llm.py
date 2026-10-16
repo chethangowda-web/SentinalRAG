@@ -56,8 +56,7 @@ def test_other_errors_are_not_retried():
 
 
 def test_build_llm_returns_none_without_a_key():
-    with patch.object(llm.settings, "GEMINI_API_KEY", ""), patch.object(llm.settings, "FEATHERLESS_API_KEY", ""), \
-            patch.object(llm.settings, "DEEPSEEK_API_KEY", ""):
+    with patch.object(llm.settings, "GEMINI_API_KEY", ""), patch.object(llm.settings, "DEEPSEEK_API_KEY", ""):
         assert llm.build_llm(max_tokens=10, timeout=5) is None
 
 

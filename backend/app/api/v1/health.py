@@ -69,7 +69,7 @@ def _check_llm() -> dict:
         if state["exhausted"]:
             return {"status": "quota_exhausted", "model": settings.effective_llm_model, "retry_after_seconds": state["retry_after_seconds"]}
         return {"status": "configured", "model": settings.effective_llm_model}
-    return {"status": "unconfigured", "error": "GEMINI_API_KEY, DEEPSEEK_API_KEY or FEATHERLESS_API_KEY not set"}
+    return {"status": "unconfigured", "error": "GEMINI_API_KEY or DEEPSEEK_API_KEY not set"}
 
 
 def _get_disk_usage() -> dict:

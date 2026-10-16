@@ -12,7 +12,7 @@ const faqs = [
   },
   {
     q: "What LLM providers are supported?",
-    a: "SentinelRAG supports any OpenAI-compatible API. DeepSeek, Groq, Featherless AI, and OpenAI are all supported out of the box. The backend is provider-agnostic through a configurable API key and base URL.",
+    a: "SentinelRAG supports any OpenAI-compatible API. DeepSeek, Groq, and OpenAI are all supported out of the box. The backend is provider-agnostic through a configurable API key and base URL.",
   },
   {
     q: "How does the confidence scoring work?",

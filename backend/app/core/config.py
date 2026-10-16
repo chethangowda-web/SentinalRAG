@@ -74,11 +74,6 @@ class Settings(BaseSettings):
     LLM_TEMPERATURE: float = 0.1
     MAX_RETRIES: int = 2
 
-    # Featherless (alternative LLM provider, used before DeepSeek if set)
-    FEATHERLESS_API_KEY: str = ""
-    FEATHERLESS_BASE_URL: str = ""
-    FEATHERLESS_MODEL: str = ""
-
     # JWT
     JWT_SECRET: str = ""
     JWT_ALGORITHM: str = "HS256"
@@ -128,34 +123,28 @@ class Settings(BaseSettings):
 
     @property
     def llm_provider(self) -> str:
-        """Which provider the LLM calls use: gemini, featherless, deepseek, or none."""
+        """Which provider the LLM calls use: gemini, deepseek, or none."""
         if self.GEMINI_API_KEY:
             return "gemini"
-        if self.FEATHERLESS_API_KEY:
-            return "featherless"
         if self.DEEPSEEK_API_KEY:
             return "deepseek"
         return "none"
 
     @property
     def effective_llm_api_key(self) -> str:
-        return self.GEMINI_API_KEY or self.FEATHERLESS_API_KEY or self.DEEPSEEK_API_KEY
+        return self.GEMINI_API_KEY or self.DEEPSEEK_API_KEY
 
     @property
     def effective_llm_base_url(self) -> str:
         # Base URL and model follow the provider whose key is in use, never a different one's.
         if self.llm_provider == "gemini":
             return self.GEMINI_BASE_URL
-        if self.llm_provider == "featherless":
-            return self.FEATHERLESS_BASE_URL or self.DEEPSEEK_BASE_URL
         return self.DEEPSEEK_BASE_URL
 
     @property
     def effective_llm_model(self) -> str:
         if self.llm_provider == "gemini":
             return self.GEMINI_MODEL
-        if self.llm_provider == "featherless":
-            return self.FEATHERLESS_MODEL or self.LLM_MODEL
         return self.LLM_MODEL
 
     @property
@@ -197,7 +186,7 @@ class Settings(BaseSettings):
                 'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
             )
         if not self.effective_llm_api_key:
-            errors.append("No LLM API key configured (GEMINI_API_KEY, DEEPSEEK_API_KEY or FEATHERLESS_API_KEY). LLM features will not work.")
+            errors.append("No LLM API key configured (GEMINI_API_KEY or DEEPSEEK_API_KEY). LLM features will not work.")
         if self.DATABASE_URL and not self.is_postgres and not self.is_sqlite:
             errors.append("DATABASE_URL should use async PostgreSQL or SQLite.")
         return errors
