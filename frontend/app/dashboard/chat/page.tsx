@@ -19,7 +19,10 @@ import {
   useDeleteSession,
   useClearSessionMessages,
 } from "@/hooks/use-chat";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { streamChatMessage } from "@/services/chat";
+import { useDocuments } from "@/hooks/use-documents";
 import { rerankPercent } from "@/lib/utils";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
@@ -75,6 +78,7 @@ import {
   Layers,
   ArrowUpDown,
   Lightbulb,
+  ChevronDown,
   ExternalLink,
 } from "lucide-react";
 import type {
@@ -84,6 +88,7 @@ import type {
   GraphExecutionStep,
   ChatSession,
   RetrievalDetailItem,
+  Document as DocumentItem,
 } from "@/types";
 
 /** Plain-language labels for the pipeline nodes streamed while an answer is produced. */
@@ -225,53 +230,6 @@ function ConfidenceBreakdown({
 }
 
 /* ─── Smarter Suggestions Component ─────────────────── */
-
-function SmarterSuggestions({
-  response,
-  onSuggestionClick,
-}: {
-  response: ChatResponse;
-  onSuggestionClick: (q: string) => void;
-}) {
-  const suggestions = useMemo(() => {
-    const s: string[] = [];
-    if (response.citations && response.citations.length > 0) {
-      s.push("What are the key findings from the cited documents?");
-    }
-    if (response.confidence_level === "LOW") {
-      s.push("Can you search again with more specific keywords?");
-    }
-    if (response.rewritten_question) {
-      s.push("Show me the original vs rewritten query comparison");
-    }
-    s.push("Summarize the main points from this response");
-    s.push("What related documents might be relevant?");
-    return s.slice(0, 3);
-  }, [response]);
-
-  if (suggestions.length === 0) return null;
-
-  return (
-    <div className="rounded-lg border bg-card">
-      <div className="px-3 py-2 text-xs font-medium text-muted-foreground flex items-center gap-1.5 border-b">
-        <Lightbulb className="h-3.5 w-3.5" />
-        Suggested follow-up questions
-      </div>
-      <div className="space-y-1 px-3 py-2">
-        {suggestions.map((q, qi) => (
-          <button
-            key={qi}
-            onClick={() => onSuggestionClick(q)}
-            className="w-full text-left text-[11px] text-muted-foreground hover:text-foreground py-1.5 px-2 rounded-md hover:bg-secondary/50 transition-colors flex items-center gap-2"
-          >
-            <span className="text-primary/60">→</span>
-            {q}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 /* ─── Reasoning Timeline Component ──────────────────── */
 
@@ -472,7 +430,7 @@ function CitationsRow({
             className="group relative flex items-center gap-2 rounded-lg border border-border/60 bg-card px-3 py-2 text-[11px] text-muted-foreground hover:border-primary/40 hover:bg-primary/5 hover:shadow-sm transition-all duration-200"
           >
             <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[9px] font-bold text-primary group-hover:bg-primary/20 transition-colors">
-              {ci + 1}
+              {cit.source ?? ci + 1}
             </span>
             <FileText className="h-3 w-3 shrink-0 text-muted-foreground" />
             <span className="max-w-[90px] truncate font-medium">
@@ -606,11 +564,140 @@ function ActionButtons({
   );
 }
 
+/* ─── Answer presentation helpers ───────────────────── */
+
+/** Turn "[Source 2]" markers into links the markdown renderer shows as small numbered badges. */
+function withSourceLinks(text: string): string {
+  return text.replace(/\[Source (\d+)\]/g, "[$1](#source-$1)");
+}
+
+function sourceBadgeComponents(
+  citations: CitationItem[] | undefined,
+  open: (c: CitationItem) => void
+) {
+  return {
+    a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
+      const match = href?.match(/^#source-(\d+)$/);
+      if (!match) {
+        return (
+          <a href={href} target="_blank" rel="noreferrer">
+            {children}
+          </a>
+        );
+      }
+      const n = Number(match[1]);
+      const citation = citations?.find((c) => (c.source ?? 0) === n);
+      return (
+        <button
+          type="button"
+          disabled={!citation}
+          onClick={() => citation && open(citation)}
+          aria-label={`Open source ${n}`}
+          title={citation ? `Source ${n}: ${citation.filename ?? "document"}` : `Source ${n}`}
+          className="mx-0.5 inline-flex h-[18px] min-w-[18px] -translate-y-px items-center justify-center rounded-md bg-primary/10 px-1 align-middle text-[10px] font-semibold text-primary hover:bg-primary/20 disabled:cursor-default"
+        >
+          {n}
+        </button>
+      );
+    },
+  };
+}
+
+function answerSeconds(r: ChatResponse): string {
+  const ms = Object.entries(r.latencies ?? {})
+    .filter(([k]) => k.endsWith("_node"))
+    .reduce((sum, [, v]) => sum + v, 0);
+  return ms > 0 ? formatLatency(ms) : "--";
+}
+
+/** One quiet line under the answer: how sure it is, how long it took. Details live behind a toggle. */
+function AnswerSummary({ response }: { response: ChatResponse }) {
+  const level = response.confidence_level;
+  const label = level === "HIGH" ? "High confidence" : level === "MEDIUM" ? "Medium confidence" : "Low confidence";
+  return (
+    <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+      <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+        <span
+          className={cn(
+            "h-2 w-2 rounded-full",
+            level === "HIGH" && "bg-confidence-high",
+            level === "MEDIUM" && "bg-confidence-medium",
+            level === "LOW" && "bg-confidence-low"
+          )}
+        />
+        {label}
+        <span className="font-normal text-muted-foreground">({Math.round(response.confidence)}%)</span>
+      </span>
+      <span>{answerSeconds(response)}</span>
+      {response.retry_count > 0 && <span>searched again {response.retry_count}×</span>}
+      {response.model_used && <span className="hidden sm:inline">{response.model_used}</span>}
+    </div>
+  );
+}
+
+/** What the chat shows before the first question: example questions drawn from the user's own documents. */
+function StarterQuestions({
+  documents,
+  scopedDocumentId,
+  onPick,
+}: {
+  documents: DocumentItem[];
+  scopedDocumentId: string | null;
+  onPick: (q: string) => void;
+}) {
+  const indexed = documents.filter((d) => d.status === "embedded" || d.status === "completed");
+  const scoped = scopedDocumentId ? indexed.find((d) => d.id === scopedDocumentId) : undefined;
+  const pool = scoped ? [scoped] : indexed;
+  const name = (d: DocumentItem) => d.filename.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ");
+  const suggestions = pool.length
+    ? [
+        `Summarize ${name(pool[0])}`,
+        pool.length > 1 ? `How does ${name(pool[0])} differ from ${name(pool[1])}?` : `What are the key points in ${name(pool[0])}?`,
+        `What dates, limits or deadlines are mentioned in ${scoped ? name(scoped) : "my documents"}?`,
+      ]
+    : [];
+
+  return (
+    <div className="mx-auto flex max-w-xl flex-col items-center text-center">
+      <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+        <Sparkles className="h-7 w-7 text-primary" />
+      </div>
+      <h2 className="text-2xl font-semibold tracking-tight">
+        {scoped ? `Ask about ${name(scoped)}` : "What would you like to know?"}
+      </h2>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {indexed.length === 0
+          ? "Upload a document first, then ask questions and get answers with sources."
+          : `Answers come only from your ${scoped ? "document" : `${indexed.length} document${indexed.length === 1 ? "" : "s"}`}, with the source shown next to every claim.`}
+      </p>
+      {suggestions.length > 0 ? (
+        <div className="mt-6 grid w-full gap-2">
+          {suggestions.map((q) => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => onPick(q)}
+              className="rounded-xl border bg-card px-4 py-3 text-left text-sm shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5"
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <Link href="/dashboard/upload">
+          <Button className="mt-6">Upload a document</Button>
+        </Link>
+      )}
+    </div>
+  );
+}
+
 /* ─── Main Chat Page ────────────────────────────────── */
 
 export default function ChatPage() {
   const qc = useQueryClient();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const chatDocumentId = searchParams.get("document_id");
 
   /* state */
@@ -642,6 +729,8 @@ export default function ChatPage() {
   >({});
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState<CitationItem | null>(null);
+  const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
+  const { data: documents } = useDocuments();
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -742,6 +831,17 @@ export default function ChatPage() {
       setLiveAnswer("");
     }
   }, [isStreaming, activeSessionId, chatDocumentId, qc]);
+
+  // A question typed on the dashboard arrives as ?q=...; ask it once, then drop it from the URL
+  const initialQuestion = searchParams.get("q");
+  const askedInitial = useRef(false);
+  useEffect(() => {
+    if (initialQuestion && !askedInitial.current) {
+      askedInitial.current = true;
+      router.replace(chatDocumentId ? `/dashboard/chat?document_id=${chatDocumentId}` : "/dashboard/chat");
+      sendQuestion(initialQuestion);
+    }
+  }, [initialQuestion, chatDocumentId, router, sendQuestion]);
 
   const handleSend = useCallback(() => {
     const question = input.trim();
@@ -902,7 +1002,7 @@ export default function ChatPage() {
                 </div>
 
                 {/* list */}
-                <ScrollArea className="flex-1">
+                <ScrollArea className="flex-1 [&>div>div]:!block">
                   {sessionsLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -959,14 +1059,18 @@ export default function ChatPage() {
                                   </span>
                                   {s.last_confidence_level && (
                                     <span
-                                      className={cn(
-                                        "text-[10px] font-system-mono font-bold",
-                                        confidenceColor(
-                                          s.last_confidence_level
-                                        )
-                                      )}
+                                      className="inline-flex items-center gap-1 text-[10px] text-muted-foreground"
+                                      title={`${s.last_confidence_level.toLowerCase()} confidence`}
                                     >
-                                      {s.last_confidence_level}
+                                      <span
+                                        className={cn(
+                                          "h-1.5 w-1.5 rounded-full",
+                                          s.last_confidence_level === "HIGH" && "bg-confidence-high",
+                                          s.last_confidence_level === "MEDIUM" && "bg-confidence-medium",
+                                          s.last_confidence_level === "LOW" && "bg-confidence-low"
+                                        )}
+                                      />
+                                      {s.last_confidence_level.toLowerCase()}
                                     </span>
                                   )}
                                   {s.pinned && (
@@ -1102,12 +1206,12 @@ export default function ChatPage() {
                   key="empty"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="flex h-full items-center justify-center px-4"
+                  className="flex min-h-full items-center justify-center px-4 py-10"
                 >
-                  <EmptyState
-                    icon={MessageSquare}
-                    title="Ask a question about your documents"
-                    description="SentinelRAG uses hybrid search, reranking, and self-correction to find accurate answers with citations."
+                  <StarterQuestions
+                    documents={documents ?? []}
+                    scopedDocumentId={chatDocumentId}
+                    onPick={(q) => sendQuestion(q)}
                   />
                 </motion.div>
               ) : (
@@ -1139,7 +1243,7 @@ export default function ChatPage() {
                           msg.role === "user" ? "order-first" : "",
                           msg.role === "user"
                             ? "max-w-[85%] sm:max-w-[70%]"
-                            : "max-w-full sm:max-w-[90%] min-w-0"
+                            : "w-full sm:max-w-[90%] min-w-0"
                         )}
                       >
                         {msg.role === "user" ? (
@@ -1153,106 +1257,14 @@ export default function ChatPage() {
                             {/* Answer Card */}
                             <Card className="overflow-hidden border-border/60 shadow-sm">
                               <CardContent className="p-0">
-                                {/* metadata bar */}
-                                {msg.response && (
-                                  <div
-                                    className={cn(
-                                      "flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b px-4 py-2",
-                                      confidenceBg(
-                                        msg.response.confidence_level
-                                      )
-                                    )}
-                                  >
-                                    <div className="flex items-center gap-1.5">
-                                      <Shield
-                                        className={cn(
-                                          "h-3.5 w-3.5",
-                                          confidenceColor(
-                                            msg.response.confidence_level
-                                          )
-                                        )}
-                                      />
-                                      <span
-                                        className={cn(
-                                          "text-xs font-bold font-system-mono tabular-nums",
-                                          confidenceColor(
-                                            msg.response.confidence_level
-                                          )
-                                        )}
-                                      >
-                                        {msg.response.confidence}%
-                                      </span>
-                                      <span
-                                        className={cn(
-                                          "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-system-mono font-bold h-5",
-                                          confidenceColor(
-                                            msg.response.confidence_level
-                                          )
-                                        )}
-                                        style={{
-                                          borderColor: `hsl(var(--confidence-${
-                                            msg.response.confidence_level === "HIGH" ? "high" : 
-                                            msg.response.confidence_level === "MEDIUM" ? "medium" : "low"
-                                          }/0.3))`,
-                                          backgroundColor: `hsl(var(--confidence-${
-                                            msg.response.confidence_level === "HIGH" ? "high" : 
-                                            msg.response.confidence_level === "MEDIUM" ? "medium" : "low"
-                                          }-bg))`,
-                                        }}
-                                      >
-                                        <span
-                                          className={cn(
-                                            "h-1.5 w-1.5 rounded-full",
-                                            msg.response.confidence_level === "HIGH" && "bg-confidence-high",
-                                            msg.response.confidence_level === "MEDIUM" && "bg-confidence-medium",
-                                            msg.response.confidence_level === "LOW" && "bg-confidence-low",
-                                          )}
-                                        />
-                                        {msg.response.confidence_level}
-                                      </span>
-                                    </div>
-
-                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                      <Gauge className="h-3 w-3" />
-                                      <span className="font-system-mono tabular-nums">
-                                        {totalLatency(msg.response)}
-                                      </span>
-                                    </div>
-
-                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                      <BookOpen className="h-3 w-3" />
-                                      <span>
-                                        {msg.response.citations?.length ?? 0} sources
-                                      </span>
-                                    </div>
-
-                                    {msg.response.retrieval_details && (
-                                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                        <Layers className="h-3 w-3" />
-                                        <span>{msg.response.retrieval_details.length} chunks</span>
-                                      </div>
-                                    )}
-
-                                    {msg.response.retry_count > 0 && (
-                                      <span className="inline-flex items-center gap-1 rounded-full border border-confidence-medium/30 bg-confidence-medium-bg px-1.5 py-0.5 text-[10px] font-medium text-confidence-medium h-5">
-                                        <RefreshCw className="h-3 w-3" />
-                                        {msg.response.retry_count} correction{msg.response.retry_count > 1 ? "s" : ""}
-                                      </span>
-                                    )}
-
-                                    {msg.response.model_used && (
-                                      <div className="ml-auto text-[10px] text-muted-foreground truncate max-w-[120px] hidden sm:block">
-                                        {msg.response.model_used}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-
                                 {/* answer body */}
-                                <div className="px-4 py-3">
-                                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                      {msg.content}
+                                <div className="px-5 py-4">
+                                  <div className="prose dark:prose-invert max-w-none text-[15px] leading-relaxed prose-p:my-2">
+                                    <ReactMarkdown
+                                      remarkPlugins={[remarkGfm]}
+                                      components={sourceBadgeComponents(msg.response?.citations, setShowPreview)}
+                                    >
+                                      {withSourceLinks(msg.content)}
                                     </ReactMarkdown>
                                   </div>
                                 </div>
@@ -1270,6 +1282,7 @@ export default function ChatPage() {
                                 {/* actions */}
                                 {msg.response && (
                                   <div className="border-t px-4 py-1.5">
+                                    <AnswerSummary response={msg.response} />
                                     <ActionButtons
                                       content={msg.content}
                                       response={msg.response}
@@ -1293,6 +1306,20 @@ export default function ChatPage() {
                               </CardContent>
                             </Card>
 
+                            {/* How this answer was made */}
+                            {msg.response && (
+                              <div>
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedDetails((prev) => ({ ...prev, [`msg-${i}`]: !prev[`msg-${i}`] }))}
+                                  aria-expanded={expandedDetails[`msg-${i}`] ?? false}
+                                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", (expandedDetails[`msg-${i}`] ?? false) && "rotate-180")} />
+                                  How this answer was made
+                                </button>
+                                {(expandedDetails[`msg-${i}`] ?? false) && (
+                                  <div className="mt-2 space-y-2.5">
                             {/* Reasoning Timeline */}
                             {msg.response &&
                               msg.response.graph_execution &&
@@ -1340,12 +1367,9 @@ export default function ChatPage() {
                               />
                             )}
 
-                            {/* Smarter Suggestions */}
-                            {msg.response && (
-                              <SmarterSuggestions
-                                response={msg.response}
-                                onSuggestionClick={(q) => setInput(q)}
-                              />
+                                  </div>
+                                )}
+                              </div>
                             )}
 
                             {/* Low confidence warning */}
@@ -1367,20 +1391,6 @@ export default function ChatPage() {
                                         documents.
                                       </p>
                                     </div>
-                                  </div>
-                                </div>
-                              )}
-
-                            {/* Medium confidence nudge */}
-                            {msg.response &&
-                              msg.response.confidence_level === "MEDIUM" && (
-                                <div className="rounded-lg border border-yellow-200 bg-yellow-50/50 dark:border-yellow-800/50 dark:bg-yellow-950/20 px-3 py-2">
-                                  <div className="flex items-start gap-2">
-                                    <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
-                                    <p className="text-xs text-yellow-700 dark:text-yellow-400">
-                                      Medium confidence ({msg.response.confidence}%).
-                                      Consider verifying with additional sources.
-                                    </p>
                                   </div>
                                 </div>
                               )}

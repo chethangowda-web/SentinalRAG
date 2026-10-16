@@ -12,6 +12,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
 import {
   FileText,
   MessageSquare,
@@ -27,6 +30,7 @@ import {
   XCircle,
   ArrowRight,
   Sparkles,
+  ChevronDown,
   Gauge,
   BookOpen,
   Layers,
@@ -99,6 +103,10 @@ export default function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
 
   const loading = statsLoading || docsLoading || healthLoading;
+  const { user } = useAuth();
+  const router = useRouter();
+  const [question, setQuestion] = useState("");
+  const [showQuality, setShowQuality] = useState(false);
 
   const totalDocs = stats?.total_documents ?? documents?.length ?? 0;
   const totalChunks = stats?.total_chunks ?? documents?.reduce((sum, d) => sum + (d.chunk_count || 0), 0) ?? 0;
@@ -134,9 +142,11 @@ export default function DashboardPage() {
       <div className="space-y-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {user?.name ? `Welcome back, ${user.name.split(" ")[0]}` : "Dashboard"}
+            </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              System vitals and confidence overview
+              Ask your documents a question, or check how things are running
             </p>
           </div>
           {!loading && (
@@ -144,11 +154,49 @@ export default function DashboardPage() {
           )}
         </div>
 
+        {!loading && totalDocs === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
+                <FileText className="h-6 w-6 text-primary" />
+              </div>
+              <h2 className="text-lg font-semibold">Upload your first document</h2>
+              <p className="max-w-md text-sm text-muted-foreground">
+                Add a PDF, Word file or image. Once it is indexed you can ask questions and get answers with the source shown next to each claim.
+              </p>
+              <Link href="/dashboard/upload">
+                <Button>Upload a document</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const q = question.trim();
+              if (q) router.push(`/dashboard/chat?q=${encodeURIComponent(q)}`);
+            }}
+            className="flex items-center gap-2 rounded-2xl border bg-card p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring"
+          >
+            <Sparkles className="ml-2 h-5 w-5 shrink-0 text-primary" />
+            <input
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              aria-label="Ask a question about your documents"
+              placeholder="Ask a question about your documents…"
+              className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm outline-none placeholder:text-muted-foreground"
+            />
+            <Button type="submit" size="sm" disabled={!question.trim()}>
+              Ask
+            </Button>
+          </form>
+        )}
+
         {loading ? (
           <LoadingSkeleton type="card" count={8} />
         ) : (
           <>
-            <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
               <StatCard
                 title="Documents Uploaded"
                 value={totalDocs}
@@ -168,52 +216,11 @@ export default function DashboardPage() {
                 mono
               />
               <StatCard
-                title="Documents Evaluated"
-                value={docsEvaluated}
-                subtitle={avgDocScore != null ? `avg score ${avgDocScore.toFixed(0)}%` : "no evaluations yet"}
-                icon={BarChart3}
-                color={avgDocScore != null && avgDocScore >= 70 ? "hsl(var(--confidence-high))" : "hsl(var(--confidence-medium))"}
-                href="/dashboard/evaluation"
-                mono
-              />
-              <StatCard
-                title="Average Confidence"
-                value={avgConfidence != null ? `${avgConfidence.toFixed(0)}%` : "--"}
-                subtitle={avgConfidence != null ? "across all evaluations" : "run evaluation"}
-                icon={Shield}
-                color={avgConfidence != null && avgConfidence >= 70 ? "hsl(var(--confidence-high))" : "hsl(var(--confidence-medium))"}
-                mono
-              />
-              <StatCard
                 title="Avg Response Time"
                 value={stats?.avg_response_ms != null ? `${(stats.avg_response_ms / 1000).toFixed(1)}s` : "--"}
                 subtitle={stats?.questions_answered ? `across ${stats.questions_answered} recent questions` : "ask a question to see this"}
                 icon={Clock}
                 color="hsl(var(--chart-3))"
-              />
-              <StatCard
-                title="Self-Corrections"
-                value={liveCorrectionRate != null ? `${liveCorrectionRate.toFixed(0)}%` : "--"}
-                subtitle="of recent questions needed a retry"
-                icon={RefreshCw}
-                color="hsl(var(--chart-4))"
-                mono
-              />
-              <StatCard
-                title="OCR Success Rate"
-                value={ocrConfidence != null ? `${ocrConfidence.toFixed(0)}%` : "--"}
-                subtitle={ocrConfidence != null ? "avg OCR confidence" : "no OCR data"}
-                icon={Scan}
-                color="hsl(var(--chart-1))"
-                mono
-              />
-              <StatCard
-                title="Retrieval Accuracy"
-                value={retrievalAccuracy != null ? `${retrievalAccuracy.toFixed(0)}%` : "--"}
-                subtitle="context recall & precision"
-                icon={Target}
-                color={retrievalAccuracy != null && retrievalAccuracy >= 70 ? "hsl(var(--confidence-high))" : "hsl(var(--confidence-medium))"}
-                mono
               />
               <StatCard
                 title="System Health"
@@ -222,6 +229,63 @@ export default function DashboardPage() {
                 icon={Activity}
                 color={health?.status === "healthy" ? "hsl(var(--confidence-high))" : "hsl(var(--confidence-low))"}
               />
+            </div>
+
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowQuality((v) => !v)}
+                aria-expanded={showQuality}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronDown className={`h-4 w-4 transition-transform ${showQuality ? "rotate-180" : ""}`} />
+                Quality and evaluation metrics
+              </button>
+              {showQuality && (
+                <div className="mt-3 grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+                  <StatCard
+                title="Documents Evaluated"
+                value={docsEvaluated}
+                subtitle={avgDocScore != null ? `avg score ${avgDocScore.toFixed(0)}%` : "no evaluations yet"}
+                icon={BarChart3}
+                color={avgDocScore != null && avgDocScore >= 70 ? "hsl(var(--confidence-high))" : "hsl(var(--confidence-medium))"}
+                href="/dashboard/evaluation"
+                mono
+              />
+                  <StatCard
+                title="Average Confidence"
+                value={avgConfidence != null ? `${avgConfidence.toFixed(0)}%` : "--"}
+                subtitle={avgConfidence != null ? "across all evaluations" : "run evaluation"}
+                icon={Shield}
+                color={avgConfidence != null && avgConfidence >= 70 ? "hsl(var(--confidence-high))" : "hsl(var(--confidence-medium))"}
+                mono
+              />
+                  <StatCard
+                title="Self-Corrections"
+                value={liveCorrectionRate != null ? `${liveCorrectionRate.toFixed(0)}%` : "--"}
+                subtitle="of recent questions needed a retry"
+                icon={RefreshCw}
+                color="hsl(var(--chart-4))"
+                mono
+              />
+                  <StatCard
+                title="OCR Success Rate"
+                value={ocrConfidence != null ? `${ocrConfidence.toFixed(0)}%` : "--"}
+                subtitle={ocrConfidence != null ? "avg OCR confidence" : "no OCR data"}
+                icon={Scan}
+                color="hsl(var(--chart-1))"
+                mono
+              />
+                  <StatCard
+                title="Retrieval Accuracy"
+                value={retrievalAccuracy != null ? `${retrievalAccuracy.toFixed(0)}%` : "--"}
+                subtitle="context recall & precision"
+                icon={Target}
+                color={retrievalAccuracy != null && retrievalAccuracy >= 70 ? "hsl(var(--confidence-high))" : "hsl(var(--confidence-medium))"}
+                mono
+              />
+                </div>
+              )}
             </div>
 
             <div className="grid gap-6 lg:grid-cols-3">

@@ -29,6 +29,12 @@ def test_wait_is_capped_and_has_a_default_without_a_hint():
     assert llm.rate_limit_wait_seconds(Exception("429 too many requests"), 1) == 20.0
 
 
+def test_overloaded_503_is_retried_after_seconds_not_tens_of_seconds():
+    overloaded = Exception("Error code: 503 - This model is currently experiencing high demand.")
+    assert llm.rate_limit_wait_seconds(overloaded, 0) == 2.0
+    assert llm.rate_limit_wait_seconds(overloaded, 1) == 4.0
+
+
 def test_invoke_waits_out_one_rate_limit_then_succeeds():
     model = MagicMock()
     model.invoke.side_effect = [Exception(GEMINI_429), "answer"]

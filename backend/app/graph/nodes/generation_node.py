@@ -30,11 +30,12 @@ async def generation_node(state: GraphState) -> dict:
     no_answer = answer.strip().lower().startswith("i don't have enough information")
     # Keep only the passages the answer actually cites; a refusal cites nothing
     cited = {int(n) - 1 for n in re.findall(r"\[Source (\d+)\]", answer)}
-    shown = [] if no_answer else [c for i, c in enumerate(chunks) if not cited or i in cited]
+    shown = [] if no_answer else [(i, c) for i, c in enumerate(chunks) if not cited or i in cited]
 
     citations = []
-    for c in shown:
+    for i, c in shown:
         citations.append({
+            "source": i + 1,
             "document_id": c.get("document_id", ""),
             "chunk_id": c.get("chunk_id", ""),
             "filename": c.get("filename"),

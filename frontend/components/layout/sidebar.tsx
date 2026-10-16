@@ -57,7 +57,10 @@ export function Sidebar({ open, onClose }: { open?: boolean; onClose?: () => voi
 
         <nav className="flex-1 space-y-1 p-3">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+            const isActive =
+              pathname === item.href ||
+              pathname === item.href + "/" ||
+              (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
             const Icon = item.icon;
             return (
               <Link key={item.href} href={item.href} onClick={onClose}>
