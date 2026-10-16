@@ -195,8 +195,12 @@ def build_llm(max_tokens: int, timeout: int, temperature: float | None = None):
 def rate_limit_wait_seconds(exc: Exception, attempt: int) -> float:
     """How long to wait before retrying: the provider's hint if given, else a growing default."""
     hinted = parse_retry_seconds(str(exc))
-    wait = hinted + 1.0 if hinted is not None else 10.0 * (attempt + 1)
-    return min(wait, MAX_RATE_LIMIT_WAIT_SECONDS)
+    if hinted is not None:
+        return min(hinted + 1.0, MAX_RATE_LIMIT_WAIT_SECONDS)
+    if is_transient_error(exc):
+        # "High demand" 503s are spikes that usually clear within seconds: retry quickly, not after 10-20 s
+        return min(2.0 * (attempt + 1), MAX_RATE_LIMIT_WAIT_SECONDS)
+    return min(10.0 * (attempt + 1), MAX_RATE_LIMIT_WAIT_SECONDS)
 
 
 def invoke_with_retry(llm, prompt: str, rate_limit_retries: int = 1):

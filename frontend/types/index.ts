@@ -25,6 +25,8 @@ export interface CitationItem {
   chunk_id: string;
   page: number | null;
   text: string | null;
+  /** The N of the [Source N] marker in the answer that refers to this passage */
+  source?: number | null;
 }
 
 export interface GraphExecutionStep {

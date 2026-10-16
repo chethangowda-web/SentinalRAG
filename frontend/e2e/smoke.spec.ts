@@ -88,3 +88,36 @@ test("a clarifying question offers Answer anyway, which re-asks without the chec
   await expect(page.getByText("within 30 days").first()).toBeVisible();
   expect(bodies[1]).toMatchObject({ question: "Tell me about the policy", skip_clarification: true });
 });
+
+test("the chat offers starter questions drawn from the user's documents", async ({ page }) => {
+  await signedIn(page);
+  await page.route("**/api/v1/chat/stream", (route) =>
+    route.fulfill({ contentType: "text/event-stream", body: sse([["result", chatResult()]]) })
+  );
+  await page.goto("/dashboard/chat/");
+  await expect(page.getByRole("heading", { name: "What would you like to know?" })).toBeVisible();
+  await page.getByRole("button", { name: "Summarize refund policy" }).click();
+  await expect(page.getByText("within 30 days").first()).toBeVisible();
+});
+
+test("a question typed on the dashboard is asked in the chat; source markers become clickable badges", async ({ page }) => {
+  await signedIn(page);
+  const bodies: Record<string, unknown>[] = [];
+  await page.route("**/api/v1/chat/stream", (route) => {
+    bodies.push(route.request().postDataJSON());
+    return route.fulfill({
+      contentType: "text/event-stream",
+      body: sse([["result", chatResult({ citations: [{ document_id: "d1", filename: "refund_policy.pdf", chunk_id: "c1", page: 2, text: "Refunds within 30 days.", source: 1 }] })]]),
+    });
+  });
+  await page.goto("/dashboard/");
+  await page.getByLabel("Ask a question about your documents").fill("What is the refund window?");
+  await page.getByRole("button", { name: "Ask", exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard\/chat\/?$/);
+  await expect(page.getByText("within 30 days").first()).toBeVisible();
+  expect(bodies).toHaveLength(1);
+  expect(bodies[0]).toMatchObject({ question: "What is the refund window?" });
+
+  await page.getByRole("button", { name: "Open source 1" }).click();
+  await expect(page.getByText("Refunds within 30 days.").first()).toBeVisible();
+});

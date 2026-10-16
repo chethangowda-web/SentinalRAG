@@ -17,6 +17,8 @@ class CitationItem(BaseModel):
     chunk_id: str
     page: int | None = None
     text: str | None = None
+    # The N of the [Source N] marker in the answer that refers to this passage
+    source: int | None = None
 
 
 class GraphExecutionStep(BaseModel):

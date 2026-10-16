@@ -220,6 +220,7 @@ async def _build_response(
             filename=c.get("filename"),
             page=c.get("page"),
             text=c.get("text"),
+            source=c.get("source"),
         )
         for c in citations_raw
     ]
