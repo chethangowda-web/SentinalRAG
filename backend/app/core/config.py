@@ -62,10 +62,14 @@ class Settings(BaseSettings):
     # Google Gemini (preferred when its key is set), via Google's OpenAI-compatible endpoint
     GEMINI_API_KEY: str = ""
     GEMINI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
-    # gemini-3.1-flash-lite has a far higher free-tier request limit than gemini-2.5-flash (5/min)
-    GEMINI_MODEL: str = "gemini-3.1-flash-lite"
-    # Tried in order when GEMINI_MODEL has used up its daily quota (each model has its own allowance).
-    GEMINI_FALLBACK_MODELS: str = "gemini-3.5-flash-lite,gemini-3.5-flash"
+    # gemini-3.5-flash with reasoning off answers in ~1.5 s; the -lite models are slower here
+    # (3.5-flash-lite ~7 s) or often overloaded (3.1-flash-lite answers 503 "high demand").
+    GEMINI_MODEL: str = "gemini-3.5-flash"
+    # Tried in order when a model has used up its daily quota, is rate limited or is overloaded.
+    GEMINI_FALLBACK_MODELS: str = "gemini-3.1-flash-lite,gemini-3.5-flash-lite"
+    # Per-model reasoning_effort ("model=effort,..."). Reasoning is what makes Gemini slow; models not
+    # listed use LLM_REASONING_EFFORT. gemini-3.5-flash-lite rejects "none", so it is left out.
+    GEMINI_MODEL_REASONING: str = "gemini-3.5-flash=none"
 
     # DeepSeek (fallback LLM provider)
     DEEPSEEK_API_KEY: str = ""
@@ -90,6 +94,9 @@ class Settings(BaseSettings):
     # When even the best passage scores below this cross-encoder score the question is treated as
     # unrelated to the documents and answered without an LLM call (unrelated ~ -11, relevant > -9).
     OFF_TOPIC_RERANK_THRESHOLD: float | None = -10.0
+    # A MEDIUM-confidence retrieval whose best passage scores at least this is answered directly; rewriting
+    # the question and searching again costs ~2 LLM calls and rarely changes a result that is already relevant.
+    SKIP_REWRITE_RERANK_THRESHOLD: float | None = -3.0
 
     # Optional error tracking: set to a Sentry DSN to report unhandled errors (needs sentry-sdk).
     SENTRY_DSN: str = ""
@@ -155,6 +162,15 @@ class Settings(BaseSettings):
             return [primary] if primary else []
         extras = [m.strip() for m in self.GEMINI_FALLBACK_MODELS.split(",") if m.strip()]
         return [primary] + [m for m in extras if m != primary]
+
+    def reasoning_effort_for(self, model: str) -> str:
+        """reasoning_effort to send to `model`, or "" to send none."""
+        if self.llm_provider == "gemini":
+            for item in self.GEMINI_MODEL_REASONING.split(","):
+                name, _, effort = item.partition("=")
+                if name.strip() == model and effort.strip():
+                    return effort.strip()
+        return self.LLM_REASONING_EFFORT
 
     @property
     def effective_llm_reasoning_effort(self) -> str:

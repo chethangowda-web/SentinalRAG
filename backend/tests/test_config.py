@@ -40,7 +40,7 @@ def test_gemini_is_used_when_its_key_is_set():
     s = _llm(GEMINI_API_KEY="g", DEEPSEEK_API_KEY="d")
     assert s.llm_provider == "gemini"
     assert s.effective_llm_api_key == "g"
-    assert s.effective_llm_model == "gemini-3.1-flash-lite"
+    assert s.effective_llm_model == "gemini-3.5-flash"
     assert s.effective_llm_base_url == "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 

@@ -1,6 +1,8 @@
 import logging
 import time
 
+from app.core.config import settings
+from app.graph.nodes.relevance_gate_node import best_rerank_score
 from app.graph.state import GraphState
 from app.services.confidence_service import calculate_confidence_with_breakdown
 
@@ -74,6 +76,11 @@ def route_after_confidence(state: GraphState) -> str:
     level = state.get("confidence_level", "LOW")
     if level == "HIGH":
         logger.info("Confidence HIGH -> routing to generate")
+        return "generate_answer"
+    threshold = settings.SKIP_REWRITE_RERANK_THRESHOLD
+    best = best_rerank_score(state.get("retrieved_chunks", []))
+    if level == "MEDIUM" and threshold is not None and best is not None and best >= threshold:
+        logger.info("Confidence MEDIUM but best passage scores %.2f -> routing to generate without a rewrite", best)
         return "generate_answer"
     logger.info("Confidence %s -> routing to rewrite", level)
     return "rewrite_query"

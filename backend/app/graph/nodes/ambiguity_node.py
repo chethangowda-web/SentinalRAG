@@ -38,12 +38,22 @@ def _names_a_document(question: str, titles: list[str]) -> bool:
 MAX_WORDS_TO_CHECK = 6
 
 
+def needs_check(state: GraphState) -> bool:
+    """Whether the LLM should judge this question: short, not already made specific by the user or history."""
+    return (
+        len(state["question"].split()) <= MAX_WORDS_TO_CHECK
+        and not state.get("skip_clarification")
+        and not state.get("context_resolved")
+    )
+
+
 async def ambiguity_node(state: GraphState) -> dict:
     start = time.perf_counter()
     question = state["question"]
     words = len(question.split())
     skipped = bool(state.get("skip_clarification"))
     resolved = bool(state.get("context_resolved"))
+    precheck = state.get("ambiguity_precheck")
     titles = _top_titles(state.get("retrieved_chunks", []))
     named = words <= MAX_WORDS_TO_CHECK and not skipped and not resolved and _names_a_document(question, titles)
 
@@ -51,7 +61,10 @@ async def ambiguity_node(state: GraphState) -> dict:
     if words <= MAX_WORDS_TO_CHECK and not skipped and not resolved and not named:
         # Judge the question alone. Showing the retrieved passages made the model ask "which plan?"
         # about specific questions simply because several plans appear in the documents.
-        clarification = await asyncio.to_thread(detect_ambiguity, question, [], False, titles)
+        if precheck is not None:
+            clarification = precheck.get("clarification")  # already decided while retrieval ran
+        else:
+            clarification = await asyncio.to_thread(detect_ambiguity, question, [], False, titles)
 
     needed = clarification is not None
     elapsed = round((time.perf_counter() - start) * 1000, 1)

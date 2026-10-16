@@ -209,7 +209,7 @@ The repo-root `Dockerfile` builds the Next.js app as a static export and bakes i
 | Variable | Default | Description |
 |---|---|---|
 | `GEMINI_API_KEY` | — | Google Gemini API key (preferred provider when set) |
-| `GEMINI_MODEL` | `gemini-3.1-flash-lite` | Gemini model name |
+| `GEMINI_MODEL` | `gemini-3.5-flash` | Gemini model name |
 | `DEEPSEEK_API_KEY` | — | DeepSeek API key (fallback provider) |
 | `DEEPSEEK_BASE_URL` | `https://api.deepseek.com/v1` | DeepSeek API base URL |
 | `LLM_MODEL` | `deepseek-chat` | LLM model name |
