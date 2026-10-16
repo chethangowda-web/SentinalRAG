@@ -385,8 +385,10 @@ npm run dev
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `GEMINI_API_KEY` | Yes* | — | Google Gemini API key (preferred provider when set) |
-| `GEMINI_MODEL` | No | `gemini-3.1-flash-lite` | Gemini model name. The free tier of `gemini-2.5-flash` allows only 5 requests/min, which one question can exceed (rewrite + clarify + answer) |
-| `GEMINI_FALLBACK_MODELS` | No | `gemini-3.5-flash-lite,gemini-3.5-flash` | Tried in order when the primary model has used up its daily quota (each model has its own allowance) |
+| `GEMINI_MODEL` | No | `gemini-3.5-flash` | Gemini model name. With reasoning off (see `GEMINI_MODEL_REASONING`) it answers in about 1.5 s; the `-lite` models were slower or often overloaded in testing |
+| `GEMINI_FALLBACK_MODELS` | No | `gemini-3.1-flash-lite,gemini-3.5-flash-lite` | Tried in order, immediately, when a model is out of quota, rate limited or overloaded (503) |
+| `GEMINI_MODEL_REASONING` | No | `gemini-3.5-flash=none` | Per-model `reasoning_effort` (`model=effort,...`). Hidden reasoning is the main source of slow answers |
+| `SKIP_REWRITE_RERANK_THRESHOLD` | No | `-3.0` | A MEDIUM-confidence retrieval whose best passage scores at least this is answered directly, without the rewrite-and-retry detour |
 | `OFF_TOPIC_RERANK_THRESHOLD` | No | `-10.0` | Questions whose best passage scores below this cross-encoder score are answered "nothing in your documents covers it" without an LLM call |
 | `SENTRY_DSN` | No | _(empty)_ | Turns on Sentry error tracking (the SDK is already installed) |
 | `LLM_MAX_CONCURRENCY` / `ANSWER_CACHE_SIZE` | No | `4` / `256` | Simultaneous LLM calls; cached answers for identical question + passages |

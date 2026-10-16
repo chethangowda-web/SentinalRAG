@@ -1,9 +1,12 @@
+import asyncio
 import logging
 import time
 
 from langgraph.types import RunnableConfig
 
+from app.graph.nodes.ambiguity_node import needs_check
 from app.graph.state import GraphState
+from app.services.clarification_service import detect_ambiguity
 from app.services.retrieval_service import retrieve
 
 logger = logging.getLogger(__name__)
@@ -19,7 +22,16 @@ async def retrieve_node(state: GraphState, config: RunnableConfig) -> dict:
     document_id = config["configurable"].get("document_id") or state.get("document_id")
 
     logger.info("Retrieve node: query='%s' user_id=%s document_id=%s", question[:80], user_id, document_id)
-    search_response = await retrieve(question, db, user_id=user_id, document_id=document_id)
+    # The ambiguity check judges the question text alone, so it can run while the documents are searched
+    precheck = None
+    if not state.get("rewritten_question") and needs_check(state):
+        precheck = asyncio.create_task(asyncio.to_thread(detect_ambiguity, state["question"], [], False, None))
+    try:
+        search_response = await retrieve(question, db, user_id=user_id, document_id=document_id)
+    except BaseException:
+        if precheck:
+            precheck.cancel()
+        raise
 
     chunks = []
     retrieval_details = []
@@ -73,7 +85,7 @@ async def retrieve_node(state: GraphState, config: RunnableConfig) -> dict:
         "retry_count": state.get("retry_count", 0),
     })
 
-    return {
+    update = {
         "retrieved_chunks": chunks,
         "confidence_score": search_response.confidence,
         "confidence_level": search_response.confidence_level,
@@ -83,3 +95,6 @@ async def retrieve_node(state: GraphState, config: RunnableConfig) -> dict:
         "graph_execution": graph_execution,
         "retrieval_details": retrieval_details,
     }
+    if precheck is not None:
+        update["ambiguity_precheck"] = {"clarification": await precheck}
+    return update

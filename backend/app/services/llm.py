@@ -111,6 +111,9 @@ class FallbackLLM:
         self._clients = clients
 
     def invoke(self, prompt: str):
+        # An overloaded (503) or rate-limited model is skipped in favour of the next one at once,
+        # instead of waiting; only when every model has failed does the caller wait and retry.
+        busy: Exception | None = None
         with _concurrency:
             for model, client in self._clients.items():
                 if _remaining(model) > 0:
@@ -119,15 +122,22 @@ class FallbackLLM:
                     return client.invoke(prompt)
                 except Exception as exc:
                     seconds = daily_quota_seconds(exc)
-                    if seconds is None:
+                    if seconds is not None:
+                        mark_exhausted(model, seconds)
+                    elif is_rate_limit_error(exc) or is_transient_error(exc):
+                        logger.warning("LLM model %s is busy (%s); trying the next model", model, str(exc)[:80])
+                        busy = busy or exc
+                    else:
                         raise
-                    mark_exhausted(model, seconds)
+        if busy is not None:
+            raise busy
         status = llm_status()
         raise LLMQuotaExhausted(status["retry_after_seconds"] or DAILY_QUOTA_THRESHOLD_SECONDS)
 
 
     def stream(self, prompt: str):
         """Yield answer chunks as the model writes them. Moves to the next model only if none was received yet."""
+        busy: Exception | None = None
         with _concurrency:
             for model, client in self._clients.items():
                 if _remaining(model) > 0:
@@ -139,10 +149,18 @@ class FallbackLLM:
                         yield chunk
                     return
                 except Exception as exc:
-                    seconds = daily_quota_seconds(exc)
-                    if started or seconds is None:
+                    if started:
                         raise
-                    mark_exhausted(model, seconds)
+                    seconds = daily_quota_seconds(exc)
+                    if seconds is not None:
+                        mark_exhausted(model, seconds)
+                    elif is_rate_limit_error(exc) or is_transient_error(exc):
+                        logger.warning("LLM model %s is busy (%s); trying the next model", model, str(exc)[:80])
+                        busy = busy or exc
+                    else:
+                        raise
+        if busy is not None:
+            raise busy
         status = llm_status()
         raise LLMQuotaExhausted(status["retry_after_seconds"] or DAILY_QUOTA_THRESHOLD_SECONDS)
 
@@ -167,8 +185,9 @@ def build_llm(max_tokens: int, timeout: int, temperature: float | None = None):
             # "retry in Ns" hint; the client's own immediate retry would only burn quota.
             "max_retries": 0,
         }
-        if settings.effective_llm_reasoning_effort:
-            kwargs["reasoning_effort"] = settings.effective_llm_reasoning_effort
+        effort = settings.reasoning_effort_for(model)
+        if effort:
+            kwargs["reasoning_effort"] = effort
         clients[model] = ChatOpenAI(**kwargs)
     return FallbackLLM(clients)
 

@@ -32,3 +32,5 @@ class GraphState(TypedDict):
     skip_clarification: NotRequired[bool]
     # The question was rewritten into a standalone one using the conversation so far, so it is not vague
     context_resolved: NotRequired[bool]
+    # Verdict of the ambiguity check, started alongside retrieval so it adds no waiting time
+    ambiguity_precheck: NotRequired[dict]

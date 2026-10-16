@@ -11,6 +11,10 @@ from app.services.token_counter import count_tokens
 
 logger = logging.getLogger(__name__)
 
+# The passages put in the prompt: the best few are enough, and every extra token slows the answer
+PROMPT_CHUNKS = 6
+PROMPT_CHUNK_CHARS = 1500
+
 _llm = None
 
 # Identical question + identical retrieved passages give an identical answer, so remember it:
@@ -78,9 +82,9 @@ def generate_answer(question: str, chunks: list[dict], on_token=None) -> str:
     start = time.perf_counter()
 
     context_parts = []
-    for i, chunk in enumerate(chunks[:8]):
+    for i, chunk in enumerate(chunks[:PROMPT_CHUNKS]):
         doc_id = chunk.get("document_id", "?")
-        text = (chunk.get("text", "") or "")[:2000]
+        text = (chunk.get("text", "") or "")[:PROMPT_CHUNK_CHARS]
         context_parts.append(f"[Source {i+1}] (Document: {doc_id})\n{text}")
 
     context = "\n\n".join(context_parts)

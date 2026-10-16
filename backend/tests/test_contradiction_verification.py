@@ -84,7 +84,7 @@ async def test_false_positive_contradiction_no_longer_blocks_the_answer(db_sessi
             vector_score=0.3, bm25_score=0.0, fusion_score=0.1, rerank_score=score,
         )
         for i, (text, score) in enumerate(
-            [(CONFLICTING[0]["text"], 0.9), (CONFLICTING[1]["text"], 0.5), ("Unrelated text.", 0.1)]
+            [(CONFLICTING[0]["text"], -4.0), (CONFLICTING[1]["text"], -5.0), ("Unrelated text.", -6.0)]
         )
     ]
 
@@ -124,7 +124,7 @@ async def test_confirmed_contradiction_without_ambiguity_still_gets_an_answer(db
             chunk_id=f"c{i}", document_id="d1", text=c["text"], page_number=1, section=None, filename="p.pdf",
             vector_score=0.3, bm25_score=0.0, fusion_score=0.1, rerank_score=score,
         )
-        for i, (c, score) in enumerate(zip(CONFLICTING, [0.9, 0.1]))
+        for i, (c, score) in enumerate(zip(CONFLICTING, [-4.0, -6.0]))
     ]
     state = {
         "question": "How long is the refund period?", "rewritten_question": None, "document_id": None,
