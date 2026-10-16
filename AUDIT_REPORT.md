@@ -239,7 +239,7 @@ for r in search_response.results:
 ### Finding 2.1 — API Key Leaked in Committed .env File (CRITICAL)
 
 **Location:** `backend/.env`
-**Explanation:** A Featherless API key `yrc_89d4f900c2679d0a7816ad72fae7bb4542c7086c4258764e4ede73fe67b272e0` is stored in plaintext in a committed `.env` file. This is a credential leak — anyone with access to the repository can use this key.
+**Explanation:** A Featherless API key `[REDACTED]` is stored in plaintext in a committed `.env` file. This is a credential leak — anyone with access to the repository can use this key.
 
 **Fix:** 
 1. Rotate the key immediately at Featherless

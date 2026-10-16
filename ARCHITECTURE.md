@@ -29,7 +29,7 @@ Python was chosen for its mature ML ecosystem (Sentence Transformers, PyTorch, L
 
 | Module | Responsibility | Key Design Decision |
 |---|---|---|
-| `config.py` | Centralized settings via Pydantic `BaseSettings` | Single source of truth; supports two LLM providers (DeepSeek + Featherless) with automatic fallback |
+| `config.py` | Centralized settings via Pydantic `BaseSettings` | Single source of truth; supports Gemini (default) and DeepSeek |
 | `database.py` | Async SQLAlchemy engine + session factory | Lazy initialization; `pool_size=5`, `max_overflow=10` for 50+ concurrent users |
 | `logging.py` | Structured JSON logging | Suppresses verbose library logs (httpx, urllib3); supports `request_id` for distributed tracing |
 | `middleware.py` | RequestID, Security Headers, Rate Limiting | In-memory rate limiter (acceptable for single-instance; Redis upgrade path documented) |
@@ -435,7 +435,7 @@ Locust simulates realistic user behavior:
 
 | Decision | Chosen Approach | Alternative | Rationale |
 |---|---|---|---|
-| LLM provider | DeepSeek + Featherless | OpenAI-only | Cost efficiency ($0.48/M vs $3/M tokens), API compatibility |
+| LLM provider | Gemini / DeepSeek | OpenAI-only | Cost efficiency ($0.48/M vs $3/M tokens), API compatibility |
 | Vector database | Qdrant (self-hosted) | Pinecone | Zero API costs, data privacy, no rate limits |
 | Embedding model | bge-small-en-v1.5 (384d) | bge-large-en-v1.5 (1024d) | 4× faster, 62% less storage, 3% quality loss |
 | Reranking | Cross-encoder (MiniLM) | Cohere Rerank | Offline, zero API cost, <10ms inference |

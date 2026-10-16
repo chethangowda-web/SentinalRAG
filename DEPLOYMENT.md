@@ -40,7 +40,7 @@ All services run on a single Docker bridge network (`sentinelrag-network`). NGIN
 
 ### API Requirements
 
-- **LLM API Key**: DeepSeek, OpenAI-compatible, or Featherless account
+- **LLM API Key**: Gemini, DeepSeek, or another OpenAI-compatible account
 - **Network access**: API provider endpoint must be reachable from the Docker host
 
 ---
@@ -63,9 +63,6 @@ Edit `.env` with your configuration:
 # Required: Set at least one LLM API key
 DEEPSEEK_API_KEY=sk-your-key-here
 # OR
-FEATHERLESS_API_KEY=fk-your-key-here
-FEATHERLESS_BASE_URL=https://api.featherless.ai/v1
-FEATHERLESS_MODEL=deepseek-ai/DeepSeek-V4-Pro
 
 # Optional: Override defaults
 LLM_MODEL=deepseek-chat
@@ -217,9 +214,6 @@ The repo-root `Dockerfile` builds the Next.js app as a static export and bakes i
 | `DEEPSEEK_BASE_URL` | `https://api.deepseek.com/v1` | DeepSeek API base URL |
 | `LLM_MODEL` | `deepseek-chat` | LLM model name |
 | `LLM_TEMPERATURE` | `0.1` | LLM temperature (0.0–1.0) |
-| `FEATHERLESS_API_KEY` | — | Featherless API key (alternative provider) |
-| `FEATHERLESS_BASE_URL` | — | Featherless API base URL |
-| `FEATHERLESS_MODEL` | — | Featherless model name |
 
 ### Document Processing Settings
 
@@ -455,7 +449,7 @@ Backend logs structured JSON with `request_id` for request tracing:
 | Symptom | Cause | Solution |
 |---|---|---|
 | Backend health check fails | Database not ready | Wait for PostgreSQL health check (10s start period) |
-| LLM features return fallback | API key not configured | Set `GEMINI_API_KEY` (or `DEEPSEEK_API_KEY` / `FEATHERLESS_API_KEY`) |
+| LLM features return fallback | API key not configured | Set `GEMINI_API_KEY` (or `DEEPSEEK_API_KEY`) |
 | Upload fails with 400 | File too large or wrong type | Check file type (PDF/PNG/JPG) and size (max 50MB) |
 | Chat returns "I don't know" | No documents ingested | Upload documents first via the upload page |
 | Qdrant connection refused | Qdrant not started or wrong URL | Check `QDRANT_URL` environment variable |

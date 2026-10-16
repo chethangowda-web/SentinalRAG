@@ -159,7 +159,7 @@ User Query
 | **Cache** | — | (future: Redis) |
 | **Embeddings** | BAAI/bge-small-en-v1.5 (Sentence Transformers) | 384d |
 | **Reranking** | ms-marco-MiniLM-L-6-v2 (Cross-Encoder) | — |
-| **LLM** | Google Gemini (default; DeepSeek or Featherless as fallbacks), via langchain-openai | — |
+| **LLM** | Google Gemini (default; DeepSeek as an alternative), via langchain-openai | — |
 | **OCR** | Tesseract (PyMuPDF + pytesseract) | — |
 | **Infrastructure** | Docker, Docker Compose, NGINX | latest |
 | **CI** | GitHub Actions (ruff + pytest + build) | — |
@@ -335,7 +335,7 @@ sentinelrag/
 - Docker & Docker Compose (recommended)
 - Tesseract OCR engine (`apt install tesseract-ocr tesseract-ocr-eng`)
 - 4 GB+ RAM (for embedding/reranker models + LLM)
-- LLM API key (DeepSeek, OpenAI-compatible, or Featherless)
+- LLM API key (Gemini, DeepSeek, or another OpenAI-compatible provider)
 
 ### Quick Start with Docker (Recommended)
 
@@ -346,7 +346,7 @@ cd SentinalRAG
 
 # 2. Configure environment
 cp .env.example .env
-# Edit .env: set SECRET_KEY and your LLM API key (GEMINI_API_KEY, or DEEPSEEK_API_KEY / FEATHERLESS_API_KEY)
+# Edit .env: set SECRET_KEY and your LLM API key (GEMINI_API_KEY, or DEEPSEEK_API_KEY)
 
 # 3. Build and start all services
 docker compose up --build
@@ -396,9 +396,6 @@ npm run dev
 | `DEEPSEEK_BASE_URL` | No | `https://api.deepseek.com/v1` | DeepSeek API base URL |
 | `LLM_MODEL` | No | `deepseek-chat` | LLM model name |
 | `LLM_TEMPERATURE` | No | `0.1` | LLM temperature |
-| `FEATHERLESS_API_KEY` | Yes* | — | Featherless AI API key (alternative) |
-| `FEATHERLESS_BASE_URL` | No | — | Featherless API base URL |
-| `FEATHERLESS_MODEL` | No | — | Featherless model name |
 | `DATABASE_URL` | No | `postgresql+asyncpg://sentinel:sentinel@localhost:5432/sentinelrag` | PostgreSQL connection |
 | `REDIS_URL` | No | `redis://localhost:6379/0` | Redis connection |
 | `QDRANT_URL` | No | `http://localhost:6333` | Qdrant connection |
@@ -418,7 +415,7 @@ npm run dev
 | `RATE_LIMIT_MAX_REQUESTS` | No | `100` | Max requests per window |
 | `RATE_LIMIT_WINDOW_SECONDS` | No | `60` | Rate limit window |
 
-*One of `GEMINI_API_KEY`, `DEEPSEEK_API_KEY` or `FEATHERLESS_API_KEY` is required for LLM features. Priority: Gemini, then Featherless, then DeepSeek.
+*One of `GEMINI_API_KEY` or `DEEPSEEK_API_KEY` is required for LLM features. Priority: Gemini, then DeepSeek.
 
 ---
 

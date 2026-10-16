@@ -151,7 +151,6 @@ Ambiguous questions are flagged by the clarification engine before they reach th
 | Variable | Sensitivity | Recommendation |
 |---|---|---|
 | `DEEPSEEK_API_KEY` | Critical | Use secrets manager in production; never commit to version control |
-| `FEATHERLESS_API_KEY` | Critical | Same as above |
 | `SECRET_KEY` | High | Generate a random 32+ character value; rotate periodically. **Empty key causes fatal startup error in production.** |
 | `DATABASE_URL` | High | Contains credentials; restrict to internal network |
 | `POSTGRES_PASSWORD` | High | Change from default; use strong password |

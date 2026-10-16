@@ -163,7 +163,7 @@ def _no_llm_fallback(question: str, chunks: list[dict], reason: str = "unknown",
         )
     elif reason == "no_llm":
         notice = (
-            "\n\n> **No LLM configured.** Set `GEMINI_API_KEY` (or `DEEPSEEK_API_KEY` / `FEATHERLESS_API_KEY`) "
+            "\n\n> **No LLM configured.** Set `GEMINI_API_KEY` (or `DEEPSEEK_API_KEY`) "
             "in your `.env` file to enable AI-powered answers."
         )
     elif reason == "llm_error":
