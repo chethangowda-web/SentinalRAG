@@ -22,6 +22,7 @@ from app.utils.memory import log_memory_usage
 
 setup_logging()
 logger = logging.getLogger(__name__)
+_background_tasks: set[asyncio.Task] = set()
 
 if settings.SENTRY_DSN:
     try:
@@ -89,6 +90,13 @@ async def lifespan(application: FastAPI):
             logger.info("Embedding and reranker models preloaded")
         except Exception as e:
             logger.warning("Model preload failed, will load on first use: %s", e)
+    else:
+        # Not the models (memory), only the library imports, done once and early instead of by the first requests
+        from app.services.model_loading import preimport_ml_libraries
+
+        warmup = asyncio.create_task(asyncio.to_thread(preimport_ml_libraries))
+        _background_tasks.add(warmup)
+        warmup.add_done_callback(_background_tasks.discard)
 
     logger.info("Resource tracking started")
     yield
