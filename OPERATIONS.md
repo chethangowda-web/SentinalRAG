@@ -19,7 +19,7 @@ The limits that matter, in the order you will hit them:
 
 1. **The AI provider.** Gemini's free tier has small daily quotas and returns 503 "high demand" at busy times. This, not the server,
    is what makes answers slow or fail. Enable billing on the Gemini API key, or add a second provider with
-   `FALLBACK_LLM_API_KEY` / `FALLBACK_LLM_MODEL` (any OpenAI-compatible API, for example Groq).
+   `FALLBACK_LLM_API_KEY` / `FALLBACK_LLM_MODEL` (any OpenAI-compatible API; tested with Groq and `openai/gpt-oss-120b`, with `FALLBACK_LLM_REASONING=low`, about 0.6 s per answer).
 2. **Memory (about 1 GB).** Both search models are resident (about 700 to 900 MB). If the log shows `Killed`, the container ran out:
    raise the service's memory limit before adding users.
 3. **CPU (2 vCPU).** Search throughput; raise the plan, or add replicas (see below).

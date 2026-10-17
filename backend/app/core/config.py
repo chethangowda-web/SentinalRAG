@@ -76,6 +76,8 @@ class Settings(BaseSettings):
     FALLBACK_LLM_API_KEY: str = ""
     FALLBACK_LLM_BASE_URL: str = "https://api.groq.com/openai/v1"
     FALLBACK_LLM_MODEL: str = ""
+    # reasoning_effort sent to the second provider's model (e.g. "low" for Groq's openai/gpt-oss-* models: much faster)
+    FALLBACK_LLM_REASONING: str = ""
 
     # DeepSeek (fallback LLM provider)
     DEEPSEEK_API_KEY: str = ""

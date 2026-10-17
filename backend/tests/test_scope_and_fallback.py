@@ -123,5 +123,10 @@ def test_the_second_provider_gets_its_own_credentials_and_no_gemini_reasoning(mo
 
     groq = built["llama-3.3-70b-versatile"]
     assert groq["api_key"] == "gk" and groq["base_url"] == settings.FALLBACK_LLM_BASE_URL
-    assert "reasoning_effort" not in groq
+    assert "reasoning_effort" not in groq  # Gemini's per-model setting is not sent to another provider
+    built.clear()
+    monkeypatch.setattr(settings, "FALLBACK_LLM_REASONING", "low")
+    with patch("langchain_openai.ChatOpenAI", FakeChat):
+        llm.build_llm(max_tokens=10, timeout=5)
+    assert built["llama-3.3-70b-versatile"]["reasoning_effort"] == "low"
     assert built["m1"]["api_key"] == "k" and built["m1"]["reasoning_effort"] == "none"
