@@ -24,20 +24,25 @@ def verify_password(password: str, password_hash: str) -> bool:
     return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
 
 
-def create_access_token(user_id: str) -> str:
+def create_access_token(user_id: str, token_version: int = 0) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_EXPIRATION_MINUTES)
-    payload = {"sub": user_id, "exp": expire, "iat": datetime.now(timezone.utc)}
+    payload = {"sub": user_id, "exp": expire, "iat": datetime.now(timezone.utc), "tv": token_version}
     return jwt.encode(payload, settings.effective_jwt_secret, algorithm=settings.JWT_ALGORITHM)
 
 
-def decode_access_token(token: str) -> str | None:
+def decode_access_claims(token: str) -> tuple[str, int] | None:
+    """(user id, token version) of a valid token, else None."""
     try:
         payload = jwt.decode(token, settings.effective_jwt_secret, algorithms=[settings.JWT_ALGORITHM])
-        return payload.get("sub")
-    except jwt.ExpiredSignatureError:
+    except jwt.InvalidTokenError:  # includes expired
         return None
-    except jwt.InvalidTokenError:
-        return None
+    user_id = payload.get("sub")
+    return (user_id, int(payload.get("tv", 0))) if user_id else None
+
+
+def decode_access_token(token: str) -> str | None:
+    claims = decode_access_claims(token)
+    return claims[0] if claims else None
 
 
 async def get_current_user(
@@ -51,14 +56,17 @@ async def get_current_user(
     if scheme.lower() != "bearer" or not token:
         raise AppException(status_code=401, detail="Invalid authorization header")
 
-    user_id = decode_access_token(token.strip())
-    if not user_id:
+    claims = decode_access_claims(token.strip())
+    if not claims:
         raise AppException(status_code=401, detail="Invalid or expired token")
+    user_id, token_version = claims
 
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise AppException(status_code=401, detail="User not found")
+    if token_version != (user.token_version or 0):
+        raise AppException(status_code=401, detail="Your session ended because the password was changed. Please sign in again.")
 
     return user
 

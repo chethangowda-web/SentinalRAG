@@ -39,9 +39,34 @@ export async function loginUser(data: LoginRequest): Promise<TokenResponse> {
   return res.data;
 }
 
-export async function getAuthConfig(): Promise<{ registration_requires_code: boolean }> {
+export interface AuthConfig {
+  registration_requires_code: boolean;
+  password_reset_available: boolean;
+}
+
+export async function getAuthConfig(): Promise<AuthConfig> {
   const res = await api.get("/api/v1/auth/config");
   return res.data;
+}
+
+export async function forgotPassword(email: string): Promise<void> {
+  await api.post("/api/v1/auth/forgot-password", { email });
+}
+
+export async function resetPassword(token: string, password: string): Promise<void> {
+  await api.post("/api/v1/auth/reset-password", { token, password });
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<TokenResponse> {
+  const res = await api.post<TokenResponse>("/api/v1/auth/change-password", {
+    current_password: currentPassword,
+    new_password: newPassword,
+  });
+  return res.data;
+}
+
+export async function logoutEverywhere(): Promise<void> {
+  await api.post("/api/v1/auth/logout-everywhere");
 }
 
 export async function deleteAccount(password: string): Promise<void> {

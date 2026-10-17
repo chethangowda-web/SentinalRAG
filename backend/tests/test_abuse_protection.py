@@ -33,9 +33,9 @@ def test_sliding_window_counts_and_resets(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_auth_config_reports_whether_an_invite_is_needed(async_client, monkeypatch):
-    assert (await async_client.get("/api/v1/auth/config")).json() == {"registration_requires_code": False}
+    assert (await async_client.get("/api/v1/auth/config")).json() == {"registration_requires_code": False, "password_reset_available": False}
     monkeypatch.setattr(settings, "REGISTRATION_CODE", "letmein")
-    assert (await async_client.get("/api/v1/auth/config")).json() == {"registration_requires_code": True}
+    assert (await async_client.get("/api/v1/auth/config")).json() == {"registration_requires_code": True, "password_reset_available": False}
 
 
 @pytest.mark.asyncio

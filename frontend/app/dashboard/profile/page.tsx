@@ -3,17 +3,47 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { Input } from "@/components/ui/input";
-import { deleteAccount } from "@/services/auth";
-import { clearStoredToken } from "@/services/api";
+import { changePassword, deleteAccount, logoutEverywhere } from "@/services/auth";
+import { clearStoredToken, setStoredToken } from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Shield, Mail, Calendar, FileText, MessageSquare, BarChart3, LogOut, Trash2 } from "lucide-react";
+import { Shield, Mail, Calendar, FileText, MessageSquare, BarChart3, LogOut, Trash2, KeyRound } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
   const [deletePassword, setDeletePassword] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [changing, setChanging] = useState(false);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setChanging(true);
+    try {
+      const res = await changePassword(currentPassword, newPassword);
+      setStoredToken(res.access_token); // this device stays signed in; every other one is signed out
+      setCurrentPassword("");
+      setNewPassword("");
+      toast.success("Password changed. Other devices were signed out.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not change the password");
+    } finally {
+      setChanging(false);
+    }
+  };
+
+  const handleLogoutEverywhere = async () => {
+    if (!window.confirm("Sign out of every device, including this one?")) return;
+    try {
+      await logoutEverywhere();
+      clearStoredToken();
+      window.location.href = "/login";
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not sign out everywhere");
+    }
+  };
 
   const handleDeleteAccount = async () => {
     if (!deletePassword) {
@@ -106,6 +136,45 @@ export default function ProfilePage() {
           <Button variant="destructive" className="w-full" onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
             Logout
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <KeyRound className="h-4 w-4" />
+            Security
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">Changing your password signs every other device out.</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form onSubmit={handleChangePassword} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <Input
+              type="password"
+              autoComplete="current-password"
+              aria-label="Current password"
+              placeholder="Current password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+            />
+            <Input
+              type="password"
+              autoComplete="new-password"
+              aria-label="New password"
+              placeholder="New password (8+ characters)"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              minLength={8}
+              required
+            />
+            <Button type="submit" disabled={changing || newPassword.length < 8 || !currentPassword}>
+              {changing ? "Saving..." : "Change password"}
+            </Button>
+          </form>
+          <Button variant="outline" onClick={handleLogoutEverywhere}>
+            Sign out of all devices
           </Button>
         </CardContent>
       </Card>

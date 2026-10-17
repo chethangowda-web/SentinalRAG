@@ -149,3 +149,63 @@ for (const theme of ["light", "dark"] as const) {
     await expectNoA11yViolations(page);
   });
 }
+
+test("forgotten password: request a link, then choose a new password with it", async ({ page }) => {
+  const calls: { path: string; body: unknown }[] = [];
+  await page.route("**/api/v1/auth/**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/auth/config")) {
+      return route.fulfill({ contentType: "application/json", body: JSON.stringify({ registration_requires_code: false, password_reset_available: true }) });
+    }
+    calls.push({ path, body: route.request().postDataJSON() });
+    if (path.endsWith("/auth/forgot-password")) return route.fulfill({ status: 202, contentType: "application/json", body: JSON.stringify({ message: "ok" }) });
+    return route.fulfill({ status: 204, body: "" });
+  });
+
+  await page.goto("/login/");
+  await page.getByRole("link", { name: "Forgot password?" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Reset your password" })).toBeVisible();
+  await expectNoA11yViolations(page);
+  await page.getByLabel("Email").fill("me@example.com");
+  await page.getByRole("button", { name: "Send reset link" }).click();
+  await expect(page.getByRole("status")).toContainText("a reset link is on its way");
+
+  await page.goto("/reset-password/?token=abc123");
+  await expect(page.getByRole("heading", { level: 1, name: "Choose a new password" })).toBeVisible();
+  await expectNoA11yViolations(page);
+  await page.getByLabel("New password").fill("Brand-New-Pass-1");
+  await page.getByRole("button", { name: "Set new password" }).click();
+  await expect(page.getByRole("status")).toContainText("every device was signed out");
+  expect(calls.map((c) => c.path.split("/").pop())).toEqual(["forgot-password", "reset-password"]);
+  expect(calls[1].body).toEqual({ token: "abc123", password: "Brand-New-Pass-1" });
+});
+
+test("the reset page without a link explains what to do; reset is hidden when email is not set up", async ({ page }) => {
+  await page.route("**/api/v1/auth/config", (route) =>
+    route.fulfill({ contentType: "application/json", body: JSON.stringify({ registration_requires_code: false, password_reset_available: false }) })
+  );
+  await page.goto("/reset-password/");
+  await expect(page.getByText("needs the link from your reset email")).toBeVisible();
+  await page.goto("/login/");
+  await expect(page.getByRole("link", { name: "Forgot password?" })).toHaveCount(0);
+  await page.goto("/forgot-password/");
+  await expect(page.getByText("not set up on this server")).toBeVisible();
+});
+
+for (const theme of ["light", "dark"] as const) {
+  test(`terms, privacy and the profile security section are accessible (${theme})`, async ({ page }) => {
+    await signedIn(page, theme);
+    for (const path of ["/terms/", "/privacy/"]) {
+      await page.goto(path);
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      await expectNoA11yViolations(page);
+    }
+    await page.goto("/dashboard/profile/");
+    await expect(page.getByRole("button", { name: "Change password" })).toBeDisabled();
+    await page.getByLabel("Current password").fill("Old-Password-1");
+    await page.getByLabel("New password").fill("New-Password-2");
+    await expect(page.getByRole("button", { name: "Change password" })).toBeEnabled();
+    await page.waitForTimeout(400); // let the button finish its colour transition: axe would read a half-faded colour
+    await expectNoA11yViolations(page);
+  });
+}

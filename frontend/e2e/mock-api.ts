@@ -70,7 +70,7 @@ export async function signedIn(page: Page, theme: "light" | "dark" = "light") {
   await page.route("**/api/v1/**", (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith("/auth/me")) return json(route, USER);
-    if (path.endsWith("/auth/config")) return json(route, { registration_open: true });
+    if (path.endsWith("/auth/config")) return json(route, { registration_requires_code: false, password_reset_available: true });
     if (path.endsWith("/chat/history/sessions")) return json(route, { total: 0, sessions: [] });
     if (path.endsWith("/documents")) return json(route, [DOCUMENT]);
     if (path.endsWith("/health")) return json(route, { status: "ok", version: "test", uptime_seconds: 60 });
