@@ -1,8 +1,10 @@
+import asyncio
 import logging
 import time
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.exceptions import AppException
 from app.services import (
     bm25_service,
@@ -16,7 +18,7 @@ from app.utils.memory import log_memory_usage
 
 logger = logging.getLogger(__name__)
 
-RERANK_TOP_K = 15
+RERANK_TOP_K = 10
 FINAL_TOP_K = 8
 COVERAGE_TARGET = 5  # passages that count as full coverage (see confidence_service)
 
@@ -65,7 +67,39 @@ class SearchResponse:
         self.latencies = latencies
 
 
+_gate: asyncio.Semaphore | None = None
+
+
+def _retrieval_gate() -> asyncio.Semaphore:
+    global _gate
+    if _gate is None:
+        _gate = asyncio.Semaphore(max(1, settings.RETRIEVAL_CONCURRENCY))
+    return _gate
+
+
 async def retrieve(
+    raw_query: str,
+    db: AsyncSession,
+    user_id: str | None = None,
+    document_id: str | None = None,
+) -> SearchResponse:
+    """Search the user's documents. At most RETRIEVAL_CONCURRENCY run at once; the rest queue briefly."""
+    gate = _retrieval_gate()
+    try:
+        await asyncio.wait_for(gate.acquire(), timeout=settings.RETRIEVAL_QUEUE_TIMEOUT_SECONDS)
+    except asyncio.TimeoutError:
+        raise AppException(
+            status_code=503,
+            detail="The server is busy answering other questions. Please try again in a moment.",
+            error_type="busy",
+        )
+    try:
+        return await _retrieve(raw_query, db, user_id, document_id)
+    finally:
+        gate.release()
+
+
+async def _retrieve(
     raw_query: str,
     db: AsyncSession,
     user_id: str | None = None,
@@ -103,7 +137,8 @@ async def retrieve(
 
     rerank_start = time.perf_counter()
     texts_to_rerank = [hr.text for hr in hybrid_results[:RERANK_TOP_K]]
-    reranked_indices = reranker_service.rerank(normalized, texts_to_rerank, top_k=FINAL_TOP_K)
+    # Off the event loop: reranking is ~1 s of CPU and would otherwise freeze every other request meanwhile
+    reranked_indices = await asyncio.to_thread(reranker_service.rerank, normalized, texts_to_rerank, FINAL_TOP_K)
     latencies["rerank"] = round((time.perf_counter() - rerank_start) * 1000, 1)
 
     results: list[SearchResultItem] = []

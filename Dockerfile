@@ -39,7 +39,7 @@ COPY backend/requirements.txt .
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir \
     --index-url https://download.pytorch.org/whl/cpu \
-    "torch>=2.0.0"
+    "torch==2.14.1"
 
 RUN pip install --no-cache-dir -r requirements.txt
 

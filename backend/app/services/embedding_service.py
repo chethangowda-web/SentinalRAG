@@ -1,7 +1,9 @@
 import asyncio
 import gc
 import logging
+import threading
 import time
+from collections import OrderedDict
 from functools import partial
 
 import numpy as np
@@ -50,6 +52,29 @@ def normalize_embedding(vector: list[float]) -> list[float]:
     if norm > 0:
         arr = arr / norm
     return arr.tolist()
+
+
+_query_cache: "OrderedDict[str, list[float]]" = OrderedDict()
+_query_cache_lock = threading.Lock()
+QUERY_CACHE_SIZE = 512
+
+
+def embed_query(text: str) -> list[float]:
+    """Embedding of one search query; repeated questions (and retries) skip the model."""
+    key = text.strip().lower()
+    with _query_cache_lock:
+        cached = _query_cache.get(key)
+        if cached is not None:
+            _query_cache.move_to_end(key)
+            return cached
+    vectors = generate_embeddings([text])
+    if not vectors:
+        return []
+    with _query_cache_lock:
+        _query_cache[key] = vectors[0]
+        while len(_query_cache) > QUERY_CACHE_SIZE:
+            _query_cache.popitem(last=False)
+    return vectors[0]
 
 
 def generate_embeddings(texts: list[str]) -> list[list[float]]:

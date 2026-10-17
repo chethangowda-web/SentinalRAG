@@ -1,6 +1,7 @@
 import logging
 import time
 
+from app.core.config import settings
 from app.services.model_loading import load_lock
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ def _load_reranker_locked():
 
         logger.info("Loading cross-encoder model: %s", _RERANKER_MODEL)
         start = time.perf_counter()
-        _model = CrossEncoder(_RERANKER_MODEL, device="cpu")
+        _model = CrossEncoder(_RERANKER_MODEL, device="cpu", max_length=settings.RERANK_MAX_TOKENS)
         _model_name = _RERANKER_MODEL
         elapsed = round(time.perf_counter() - start, 2)
         logger.info("Cross-encoder loaded in %.2f seconds", elapsed)

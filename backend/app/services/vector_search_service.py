@@ -9,7 +9,7 @@ from qdrant_client.http.models import FieldCondition, Filter, MatchValue
 
 from app.core.config import settings
 from app.core.qdrant import get_qdrant_client
-from app.services.embedding_service import generate_embeddings
+from app.services.embedding_service import embed_query
 
 logger = logging.getLogger(__name__)
 
@@ -40,14 +40,12 @@ def search_vector(query_text: str, top_k: int = 20, user_id: str | None = None, 
     start = time.perf_counter()
 
     embed_start = time.perf_counter()
-    vectors = generate_embeddings([query_text])
+    vector = embed_query(query_text)
     embed_elapsed = round((time.perf_counter() - embed_start) * 1000, 1)
 
-    if not vectors:
+    if not vector:
         logger.warning("Embedding generation returned empty result for query: '%s'", query_text[:80])
         return []
-
-    vector = vectors[0]
 
     search_start = time.perf_counter()
     client = get_qdrant_client()

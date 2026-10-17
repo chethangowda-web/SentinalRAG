@@ -25,6 +25,10 @@ pytesseract==0.3.13
 # For local GPU dev: pip install torch (default installs CUDA-enabled version)
 torch>=2.0.0
 sentence-transformers==3.4.1
+transformers==4.57.6
+tokenizers==0.22.2
+huggingface-hub==0.36.2
+safetensors==0.8.0
 numpy==2.2.1
 
 # ─── Vector Database Client ───────────────────────────
