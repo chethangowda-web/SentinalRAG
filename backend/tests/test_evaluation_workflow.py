@@ -112,7 +112,7 @@ async def test_a_run_where_every_question_fails_is_an_error_not_an_empty_report(
         await runner.run(db_session, questions=_questions(2), eval_id="e3")
 
 
-def test_models_loaded_by_several_threads_at_once_are_loaded_only_once(monkeypatch):
+def test_models_loaded_by_several_threads_at_once_are_loaded_only_once(monkeypatch):  # shared lock, see model_loading
     import sys
     import threading
     import time
@@ -140,3 +140,37 @@ def test_models_loaded_by_several_threads_at_once_are_loaded_only_once(monkeypat
     [t.start() for t in threads]
     [t.join() for t in threads]
     assert len(loads) == 1
+
+
+def test_the_embedding_and_rerank_models_never_load_at_the_same_time(monkeypatch):
+    import sys
+    import threading
+    import time
+    import types
+
+    from app.services import embedding_service, reranker_service
+
+    state = {"active": 0, "peak": 0}
+
+    def slow_load(*args, **kwargs):
+        state["active"] += 1
+        state["peak"] = max(state["peak"], state["active"])
+        time.sleep(0.1)
+        state["active"] -= 1
+        return object()
+
+    fake_module = types.ModuleType("sentence_transformers")
+    fake_module.CrossEncoder = slow_load
+    fake_module.SentenceTransformer = slow_load
+    fake_torch = types.ModuleType("torch")
+    fake_torch.set_num_threads = lambda n: None
+    monkeypatch.setitem(sys.modules, "sentence_transformers", fake_module)
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    for module in (embedding_service, reranker_service):
+        monkeypatch.setattr(module, "_model", None)
+        monkeypatch.setattr(module, "_model_name", None)
+
+    threads = [threading.Thread(target=embedding_service._load_model), threading.Thread(target=reranker_service._load_reranker)]
+    [t.start() for t in threads]
+    [t.join() for t in threads]
+    assert state["peak"] == 1

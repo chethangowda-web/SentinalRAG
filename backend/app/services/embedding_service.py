@@ -1,27 +1,24 @@
 import asyncio
 import gc
 import logging
-import threading
 import time
 from functools import partial
 
 import numpy as np
 
 from app.core.config import settings
+from app.services.model_loading import load_lock
 from app.utils.memory import force_gc, log_memory_usage
 
 logger = logging.getLogger(__name__)
 
 _model = None
 _model_name = None
-# Two threads loading the model at once (several questions arriving right after a restart) corrupt each
-# other: "Cannot copy out of meta tensor". One loads, the rest wait for it.
-_load_lock = threading.Lock()
 
 
 def _load_model():
     if _model is None or _model_name != settings.EMBEDDING_MODEL:
-        with _load_lock:
+        with load_lock:
             _load_model_locked()
     return _model
 
