@@ -5,7 +5,7 @@ from functools import partial
 from typing import Any
 
 from qdrant_client.http.exceptions import UnexpectedResponse
-from qdrant_client.http.models import FieldCondition, Filter, MatchValue
+from qdrant_client.http.models import FieldCondition, Filter, MatchAny, MatchValue
 
 from app.core.config import settings
 from app.core.qdrant import get_qdrant_client
@@ -36,7 +36,13 @@ class VectorSearchResult:
         self.chunk_index = chunk_index
 
 
-def search_vector(query_text: str, top_k: int = 20, user_id: str | None = None, document_id: str | None = None) -> list[VectorSearchResult]:
+def search_vector(
+    query_text: str,
+    top_k: int = 20,
+    user_id: str | None = None,
+    document_id: str | None = None,
+    document_ids: list[str] | None = None,
+) -> list[VectorSearchResult]:
     start = time.perf_counter()
 
     embed_start = time.perf_counter()
@@ -53,8 +59,11 @@ def search_vector(query_text: str, top_k: int = 20, user_id: str | None = None, 
     conditions = []
     if user_id:
         conditions.append(FieldCondition(key="user_id", match=MatchValue(value=user_id)))
-    if document_id:
-        conditions.append(FieldCondition(key="document_id", match=MatchValue(value=document_id)))
+    scope = document_ids or ([document_id] if document_id else None)
+    if scope and len(scope) == 1:
+        conditions.append(FieldCondition(key="document_id", match=MatchValue(value=scope[0])))
+    elif scope:
+        conditions.append(FieldCondition(key="document_id", match=MatchAny(any=list(scope))))
 
     query_filter = Filter(must=conditions) if conditions else None
 
@@ -112,6 +121,12 @@ def search_vector(query_text: str, top_k: int = 20, user_id: str | None = None, 
     return parsed
 
 
-async def search_vector_async(query_text: str, top_k: int = 20, user_id: str | None = None, document_id: str | None = None) -> list[VectorSearchResult]:
+async def search_vector_async(
+    query_text: str,
+    top_k: int = 20,
+    user_id: str | None = None,
+    document_id: str | None = None,
+    document_ids: list[str] | None = None,
+) -> list[VectorSearchResult]:
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, partial(search_vector, query_text, top_k, user_id=user_id, document_id=document_id))
+    return await loop.run_in_executor(None, partial(search_vector, query_text, top_k, user_id=user_id, document_id=document_id, document_ids=document_ids))

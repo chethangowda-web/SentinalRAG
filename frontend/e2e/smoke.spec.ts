@@ -209,3 +209,35 @@ for (const theme of ["light", "dark"] as const) {
     await expectNoA11yViolations(page);
   });
 }
+
+test("questions can be limited to chosen documents, and a source opens with the text around it", async ({ page }) => {
+  await signedIn(page);
+  const bodies: Record<string, unknown>[] = [];
+  await page.route("**/api/v1/chat/stream", (route) => {
+    bodies.push(route.request().postDataJSON());
+    return route.fulfill({
+      contentType: "text/event-stream",
+      body: sse([["result", chatResult({ citations: [{ document_id: "d1", filename: "refund_policy.pdf", chunk_id: "c1", page: 2, text: "Refunds within 30 days.", source: 1 }] })]]),
+    });
+  });
+  await page.goto("/dashboard/chat/");
+  await expect(page.getByRole("button", { name: /Asking:.*All documents/ })).toBeVisible();
+
+  await page.getByRole("button", { name: /Asking:/ }).click();
+  await page.getByRole("checkbox", { name: "refund_policy.pdf" }).check();
+  await page.getByRole("checkbox", { name: "sla_policy.pdf" }).check();
+  await expect(page.getByRole("button", { name: /Asking:.*2 documents/ })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  await page.getByPlaceholder("Ask a question about your documents").fill("What is the refund window?");
+  await page.getByRole("button", { name: "Send question" }).click();
+  await expect(page.getByText("within 30 days").first()).toBeVisible();
+  expect(bodies[0]).toMatchObject({ document_ids: ["d1", "d2"] });
+
+  await page.getByRole("button", { name: "Open source 1" }).click();
+  await expect(page.getByText("Refunds within 30 days.").first()).toBeVisible();
+  await expect(page.getByText("Intro paragraph before.")).toBeVisible(); // the passage before
+  await expect(page.getByText("Exceptions apply to hardware.")).toBeVisible(); // and after
+  await page.waitForTimeout(500); // the dialog fades in; axe would read half-faded colours
+  await expectNoA11yViolations(page);
+});

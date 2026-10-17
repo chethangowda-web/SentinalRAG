@@ -50,6 +50,9 @@ api.interceptors.response.use(
       : detail || error.message || "An unexpected error occurred";
 
     if (error.response?.status === 401) {
+      if (getStoredToken() && typeof window !== "undefined") {
+        window.sessionStorage.setItem("sentinelrag_session_ended", "1"); // read by the sign-in page
+      }
       clearStoredToken();
       const publicPages = ["/login", "/register", "/forgot-password", "/reset-password", "/terms", "/privacy"];
       if (typeof window !== "undefined" && !publicPages.some((p) => window.location.pathname.startsWith(p))) {

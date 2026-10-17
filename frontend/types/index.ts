@@ -8,6 +8,8 @@ export interface ChatRequest {
   question: string;
   session_id?: string | null;
   document_id?: string | null;
+  /** Ask about these documents only (up to 25); leave out to search everything */
+  document_ids?: string[];
   skip_clarification?: boolean;
 }
 

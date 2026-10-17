@@ -22,7 +22,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { streamChatMessage } from "@/services/chat";
-import { useDocuments } from "@/hooks/use-documents";
+import { useDocumentChunks, useDocuments } from "@/hooks/use-documents";
 import { rerankPercent } from "@/lib/utils";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
@@ -638,22 +638,23 @@ function AnswerSummary({ response }: { response: ChatResponse }) {
 /** What the chat shows before the first question: example questions drawn from the user's own documents. */
 function StarterQuestions({
   documents,
-  scopedDocumentId,
+  scopeIds,
   onPick,
 }: {
   documents: DocumentItem[];
-  scopedDocumentId: string | null;
+  scopeIds: string[];
   onPick: (q: string) => void;
 }) {
   const indexed = documents.filter((d) => d.status === "embedded" || d.status === "completed");
-  const scoped = scopedDocumentId ? indexed.find((d) => d.id === scopedDocumentId) : undefined;
-  const pool = scoped ? [scoped] : indexed;
+  const chosen = indexed.filter((d) => scopeIds.includes(d.id));
+  const scoped = chosen.length === 1 ? chosen[0] : undefined;
+  const pool = chosen.length > 0 ? chosen : indexed;
   const name = (d: DocumentItem) => d.filename.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ");
   const suggestions = pool.length
     ? [
         `Summarize ${name(pool[0])}`,
         pool.length > 1 ? `How does ${name(pool[0])} differ from ${name(pool[1])}?` : `What are the key points in ${name(pool[0])}?`,
-        `What dates, limits or deadlines are mentioned in ${scoped ? name(scoped) : "my documents"}?`,
+        `What dates, limits or deadlines are mentioned in ${scoped ? name(scoped) : chosen.length > 1 ? "these documents" : "my documents"}?`,
       ]
     : [];
 
@@ -663,12 +664,12 @@ function StarterQuestions({
         <Sparkles className="h-7 w-7 text-primary" />
       </div>
       <h2 className="text-2xl font-semibold tracking-tight">
-        {scoped ? `Ask about ${name(scoped)}` : "What would you like to know?"}
+        {scoped ? `Ask about ${name(scoped)}` : chosen.length > 1 ? `Ask about ${chosen.length} documents` : "What would you like to know?"}
       </h2>
       <p className="mt-2 text-sm text-muted-foreground">
         {indexed.length === 0
           ? "Upload a document first, then ask questions and get answers with sources."
-          : `Answers come only from your ${scoped ? "document" : `${indexed.length} document${indexed.length === 1 ? "" : "s"}`}, with the source shown next to every claim.`}
+          : `Answers come only from ${scoped ? "this document" : `your ${pool.length} document${pool.length === 1 ? "" : "s"}`}, with the source shown next to every claim.`}
       </p>
       {suggestions.length > 0 ? (
         <div className="mt-6 grid w-full gap-2">
@@ -688,6 +689,97 @@ function StarterQuestions({
           <Button className="mt-6">Upload a document</Button>
         </Link>
       )}
+    </div>
+  );
+}
+
+/** Choose which documents a question is about. Nothing chosen means all of them. */
+function ScopePicker({
+  documents,
+  scopeIds,
+  open,
+  onOpenChange,
+  onChange,
+}: {
+  documents: DocumentItem[];
+  scopeIds: string[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onChange: (ids: string[]) => void;
+}) {
+  const indexed = documents.filter((d) => d.status === "embedded" || d.status === "completed");
+  if (indexed.length < 2) return null; // nothing to choose between
+  const label =
+    scopeIds.length === 0
+      ? "All documents"
+      : scopeIds.length === 1
+        ? indexed.find((d) => d.id === scopeIds[0])?.filename ?? "1 document"
+        : `${scopeIds.length} documents`;
+  const toggle = (id: string) =>
+    onChange(scopeIds.includes(id) ? scopeIds.filter((x) => x !== id) : [...scopeIds, id].slice(0, 25));
+
+  return (
+    <div className="relative mb-2" onKeyDown={(e) => e.key === "Escape" && onOpenChange(false)}>
+      <button
+        type="button"
+        onClick={() => onOpenChange(!open)}
+        aria-expanded={open}
+        aria-haspopup="true"
+        className="inline-flex max-w-full items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <span className="shrink-0">Asking:</span>
+        <span className="truncate font-medium text-foreground">{label}</span>
+        <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 transition-transform", open && "rotate-180")} aria-hidden="true" />
+      </button>
+      {open && (
+        <div role="group" aria-label="Documents to ask about" className="absolute bottom-full left-0 z-20 mb-2 w-72 max-w-[90vw] rounded-xl border bg-popover p-2 shadow-lg">
+          <div className="flex items-center justify-between px-2 pb-1 pt-0.5 text-[11px] text-muted-foreground">
+            <span>Choose documents, or none for all</span>
+            {scopeIds.length > 0 && (
+              <button type="button" className="font-medium text-primary hover:underline" onClick={() => onChange([])}>
+                Clear
+              </button>
+            )}
+          </div>
+          <ul className="max-h-56 overflow-y-auto">
+            {indexed.map((d) => (
+              <li key={d.id}>
+                <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-secondary/60">
+                  <input
+                    type="checkbox"
+                    checked={scopeIds.includes(d.id)}
+                    onChange={() => toggle(d.id)}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <span className="truncate">{d.filename}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A cited passage with the text around it, so a claim can be checked in context. */
+function SourceContext({ citation }: { citation: CitationItem }) {
+  const { data, isLoading } = useDocumentChunks(citation.document_id);
+  const chunks = data?.chunks ?? [];
+  const at = chunks.findIndex((c) => c.id === citation.chunk_id);
+  const before = at > 0 ? chunks[at - 1] : null;
+  const after = at >= 0 && at < chunks.length - 1 ? chunks[at + 1] : null;
+  const cited = at >= 0 ? chunks[at].chunk_text : citation.text;
+
+  return (
+    <div className="max-h-[360px] space-y-2 overflow-y-auto rounded-md bg-muted/50 p-3 text-xs leading-relaxed">
+      {isLoading && <p className="text-muted-foreground">Loading the surrounding text…</p>}
+      {before && <p className="whitespace-pre-wrap text-muted-foreground">…{before.chunk_text.slice(-400)}</p>}
+      {cited && (
+        <p className="whitespace-pre-wrap rounded-md border-l-4 border-primary bg-primary/10 p-2 text-foreground">{cited}</p>
+      )}
+      {after && <p className="whitespace-pre-wrap text-muted-foreground">{after.chunk_text.slice(0, 400)}…</p>}
     </div>
   );
 }
@@ -730,6 +822,9 @@ export default function ChatPage() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState<CitationItem | null>(null);
   const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
+  // Which documents questions are about: none chosen means all of them
+  const [scopeIds, setScopeIds] = useState<string[]>(chatDocumentId ? [chatDocumentId] : []);
+  const [scopeOpen, setScopeOpen] = useState(false);
   const { data: documents } = useDocuments();
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -790,7 +885,7 @@ export default function ChatPage() {
         {
           question,
           session_id: activeSessionId,
-          document_id: chatDocumentId || undefined,
+          document_ids: scopeIds.length > 0 ? scopeIds : undefined,
           skip_clarification: skipClarification || undefined,
         },
         (step) => setLiveSteps((prev) => [...prev, step]),
@@ -830,7 +925,7 @@ export default function ChatPage() {
       setLiveSteps([]);
       setLiveAnswer("");
     }
-  }, [isStreaming, activeSessionId, chatDocumentId, qc]);
+  }, [isStreaming, activeSessionId, scopeIds, qc]);
 
   // A question typed on the dashboard arrives as ?q=...; ask it once, then drop it from the URL
   const initialQuestion = searchParams.get("q");
@@ -1210,7 +1305,7 @@ export default function ChatPage() {
                 >
                   <StarterQuestions
                     documents={documents ?? []}
-                    scopedDocumentId={chatDocumentId}
+                    scopeIds={scopeIds}
                     onPick={(q) => sendQuestion(q)}
                   />
                 </motion.div>
@@ -1532,6 +1627,13 @@ export default function ChatPage() {
           {/* input area */}
           <div className="border-t px-3 sm:px-4 py-3 bg-background">
             <div className="mx-auto max-w-3xl">
+              <ScopePicker
+                documents={documents ?? []}
+                scopeIds={scopeIds}
+                open={scopeOpen}
+                onOpenChange={setScopeOpen}
+                onChange={setScopeIds}
+              />
               <div className="relative flex items-end gap-2">
                 <textarea
                   ref={inputRef}
@@ -1610,22 +1712,16 @@ export default function ChatPage() {
         open={!!showPreview}
         onOpenChange={(v) => !v && setShowPreview(null)}
       >
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-sm">
               <FileText className="h-4 w-4 text-primary" />
               Source: {showPreview?.filename || `${showPreview?.document_id?.slice(0, 12)}…`}
             </DialogTitle>
           </DialogHeader>
-          {showPreview?.text && (
-            <div className="rounded-md bg-muted/50 p-3 max-h-[300px] overflow-y-auto">
-              <p className="text-xs leading-relaxed whitespace-pre-wrap">
-                {showPreview.text}
-              </p>
-            </div>
-          )}
+          {showPreview && <SourceContext citation={showPreview} />}
           <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>Chunk: {showPreview?.chunk_id?.slice(0, 12)}…</span>
+            <span>The highlighted passage is what the answer used</span>
             {showPreview?.page != null && <span>Page {showPreview.page}</span>}
           </div>
         </DialogContent>

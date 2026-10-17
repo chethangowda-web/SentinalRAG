@@ -20,6 +20,7 @@ async def retrieve_node(state: GraphState, config: RunnableConfig) -> dict:
     db = config["configurable"]["db"]
     user_id = config["configurable"].get("user_id")
     document_id = config["configurable"].get("document_id") or state.get("document_id")
+    document_ids = config["configurable"].get("document_ids")
 
     logger.info("Retrieve node: query='%s' user_id=%s document_id=%s", question[:80], user_id, document_id)
     # The ambiguity check judges the question text alone, so it can run while the documents are searched
@@ -27,7 +28,7 @@ async def retrieve_node(state: GraphState, config: RunnableConfig) -> dict:
     if not state.get("rewritten_question") and needs_check(state):
         precheck = asyncio.create_task(asyncio.to_thread(detect_ambiguity, state["question"], [], False, None))
     try:
-        search_response = await retrieve(question, db, user_id=user_id, document_id=document_id)
+        search_response = await retrieve(question, db, user_id=user_id, document_id=document_id, document_ids=document_ids)
     except BaseException:
         if precheck:
             precheck.cancel()

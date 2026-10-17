@@ -72,7 +72,11 @@ export async function signedIn(page: Page, theme: "light" | "dark" = "light") {
     if (path.endsWith("/auth/me")) return json(route, USER);
     if (path.endsWith("/auth/config")) return json(route, { registration_requires_code: false, password_reset_available: true });
     if (path.endsWith("/chat/history/sessions")) return json(route, { total: 0, sessions: [] });
-    if (path.endsWith("/documents")) return json(route, [DOCUMENT]);
+    if (path.endsWith("/documents")) return json(route, [DOCUMENT, { ...DOCUMENT, id: "d2", filename: "sla_policy.pdf" }]);
+    if (path.endsWith("/document/d1/chunks")) {
+      const chunk = (i: number, text: string) => ({ id: `c${i}`, document_id: "d1", chunk_index: i, chunk_text: text, char_start: 0, char_end: 10, word_count: 5, page_number: 2, embedding_status: "embedded" });
+      return json(route, { document_id: "d1", total_chunks: 3, chunks: [chunk(0, "Intro paragraph before."), chunk(1, "Refunds within 30 days."), chunk(2, "Exceptions apply to hardware.")] });
+    }
     if (path.endsWith("/health")) return json(route, { status: "ok", version: "test", uptime_seconds: 60 });
     if (path.endsWith("/dashboard/daily-stats") || path.endsWith("/evaluation/history")) return json(route, []);
     if (path.endsWith("/evaluation/latest")) {

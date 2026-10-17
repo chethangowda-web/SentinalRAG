@@ -1,0 +1,55 @@
+name: Database backup
+
+# Daily encrypted dump of the production Postgres, kept as a workflow artifact for 14 days.
+# Does nothing until the two secrets below exist (see OPERATIONS.md, "Backups").
+#   BACKUP_DATABASE_URL   postgresql://user:password@host:port/dbname  (Railway: the Postgres service's public/TCP URL)
+#   BACKUP_PASSPHRASE     any long random string; needed to decrypt the dump
+# The repository is public, so artifacts are downloadable by anyone with access to it: the dump is encrypted before upload.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dump:
+    name: pg_dump
+    runs-on: ubuntu-latest
+    env:
+      BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - name: Check configuration
+        id: config
+        run: |
+          if [ -z "$BACKUP_DATABASE_URL" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "::notice::Backups are not configured (BACKUP_DATABASE_URL / BACKUP_PASSPHRASE secrets missing); skipping."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Dump and encrypt
+        if: steps.config.outputs.enabled == 'true'
+        run: |
+          set -euo pipefail
+          # postgres:17 can dump servers up to version 17
+          docker run --rm -e PGURL="$BACKUP_DATABASE_URL" postgres:17 \
+            sh -c 'pg_dump "$PGURL" --no-owner --format=custom' > backup.dump
+          test -s backup.dump
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+            --symmetric --cipher-algo AES256 -o "backup-$(date -u +%Y%m%d-%H%M).dump.gpg" backup.dump
+          rm backup.dump
+          ls -lh backup-*.dump.gpg
+
+      - name: Keep it for 14 days
+        if: steps.config.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: postgres-backup
+          path: backup-*.dump.gpg
+          retention-days: 14
+          if-no-files-found: error

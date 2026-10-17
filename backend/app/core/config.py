@@ -71,6 +71,12 @@ class Settings(BaseSettings):
     # listed use LLM_REASONING_EFFORT. gemini-3.5-flash-lite rejects "none", so it is left out.
     GEMINI_MODEL_REASONING: str = "gemini-3.5-flash=none"
 
+    # A second provider tried after every Gemini model is busy or out of quota (any OpenAI-compatible API:
+    # Groq, OpenRouter, DeepSeek, OpenAI...). Off unless a key and a model are set.
+    FALLBACK_LLM_API_KEY: str = ""
+    FALLBACK_LLM_BASE_URL: str = "https://api.groq.com/openai/v1"
+    FALLBACK_LLM_MODEL: str = ""
+
     # DeepSeek (fallback LLM provider)
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
@@ -180,9 +186,14 @@ class Settings(BaseSettings):
         """Models to try, in order. Only Gemini has configurable fallbacks."""
         primary = self.effective_llm_model
         if self.llm_provider != "gemini":
-            return [primary] if primary else []
+            return ([primary] if primary else []) + self._second_provider()
         extras = [m.strip() for m in self.GEMINI_FALLBACK_MODELS.split(",") if m.strip()]
-        return [primary] + [m for m in extras if m != primary]
+        return [primary] + [m for m in extras if m != primary] + self._second_provider()
+
+    def _second_provider(self) -> list[str]:
+        if self.FALLBACK_LLM_API_KEY and self.FALLBACK_LLM_MODEL:
+            return [f"fallback:{self.FALLBACK_LLM_MODEL}"]
+        return []
 
     def reasoning_effort_for(self, model: str) -> str:
         """reasoning_effort to send to `model`, or "" to send none."""

@@ -19,9 +19,10 @@ async def retry_node(state: GraphState, config: RunnableConfig) -> dict:
 
     user_id = config["configurable"].get("user_id")
     document_id = config["configurable"].get("document_id") or state.get("document_id")
+    document_ids = config["configurable"].get("document_ids")
 
     logger.info("Retry node: retry #%d, query='%s' doc_id=%s", state.get("retry_count", 0), rewritten[:80], document_id)
-    search_response = await retrieve(rewritten, db, user_id=user_id, document_id=document_id)
+    search_response = await retrieve(rewritten, db, user_id=user_id, document_id=document_id, document_ids=document_ids)
 
     chunks = []
     retrieval_details = []

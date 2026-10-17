@@ -174,10 +174,11 @@ def build_llm(max_tokens: int, timeout: int, temperature: float | None = None):
 
     clients = {}
     for model in settings.llm_model_candidates:
+        second = model.startswith("fallback:")
         kwargs = {
-            "model": model,
-            "api_key": settings.effective_llm_api_key,
-            "base_url": settings.effective_llm_base_url,
+            "model": settings.FALLBACK_LLM_MODEL if second else model,
+            "api_key": settings.FALLBACK_LLM_API_KEY if second else settings.effective_llm_api_key,
+            "base_url": settings.FALLBACK_LLM_BASE_URL if second else settings.effective_llm_base_url,
             "temperature": settings.LLM_TEMPERATURE if temperature is None else temperature,
             "max_tokens": max_tokens,
             "timeout": timeout,
@@ -185,7 +186,7 @@ def build_llm(max_tokens: int, timeout: int, temperature: float | None = None):
             # "retry in Ns" hint; the client's own immediate retry would only burn quota.
             "max_retries": 0,
         }
-        effort = settings.reasoning_effort_for(model)
+        effort = "" if second else settings.reasoning_effort_for(model)
         if effort:
             kwargs["reasoning_effort"] = effort
         clients[model] = ChatOpenAI(**kwargs)
