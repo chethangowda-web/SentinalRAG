@@ -1,6 +1,5 @@
 import asyncio
 import json
-import time
 
 import pytest
 
@@ -18,17 +17,28 @@ def test_the_quick_set_covers_every_behaviour_with_far_fewer_questions():
     assert categories & {"easy", "medium", "hard"}
 
 
+class _Counter:
+    """Calls in flight across every fake pipeline that shares it."""
+
+    def __init__(self):
+        self.running = 0
+        self.peak = 0
+
+
 class _FakePipeline:
-    def __init__(self, delay: float):
+    def __init__(self, delay: float, counter: _Counter | None = None):
         self.delay = delay
+        self.counter = counter or _Counter()
         self.running = 0
         self.peak = 0
 
     async def answer(self, question, session, user_id=None):
-        self.running += 1
-        self.peak = max(self.peak, self.running)
+        for c in (self, self.counter):
+            c.running += 1
+            c.peak = max(c.peak, c.running)
         await asyncio.sleep(self.delay)
-        self.running -= 1
+        for c in (self, self.counter):
+            c.running -= 1
         return {
             "answer": "30 days", "confidence_score": 70.0, "confidence_level": "HIGH", "latencies": {"total": 10.0},
             "citations": [], "reasoning_path": ["retrieve", "generate_answer"], "retrieved_chunks": [],
@@ -46,17 +56,16 @@ async def test_questions_and_both_pipelines_run_at_the_same_time_and_progress_is
     monkeypatch.setattr(runner_module, "RESULTS_DIR", tmp_path)
 
     runner = EvaluationRunner()
-    runner.baseline, runner.sentinel = _FakePipeline(0.2), _FakePipeline(0.2)
+    shared = _Counter()
+    runner.baseline, runner.sentinel = _FakePipeline(0.05, shared), _FakePipeline(0.05, shared)
     monkeypatch.setattr(runner, "_save_result", lambda *a, **k: None)
     monkeypatch.setattr(runner, "_update_history", lambda *a, **k: None)
 
-    started = time.perf_counter()
     result = await runner.run(db_session, questions=_questions(6), eval_id="e1")
-    elapsed = time.perf_counter() - started
 
-    # 6 questions x 2 pipelines x 0.2 s would take 2.4 s one after the other
-    assert elapsed < 1.2
+    # Questions overlap (up to the limit), and both pipelines of a question overlap with each other
     assert runner.sentinel.peak == runner_module.QUESTION_CONCURRENCY
+    assert shared.peak == 2 * runner_module.QUESTION_CONCURRENCY
     assert result["total_questions"] == 6
 
     task = json.loads(status_file.read_text())["e1"]
