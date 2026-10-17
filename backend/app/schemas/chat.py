@@ -1,12 +1,14 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ChatRequest(BaseModel):
     question: str
     session_id: str | None = None
     document_id: str | None = None
+    # Ask about several chosen documents at once (takes precedence over document_id)
+    document_ids: list[str] | None = Field(default=None, max_length=25)
     # Set when the user chose "Answer anyway" after being asked to clarify
     skip_clarification: bool = False
 

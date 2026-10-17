@@ -160,7 +160,14 @@ async def _prepare_state(db: AsyncSession, body: ChatRequest, trace_id: str) -> 
 
 
 def _graph_config(db: AsyncSession, current_user: User, body: ChatRequest) -> dict:
-    return {"configurable": {"db": db, "user_id": current_user.id, "document_id": body.document_id}}
+    return {
+        "configurable": {
+            "db": db,
+            "user_id": current_user.id,
+            "document_id": body.document_id,
+            "document_ids": body.document_ids or None,
+        }
+    }
 
 
 def _simple_response(answer: str, path: str, trace_id: str) -> ChatResponse:

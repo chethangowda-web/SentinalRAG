@@ -82,6 +82,7 @@ async def retrieve(
     db: AsyncSession,
     user_id: str | None = None,
     document_id: str | None = None,
+    document_ids: list[str] | None = None,
 ) -> SearchResponse:
     """Search the user's documents. At most RETRIEVAL_CONCURRENCY run at once; the rest queue briefly."""
     gate = _retrieval_gate()
@@ -94,7 +95,7 @@ async def retrieve(
             error_type="busy",
         )
     try:
-        return await _retrieve(raw_query, db, user_id, document_id)
+        return await _retrieve(raw_query, db, user_id, document_id, document_ids)
     finally:
         gate.release()
 
@@ -104,6 +105,7 @@ async def _retrieve(
     db: AsyncSession,
     user_id: str | None = None,
     document_id: str | None = None,
+    document_ids: list[str] | None = None,
 ) -> SearchResponse:
     mem_before = log_memory_usage("retrieval_start")
     total_start = time.perf_counter()
@@ -114,11 +116,15 @@ async def _retrieve(
         raise AppException(status_code=400, detail="Query cannot be empty after preprocessing")
 
     embed_start = time.perf_counter()
-    vector_results = await vector_search_service.search_vector_async(normalized, top_k=30, user_id=user_id, document_id=document_id)
+    vector_results = await vector_search_service.search_vector_async(
+        normalized, top_k=30, user_id=user_id, document_id=document_id, document_ids=document_ids
+    )
     latencies["vector_search"] = round((time.perf_counter() - embed_start) * 1000, 1)
 
     bm25_start = time.perf_counter()
-    bm25_results = await bm25_service.search_bm25(normalized, db, top_k=30, user_id=user_id, document_id=document_id)
+    bm25_results = await bm25_service.search_bm25(
+        normalized, db, top_k=30, user_id=user_id, document_id=document_id, document_ids=document_ids
+    )
     latencies["bm25_search"] = round((time.perf_counter() - bm25_start) * 1000, 1)
 
     fusion_start = time.perf_counter()

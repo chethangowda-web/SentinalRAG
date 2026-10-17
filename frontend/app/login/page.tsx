@@ -20,6 +20,10 @@ export default function LoginPage() {
 
   useEffect(() => {
     getAuthConfig().then((c) => setCanReset(c.password_reset_available)).catch(() => undefined);
+    if (window.sessionStorage.getItem("sentinelrag_session_ended")) {
+      window.sessionStorage.removeItem("sentinelrag_session_ended");
+      toast("Your session ended. Please sign in again.");
+    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

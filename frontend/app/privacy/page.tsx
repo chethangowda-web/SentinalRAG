@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/shared/LegalPage";
 
-export const metadata: Metadata = { title: "Privacy notice | SentinelRAG" };
+export const metadata: Metadata = { title: "Privacy notice" };
 
 export default function PrivacyPage() {
   return (

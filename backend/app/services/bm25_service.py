@@ -35,6 +35,7 @@ async def search_bm25(
     top_k: int = 20,
     user_id: str | None = None,
     document_id: str | None = None,
+    document_ids: list[str] | None = None,
 ) -> list[BM25Result]:
     start = time.perf_counter()
 
@@ -52,9 +53,13 @@ async def search_bm25(
     if user_id:
         conditions.append("d.user_id = :user_id")
         params["user_id"] = user_id
-    if document_id:
-        conditions.append("c.document_id = :document_id")
-        params["document_id"] = document_id
+    scope = document_ids or ([document_id] if document_id else None)
+    if scope:
+        names = []
+        for i, value in enumerate(scope):
+            params[f"doc{i}"] = value
+            names.append(f":doc{i}")
+        conditions.append(f"c.document_id IN ({', '.join(names)})")
 
     where_clause = " AND ".join(conditions) if conditions else "TRUE"
 

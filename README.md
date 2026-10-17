@@ -11,6 +11,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/chethangowda-web/SentinalRAG/actions/workflows/ci.yml/badge.svg)](https://github.com/chethangowda-web/SentinalRAG/actions)
 
+**Running it for other people?** Read [OPERATIONS.md](./OPERATIONS.md): capacity, settings to check, backups, and what to do when something breaks.
+
 ---
 
 ## Problem Statement
@@ -391,6 +393,7 @@ npm run dev
 | `SKIP_REWRITE_RERANK_THRESHOLD` | No | `-3.0` | A MEDIUM-confidence retrieval whose best passage scores at least this is answered directly, without the rewrite-and-retry detour |
 | `OFF_TOPIC_RERANK_THRESHOLD` | No | `-10.0` | Questions whose best passage scores below this cross-encoder score are answered "nothing in your documents covers it" without an LLM call |
 | `SENTRY_DSN` | No | _(empty)_ | Turns on Sentry error tracking (the SDK is already installed) |
+| `FALLBACK_LLM_API_KEY` / `FALLBACK_LLM_MODEL` / `FALLBACK_LLM_BASE_URL` | No | _(empty)_ / _(empty)_ / Groq's URL | A second AI provider (any OpenAI-compatible API) tried after every Gemini model is busy or out of quota |
 | `RESEND_API_KEY` / `SMTP_HOST` | No | _(empty)_ | Turns on "Forgot password": set `RESEND_API_KEY` (resend.com) or an SMTP server (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, e.g. Brevo). Off when neither is set |
 | `MAIL_FROM` | No | `SentinelRAG <onboarding@resend.dev>` | From address of reset emails (must be a verified sender at your provider) |
 | `PUBLIC_URL` | No | _(request host)_ | Public address of the app, used in the reset links |

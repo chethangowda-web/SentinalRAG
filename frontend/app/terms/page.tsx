@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/shared/LegalPage";
 
-export const metadata: Metadata = { title: "Terms of use | SentinelRAG" };
+export const metadata: Metadata = { title: "Terms of use" };
 
 export default function TermsPage() {
   return (
