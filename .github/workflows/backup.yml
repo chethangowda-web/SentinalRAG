@@ -36,8 +36,8 @@ jobs:
         if: steps.config.outputs.enabled == 'true'
         run: |
           set -euo pipefail
-          # postgres:17 can dump servers up to version 17
-          docker run --rm -e PGURL="$BACKUP_DATABASE_URL" postgres:17 \
+          # The client must be at least as new as the server (Railway runs Postgres 18); newer clients can dump older servers
+          docker run --rm -e PGURL="$BACKUP_DATABASE_URL" postgres:18 \
             sh -c 'pg_dump "$PGURL" --no-owner --format=custom' > backup.dump
           test -s backup.dump
           gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
