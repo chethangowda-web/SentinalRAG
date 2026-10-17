@@ -28,6 +28,8 @@ export function Footer() {
                 {link.label}
               </Link>
             ))}
+            <Link href="/terms" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Terms</Link>
+            <Link href="/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Privacy</Link>
             <a
               href="https://github.com/chethangowda-web/SentinalRAG"
               target="_blank"

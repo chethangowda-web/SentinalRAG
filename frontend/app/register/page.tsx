@@ -138,6 +138,11 @@ export default function RegisterPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Creating account..." : "Create account"}
             </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              By creating an account you agree to the{" "}
+              <Link href="/terms" className="underline hover:text-foreground">Terms</Link> and{" "}
+              <Link href="/privacy" className="underline hover:text-foreground">Privacy notice</Link>.
+            </p>
           </form>
           <div className="mt-4 text-center text-sm text-muted-foreground">
             Already have an account?{" "}

@@ -391,6 +391,11 @@ npm run dev
 | `SKIP_REWRITE_RERANK_THRESHOLD` | No | `-3.0` | A MEDIUM-confidence retrieval whose best passage scores at least this is answered directly, without the rewrite-and-retry detour |
 | `OFF_TOPIC_RERANK_THRESHOLD` | No | `-10.0` | Questions whose best passage scores below this cross-encoder score are answered "nothing in your documents covers it" without an LLM call |
 | `SENTRY_DSN` | No | _(empty)_ | Turns on Sentry error tracking (the SDK is already installed) |
+| `RESEND_API_KEY` / `SMTP_HOST` | No | _(empty)_ | Turns on "Forgot password": set `RESEND_API_KEY` (resend.com) or an SMTP server (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, e.g. Brevo). Off when neither is set |
+| `MAIL_FROM` | No | `SentinelRAG <onboarding@resend.dev>` | From address of reset emails (must be a verified sender at your provider) |
+| `PUBLIC_URL` | No | _(request host)_ | Public address of the app, used in the reset links |
+| `RETRIEVAL_CONCURRENCY` | No | `2` | Searches (the CPU-heavy step of each question) running at once; others queue up to `RETRIEVAL_QUEUE_TIMEOUT_SECONDS`, then get a "busy" reply |
+| `RATE_LIMIT_MAX_REQUESTS` | No | `240` | API requests per signed-in user per minute (`RATE_LIMIT_ANONYMOUS_MAX_REQUESTS`, default 120, per IP for signed-out callers) |
 | `LLM_MAX_CONCURRENCY` / `ANSWER_CACHE_SIZE` | No | `4` / `256` | Simultaneous LLM calls; cached answers for identical question + passages |
 | `LLM_REASONING_EFFORT` | No | — | Passed to the LLM as `reasoning_effort` (e.g. `none` to stop Gemini spending tokens on hidden thinking) |
 | `GEMINI_BASE_URL` | No | `https://generativelanguage.googleapis.com/v1beta/openai/` | Gemini OpenAI-compatible endpoint |

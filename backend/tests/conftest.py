@@ -2,6 +2,9 @@ import asyncio
 import os
 
 os.environ["SECRET_KEY"] = "test-secret-key-not-for-production"
+# The whole suite calls the API from one address without tokens; the global limiter is tested on its own (test_scale)
+os.environ["RATE_LIMIT_MAX_REQUESTS"] = "1000000"
+os.environ["RATE_LIMIT_ANONYMOUS_MAX_REQUESTS"] = "1000000"
 
 import pytest
 import pytest_asyncio

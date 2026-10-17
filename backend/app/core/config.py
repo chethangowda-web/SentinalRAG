@@ -98,6 +98,17 @@ class Settings(BaseSettings):
     # the question and searching again costs ~2 LLM calls and rarely changes a result that is already relevant.
     SKIP_REWRITE_RERANK_THRESHOLD: float | None = -3.0
 
+    # Password reset by email: set RESEND_API_KEY, or SMTP_HOST (+ credentials). Off when neither is set.
+    PUBLIC_URL: str = ""  # e.g. https://your-app.up.railway.app, used in the links we email
+    MAIL_FROM: str = "SentinelRAG <onboarding@resend.dev>"
+    RESEND_API_KEY: str = ""
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_STARTTLS: bool = True
+    PASSWORD_RESET_MINUTES: int = 60
+
     # Optional error tracking: set to a Sentry DSN to report unhandled errors (needs sentry-sdk).
     SENTRY_DSN: str = ""
 
@@ -185,6 +196,10 @@ class Settings(BaseSettings):
     @property
     def effective_llm_reasoning_effort(self) -> str:
         return self.LLM_REASONING_EFFORT
+
+    @property
+    def email_enabled(self) -> bool:
+        return bool(self.RESEND_API_KEY or self.SMTP_HOST)
 
     @property
     def is_postgres(self) -> bool:

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
+import { getAuthConfig } from "@/services/auth";
 import { Shield, Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [canReset, setCanReset] = useState(false);
+
+  useEffect(() => {
+    getAuthConfig().then((c) => setCanReset(c.password_reset_available)).catch(() => undefined);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,7 +74,14 @@ export default function LoginPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Password</label>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Password</label>
+                {canReset && (
+                  <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+                    Forgot password?
+                  </Link>
+                )}
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -99,6 +112,11 @@ export default function LoginPage() {
               Create one
             </Link>
           </div>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            <Link href="/terms" className="hover:underline">Terms</Link>
+            {" · "}
+            <Link href="/privacy" className="hover:underline">Privacy</Link>
+          </p>
         </CardContent>
       </Card>
     </main>

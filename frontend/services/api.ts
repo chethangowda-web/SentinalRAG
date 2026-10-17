@@ -51,7 +51,8 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401) {
       clearStoredToken();
-      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/register")) {
+      const publicPages = ["/login", "/register", "/forgot-password", "/reset-password", "/terms", "/privacy"];
+      if (typeof window !== "undefined" && !publicPages.some((p) => window.location.pathname.startsWith(p))) {
         window.location.href = "/login";
       }
     }
