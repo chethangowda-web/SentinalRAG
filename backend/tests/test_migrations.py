@@ -18,7 +18,7 @@ PG_URL = os.environ.get("MIGRATION_TEST_DATABASE_URL")
 
 pytestmark = pytest.mark.skipif(not PG_URL, reason="MIGRATION_TEST_DATABASE_URL not set")
 
-HEAD = "004"
+HEAD = "005"
 
 
 @asynccontextmanager
