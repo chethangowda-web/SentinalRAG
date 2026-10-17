@@ -13,6 +13,10 @@ export interface EvalStatusResponse {
   progress: number;
   total: number;
   error: string | null;
+  /** Which part of the workflow is running: questions, scoring or report */
+  stage?: string | null;
+  /** One entry per question with the state of each pipeline, while a run is in flight */
+  steps?: import("@/components/evaluation/EvaluationWorkflow").WorkflowStep[] | null;
 }
 
 export interface BenchmarkStatus {
@@ -38,8 +42,9 @@ export async function setupBenchmark(): Promise<BenchmarkStatus> {
   return data;
 }
 
-export async function runEvaluation(): Promise<EvalTaskResponse> {
-  const { data } = await api.post<EvalTaskResponse>("/api/v1/evaluate");
+/** The quick set by default (about a minute); `full` runs every benchmark question. */
+export async function runEvaluation(full = false): Promise<EvalTaskResponse> {
+  const { data } = await api.post<EvalTaskResponse>("/api/v1/evaluate", null, { params: full ? { full: true } : undefined });
   return data;
 }
 

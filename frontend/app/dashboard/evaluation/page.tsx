@@ -44,6 +44,7 @@ import {
   Eye,
   Database,
 } from "lucide-react";
+import { EvaluationWorkflow } from "@/components/evaluation/EvaluationWorkflow";
 import { BehaviourChecks, FallbackNotice, MetricsTable, PerQuestionList } from "@/components/evaluation/ReportSections";
 
 function CircularProgress({ value, size = 140, strokeWidth = 10 }: { value: number; size?: number; strokeWidth?: number }) {
@@ -199,14 +200,14 @@ export default function EvaluationPage() {
     }
   }, [docIdFromUrl]);
 
-  const handleRun = async () => {
+  const handleRun = async (full = false) => {
     try {
       if (!benchmarkReady) {
         await setupBenchmark.mutateAsync();
         toast.success("Loading the benchmark documents...");
         return;
       }
-      await runEval.mutateAsync();
+      await runEval.mutateAsync(full);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Evaluation failed to start");
     }
@@ -216,7 +217,9 @@ export default function EvaluationPage() {
   const serverRun = latest.data?.run;
   const isRunning = runEval.evalStatus?.status === "running" || serverRun?.status === "running";
   const runProgress = runEval.evalStatus?.progress ?? serverRun?.progress ?? 0;
-  const runTotal = runEval.evalStatus?.total ?? serverRun?.total ?? 18;
+  const runTotal = runEval.evalStatus?.total ?? serverRun?.total ?? 9;
+  const runSteps = runEval.evalStatus?.steps ?? serverRun?.steps;
+  const runStage = runEval.evalStatus?.stage ?? serverRun?.stage;
   const runError = runEval.evalStatus?.error ?? (serverRun?.status === "failed" ? serverRun.error ?? "The last run did not finish" : null);
 
   const summary = report?.summary;
@@ -272,15 +275,14 @@ export default function EvaluationPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Evaluation Report</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Puts a plain RAG baseline and the self-correcting pipeline through the same 18 questions over six sample policy documents, including questions that should be refused, clarified or flagged as conflicting.
+              Puts a plain RAG baseline and the self-correcting pipeline through the same short set of questions over six sample policy documents, including questions that should be refused, clarified or flagged as conflicting.
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {isRunning && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="tabular-nums">Evaluating {runProgress}/{runTotal}</span>
-              </div>
+            {benchmarkReady && !isRunning && !benchmarkLoading && (
+              <Button variant="outline" size="sm" onClick={() => handleRun(true)} disabled={runEval.isPending} title="Runs all 18 benchmark questions; takes a few minutes">
+                Run all 18 questions
+              </Button>
             )}
             {runError && (
               <span className="text-sm text-destructive">Failed: {runError}</span>
@@ -291,7 +293,7 @@ export default function EvaluationPage() {
                 Export
               </Button>
             )}
-            <Button onClick={handleRun} disabled={runEval.isPending || isRunning || benchmarkLoading}>
+            <Button onClick={() => handleRun()} disabled={runEval.isPending || isRunning || benchmarkLoading}>
               {isRunning || benchmarkLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
               {isRunning ? "Running..." : benchmarkLoading ? "Loading documents..." : benchmarkReady ? "Run Evaluation" : "Load benchmark documents"}
             </Button>
@@ -301,23 +303,7 @@ export default function EvaluationPage() {
         {reportLoading ? (
           <LoadingSkeleton type="card" count={4} />
         ) : isRunning ? (
-          <div className="flex flex-col items-center py-16 text-center">
-            <div className="relative mb-6">
-              <Loader2 className="h-16 w-16 text-primary animate-spin" />
-            </div>
-            <h3 className="text-lg font-semibold">Evaluation in Progress</h3>
-            <p className="text-sm text-muted-foreground mt-1 max-w-md">
-              Testing your RAG pipeline against {runTotal} benchmark questions to measure accuracy, faithfulness, and retrieval quality.
-            </p>
-            <div className="w-full max-w-md mt-6 space-y-2">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Progress</span>
-                <span className="tabular-nums">{runProgress}/{runTotal}</span>
-              </div>
-              <Progress value={(runProgress / Math.max(runTotal, 1)) * 100} className="h-2.5" />
-            </div>
-            <p className="text-xs text-muted-foreground mt-4">This typically takes 1-2 minutes</p>
-          </div>
+          <EvaluationWorkflow steps={runSteps} stage={runStage} total={runTotal} done={runProgress} />
         ) : report && s ? (
           <>
             <p className="text-xs text-muted-foreground">
@@ -353,7 +339,7 @@ export default function EvaluationPage() {
             }
             action={
               <div className="flex flex-col items-center gap-3">
-                <Button onClick={handleRun} disabled={runEval.isPending || benchmarkLoading} size="lg" className="gap-2">
+                <Button onClick={() => handleRun()} disabled={runEval.isPending || benchmarkLoading} size="lg" className="gap-2">
                   {runEval.isPending || benchmarkLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                   {benchmarkReady ? "Run Evaluation" : benchmarkLoading ? "Loading documents..." : "Load benchmark documents"}
                 </Button>

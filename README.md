@@ -54,7 +54,7 @@ Identifies numerical conflicts (same figure cited in different contexts) and pol
 Detects ambiguous queries using regex patterns and optional LLM-based analysis. When ambiguity is detected, the system asks clarifying questions instead of guessing.
 
 ### Evaluation Framework
-Built-in benchmark suite with 18 questions across 7 categories (easy, medium, hard, contradictory, missing context, ambiguous, OCR). Measures faithfulness, hallucination rate, answer relevancy, context precision, context recall, and correctness.
+Built-in benchmark suite with 18 questions across 7 categories (the Evaluation page runs a quick 9-question set by default, in about a minute, with a live workflow view; "Run all 18" runs everything) (easy, medium, hard, contradictory, missing context, ambiguous, OCR). Measures faithfulness, hallucination rate, answer relevancy, context precision, context recall, and correctness.
 
 ### Explainability
 Every answer includes a confidence score, latency breakdown across all pipeline stages, reasoning path visualization, and source citations with chunk-level references.

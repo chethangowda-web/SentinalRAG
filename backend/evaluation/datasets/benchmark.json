@@ -8,7 +8,7 @@
     "has_contradiction": false,
     "needs_clarification": false,
     "has_context": true,
-    "tags": ["uptime", "sla"]
+    "tags": ["uptime", "sla", "quick"]
   },
   {
     "id": "2",
@@ -63,7 +63,7 @@
     "has_contradiction": false,
     "needs_clarification": false,
     "has_context": true,
-    "tags": ["refund", "exclusions"]
+    "tags": ["refund", "exclusions", "quick"]
   },
   {
     "id": "7",
@@ -118,7 +118,7 @@
     "has_contradiction": false,
     "needs_clarification": false,
     "has_context": true,
-    "tags": ["refund", "annual", "multi-step"]
+    "tags": ["refund", "annual", "multi-step", "quick"]
   },
   {
     "id": "12",
@@ -129,7 +129,7 @@
     "has_contradiction": true,
     "needs_clarification": false,
     "has_context": true,
-    "tags": ["uptime", "conflict"]
+    "tags": ["uptime", "conflict", "quick"]
   },
   {
     "id": "13",
@@ -140,7 +140,7 @@
     "has_contradiction": true,
     "needs_clarification": false,
     "has_context": true,
-    "tags": ["retention", "conflict"]
+    "tags": ["retention", "conflict", "quick"]
   },
   {
     "id": "14",
@@ -151,7 +151,7 @@
     "has_contradiction": false,
     "needs_clarification": false,
     "has_context": false,
-    "tags": ["out-of-scope"]
+    "tags": ["out-of-scope", "quick"]
   },
   {
     "id": "15",
@@ -173,7 +173,7 @@
     "has_contradiction": false,
     "needs_clarification": false,
     "has_context": false,
-    "tags": ["out-of-scope", "pricing"]
+    "tags": ["out-of-scope", "pricing", "quick"]
   },
   {
     "id": "17",
@@ -184,7 +184,7 @@
     "has_contradiction": false,
     "needs_clarification": true,
     "has_context": true,
-    "tags": ["vague"]
+    "tags": ["vague", "quick"]
   },
   {
     "id": "18",
@@ -195,6 +195,6 @@
     "has_contradiction": false,
     "needs_clarification": true,
     "has_context": true,
-    "tags": ["vague"]
+    "tags": ["vague", "quick"]
   }
 ]
