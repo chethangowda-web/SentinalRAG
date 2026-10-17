@@ -90,29 +90,8 @@ def pct(value: float | None) -> str:
     return "n/a" if value is None else f"{value * 100:.1f}%"
 
 
-REFUSAL_MARKERS = ("don't have enough", "do not have enough", "no relevant information")
-CONFLICT_MARKERS = ("contradict", "conflict", "differ", "depends on", "disagree")
-FALLBACK_MARKER = "Based on the retrieved documents (source:"
-
-
-def behaviour_checks(report: dict) -> list[tuple[str, dict[str, tuple[int, int]]]]:
-    """Pass/total per pipeline for what each question category is supposed to produce."""
-
-    def answered(r: dict) -> bool:
-        a = (r.get("answer") or "")
-        return bool(a) and not a.startswith(FALLBACK_MARKER) and not any(m in a.lower() for m in REFUSAL_MARKERS)
-
-    checks = {
-        "Specific questions answered (easy, medium, hard)": (("easy", "medium", "hard"), answered),
-        "Unanswerable questions refused (missing context)": (("missing_context",), lambda r: any(m in (r.get("answer") or "").lower() for m in REFUSAL_MARKERS)),
-        "Conflicting sources surfaced (contradictory)": (("contradictory",), lambda r: any(m in (r.get("answer") or "").lower() for m in CONFLICT_MARKERS)),
-        "Vague questions clarified (ambiguous)": (("ambiguous",), lambda r: bool(r.get("clarification_needed"))),
-    }
-    out = []
-    for label, (cats, ok) in checks.items():
-        rows = [pq for pq in report["per_question"] if pq["category"] in cats]
-        out.append((label, {p: (sum(1 for pq in rows if ok(pq[p])), len(rows)) for p in ("baseline", "sentinel")}))
-    return out
+sys.path.insert(0, str(ROOT / "backend"))
+from evaluation.behaviour import behaviour_checks  # noqa: E402
 
 
 def render(report: dict, base_url: str, model: str) -> str:
@@ -133,7 +112,7 @@ def render(report: dict, base_url: str, model: str) -> str:
         "",
         "| Check | Baseline | SentinelRAG |",
         "|---|---|---|",
-        *[f"| {label} | {r['baseline'][0]}/{r['baseline'][1]} | {r['sentinel'][0]}/{r['sentinel'][1]} |" for label, r in behaviour_checks(report)],
+        *[f"| {c['label']} | {c['baseline']}/{c['total']} | {c['sentinel']}/{c['total']} |" for c in behaviour_checks(report)],
         "",
         "## Keyword metrics",
         "",

@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, DateTime, ForeignKey, String, func
+from sqlalchemy import Column, DateTime, ForeignKey, String, Text, func
 
 from app.core.database import Base
 
@@ -13,3 +13,5 @@ class EvaluationRun(Base):
     user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
     status = Column(String(20), default="running")
     created_at = Column(DateTime, server_default=func.now())
+    # The finished report as JSON. The result file in the container is lost on every deploy; this is not.
+    result_json = Column(Text, nullable=True)

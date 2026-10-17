@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { USER, chatResult, signedIn, sse } from "./mock-api";
+import { USER, chatResult, signedIn, sse, withEvaluationReport } from "./mock-api";
 
 async function expectNoA11yViolations(page: Page) {
   const { violations } = await new AxeBuilder({ page }).analyze();
@@ -121,3 +121,18 @@ test("a question typed on the dashboard is asked in the chat; source markers bec
   await page.getByRole("button", { name: "Open source 1" }).click();
   await expect(page.getByText("Refunds within 30 days.").first()).toBeVisible();
 });
+
+for (const theme of ["light", "dark"] as const) {
+  test(`the evaluation report shows behaviour, scores and every question (${theme})`, async ({ page }) => {
+    await withEvaluationReport(page, theme);
+    await page.goto("/dashboard/evaluation/");
+    await expect(page.getByRole("heading", { name: "Does it behave correctly?" })).toBeVisible();
+    await expect(page.getByText("Same as plain RAG").first()).toBeVisible();
+    await expect(page.getByText("1 more than plain RAG").first()).toBeVisible();
+    await expect(page.getByRole("note")).toContainText("raw retrieved text"); // the fallback answer in question 2
+    await expect(page.getByRole("row", { name: /Faithfulness/ })).toContainText("81.0%");
+    await page.getByRole("button", { name: /What is the deadline\?/ }).click();
+    await expect(page.getByText("Which deadline do you mean?")).toBeVisible();
+    await expectNoA11yViolations(page);
+  });
+}

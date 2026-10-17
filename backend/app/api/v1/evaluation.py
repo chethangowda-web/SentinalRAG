@@ -20,6 +20,7 @@ from app.models.user import User
 from app.services.benchmark_service import benchmark_status, start_loading
 from app.services.document_evaluation_service import evaluate_document
 from app.services.llm import llm_status
+from evaluation.behaviour import behaviour_checks
 from evaluation.dataset import load_dataset, get_dataset_summary
 from evaluation.reports.report_generator import ReportGenerator
 from evaluation.reports.visualizer import Visualizer
@@ -75,22 +76,44 @@ async def recover_interrupted_runs(db: AsyncSession) -> int:
     running = (await db.execute(select(EvaluationRun).where(EvaluationRun.status == "running"))).scalars().all()
     for run in running:
         # Runs from before status was recorded finished fine if their result file exists
-        run.status = "completed" if _report_gen.load_result(run.evaluation_id) is not None else "failed"
+        run.status = "completed" if run.result_json or _report_gen.load_result(run.evaluation_id) is not None else "failed"
     await db.commit()
     return len(running)
 
 
 async def _latest_report_for(db: AsyncSession, user_id: str) -> dict[str, Any] | None:
     runs = await db.execute(
-        select(EvaluationRun.evaluation_id)
-        .where(EvaluationRun.user_id == user_id)  # a result file exists only for runs that finished
+        select(EvaluationRun.evaluation_id, EvaluationRun.result_json)
+        .where(EvaluationRun.user_id == user_id)  # a result exists only for runs that finished
         .order_by(EvaluationRun.created_at.desc())
     )
-    for (evaluation_id,) in runs.all():
-        result = _report_gen.load_result(evaluation_id)
+    for evaluation_id, result_json in runs.all():
+        result = _parse_result(result_json) or _report_gen.load_result(evaluation_id)
         if result is not None:
+            result["behaviour"] = behaviour_checks(result)
             return result
     return None
+
+
+def _parse_result(result_json: str | None) -> dict[str, Any] | None:
+    if not result_json:
+        return None
+    try:
+        return json.loads(result_json)
+    except (TypeError, ValueError):
+        logger.warning("Stored evaluation result is not valid JSON")
+        return None
+
+
+async def _store_result(eval_id: str, result: dict[str, Any]) -> None:
+    try:
+        async with get_session_maker()() as db:
+            await db.execute(
+                update(EvaluationRun).where(EvaluationRun.evaluation_id == eval_id).values(result_json=json.dumps(result, default=str))
+            )
+            await db.commit()
+    except Exception:
+        logger.exception("Could not store the result of evaluation %s", eval_id)
 
 
 async def _run_evaluation_background(eval_id: str, dataset_path: str, total: int, user_id: str | None = None) -> None:
@@ -113,6 +136,7 @@ async def _run_evaluation_background(eval_id: str, dataset_path: str, total: int
         )
         result["visualizations"] = visualizations
 
+        await _store_result(eval_id, result)
         await _set_run_status(eval_id, "completed")
         tasks = _load_tasks()
         tasks[eval_id] = {
@@ -259,8 +283,27 @@ async def get_evaluation_history(
     )
     runs = result.all()
     user_eval_ids = {r.evaluation_id for r in runs}
-    history = _report_gen.load_history()
-    return [h for h in history if h.get("evaluation_id") in user_eval_ids]
+    history = [h for h in _report_gen.load_history() if h.get("evaluation_id") in user_eval_ids]
+    known = {h.get("evaluation_id") for h in history}
+
+    # Runs whose history file entry was lost with the container: rebuild them from the stored result
+    stored = await db.execute(
+        select(EvaluationRun.evaluation_id, EvaluationRun.created_at, EvaluationRun.result_json)
+        .where(EvaluationRun.user_id == current_user.id, EvaluationRun.result_json.is_not(None))
+        .order_by(EvaluationRun.created_at.desc())
+        .limit(20)
+    )
+    for evaluation_id, created_at, result_json in stored.all():
+        if evaluation_id in known:
+            continue
+        parsed = _parse_result(result_json) or {}
+        history.append({
+            "evaluation_id": evaluation_id,
+            "timestamp": parsed.get("timestamp") or (created_at.isoformat() if created_at else None),
+            "total_questions": parsed.get("total_questions"),
+            "dataset": parsed.get("dataset") or "benchmark",
+        })
+    return sorted(history, key=lambda h: h.get("timestamp") or "", reverse=True)
 
 
 @router.post("/evaluate/document/{document_id}")

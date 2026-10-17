@@ -281,7 +281,16 @@ export interface PipelineResult {
   retry_count: number;
 }
 
+export interface BehaviourCheck {
+  label: string;
+  description: string;
+  total: number;
+  baseline: number;
+  sentinel: number;
+}
+
 export interface EvaluationResult {
+  behaviour?: BehaviourCheck[];
   evaluation_id: string;
   timestamp: string;
   dataset: string;

@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { useEvaluationReport, useEvaluationHistory, useRunEvaluation, useEvaluationLatest, useSetupBenchmark } from "@/hooks/use-evaluation";
-import { useDocuments } from "@/hooks/use-documents";
 import { getDocumentEvaluation } from "@/services/evaluation";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
@@ -45,8 +44,7 @@ import {
   Eye,
   Database,
 } from "lucide-react";
-import { ConfidenceIndicator } from "@/components/shared/ConfidenceIndicator";
-import { ConfidenceBadge } from "@/components/shared/ConfidenceBadge";
+import { BehaviourChecks, FallbackNotice, MetricsTable, PerQuestionList } from "@/components/evaluation/ReportSections";
 
 function CircularProgress({ value, size = 140, strokeWidth = 10 }: { value: number; size?: number; strokeWidth?: number }) {
   const radius = (size - strokeWidth) / 2;
@@ -179,7 +177,6 @@ export default function EvaluationPage() {
 
   const { data: report, isLoading: reportLoading } = useEvaluationReport();
   const { data: history, isLoading: historyLoading } = useEvaluationHistory();
-  const { data: documents } = useDocuments();
   const runEval = useRunEvaluation();
   const latest = useEvaluationLatest();
   const setupBenchmark = useSetupBenchmark();
@@ -224,25 +221,9 @@ export default function EvaluationPage() {
 
   const summary = report?.summary;
   const s = summary?.sentinel;
-  const c = summary?.comparison;
 
-  const faithfulness = s?.avg_faithfulness?.value;
-  const correctness = s?.avg_correctness?.value;
-  const relevancy = s?.avg_answer_relevancy?.value;
-  const recall = s?.avg_context_recall?.value;
-  const precision = s?.avg_context_precision?.value;
-  const retrySuccess = s?.retry_success_rate?.value;
 
-  const allValues = [faithfulness, correctness, relevancy, recall, precision].filter((v): v is number => v != null);
-  const overallScore = allValues.length > 0 ? (allValues.reduce((a, b) => a + b, 0) / allValues.length) * 100 : 0;
-  const hallucinationRisk = faithfulness != null ? (1 - faithfulness) * 100 : null;
-  const retrievalAccuracy = recall != null && precision != null ? ((recall + precision) / 2) * 100 : null;
-  const avgConfidence = allValues.length > 0 ? (allValues.reduce((a, b) => a + b, 0) / allValues.length) * 100 : null;
-  const selfCorrectionRate = retrySuccess != null ? (1 - retrySuccess) * 100 : null;
 
-  const totalChunks = documents?.reduce((sum, d) => sum + (d.chunk_count || 0), 0) ?? null;
-  const totalPages = documents?.reduce((sum, d) => sum + (d.pages || 0), 0) ?? null;
-  const totalDocs = documents?.length ?? 0;
 
   const docEvalOverall = docEval?.overall_score != null ? docEval.overall_score * 100 : null;
 
@@ -291,7 +272,7 @@ export default function EvaluationPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Evaluation Report</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Compares a plain RAG baseline with the self-correcting pipeline on an 18-question benchmark over six sample policy documents. Scores are keyword-overlap estimates, best read as relative signals.
+              Puts a plain RAG baseline and the self-correcting pipeline through the same 18 questions over six sample policy documents, including questions that should be refused, clarified or flagged as conflicting.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -337,125 +318,29 @@ export default function EvaluationPage() {
             </div>
             <p className="text-xs text-muted-foreground mt-4">This typically takes 1-2 minutes</p>
           </div>
-        ) : s ? (
+        ) : report && s ? (
           <>
-            <div className="grid gap-6 lg:grid-cols-[auto_1fr]">
-              <Card className="lg:w-[180px]">
-                <CardContent className="flex flex-col items-center justify-center pt-6 pb-6">
-                  <CircularProgress value={overallScore} size={150} strokeWidth={12} />
-                  <p className="text-xs text-muted-foreground mt-3 font-medium">Overall Knowledge Score</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{totalDocs} document{totalDocs !== 1 ? "s" : ""} analyzed</p>
-                </CardContent>
-              </Card>
+            <p className="text-xs text-muted-foreground">
+              Last run {report.timestamp ? new Date(report.timestamp).toLocaleString() : "recently"} · {report.total_questions} questions · six sample policy documents
+            </p>
+            <BehaviourChecks checks={report.behaviour ?? []} />
+            <FallbackNotice questions={report.per_question ?? []} />
+            <MetricsTable summary={report.summary} />
+            <PerQuestionList questions={report.per_question ?? []} />
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <KnowledgeCard label="OCR Quality" value={faithfulness != null ? `${(faithfulness * 100).toFixed(0)}%` : "N/A"} icon={Scan} color="hsl(var(--chart-1))" subtitle="Text extraction quality" />
-                <KnowledgeCard label="Retrieval Accuracy" value={retrievalAccuracy != null ? `${retrievalAccuracy.toFixed(1)}%` : "N/A"} icon={Target} color="hsl(var(--chart-2))" subtitle="Recall & precision avg" />
-                <KnowledgeCard label="Chunk Coverage" value={recall != null ? `${(recall * 100).toFixed(0)}%` : "N/A"} icon={Layers} color="hsl(var(--chart-3))" subtitle="Context recall rate" />
-                <KnowledgeCard label="Embedding Status" value={totalChunks != null ? `${totalChunks} chunks` : "N/A"} icon={Zap} color="hsl(var(--chart-4))" subtitle={totalDocs > 0 ? `${totalDocs} docs embedded` : "No documents"} />
-                <KnowledgeCard label="Hallucination Risk" value={hallucinationRisk != null ? `${hallucinationRisk.toFixed(1)}%` : "N/A"} icon={AlertTriangle} color={hallucinationRisk != null && hallucinationRisk > 15 ? "hsl(var(--confidence-low))" : "hsl(var(--confidence-high))"} subtitle="Lower is better" />
-                <KnowledgeCard label="Average Confidence" value={avgConfidence != null ? `${avgConfidence.toFixed(1)}%` : "N/A"} icon={Shield} color={avgConfidence != null && avgConfidence >= 70 ? "hsl(var(--confidence-high))" : "hsl(var(--confidence-medium))"} subtitle="Across all metrics" />
-                <KnowledgeCard label="Self-Corrections" value={selfCorrectionRate != null ? `${selfCorrectionRate.toFixed(0)}%` : "N/A"} icon={RefreshCw} color="hsl(var(--chart-1))" subtitle="Query rewrite rate" />
-                <KnowledgeCard label="Processing Time" value={report?.total_questions != null ? `${report.total_questions} questions` : "N/A"} icon={Clock} color="hsl(var(--chart-2))" subtitle="Evaluation dataset size" />
-                <KnowledgeCard label="Total Chunks" value={totalChunks?.toLocaleString() ?? "N/A"} icon={BookOpen} color="hsl(var(--chart-3))" subtitle="Indexed knowledge pieces" />
-                <KnowledgeCard label="Total Pages" value={totalPages?.toLocaleString() ?? "N/A"} icon={FileText} color="hsl(var(--chart-4))" subtitle="Across all documents" />
-              </div>
-            </div>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <BarChart3 className="h-4 w-4 text-primary" />
-                  Quality Metrics Breakdown
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <MetricBar value={faithfulness != null ? faithfulness * 100 : 0} label="Faithfulness" icon={Shield} color="hsl(var(--success))" />
-                <MetricBar value={correctness != null ? correctness * 100 : 0} label="Correctness" icon={CheckCircle2} color="hsl(var(--chart-1))" />
-                <MetricBar value={relevancy != null ? relevancy * 100 : 0} label="Answer Relevancy" icon={Target} color="hsl(var(--chart-2))" />
-                <MetricBar value={recall != null ? recall * 100 : 0} label="Context Recall" icon={BookOpen} color="hsl(var(--chart-3))" />
-                <MetricBar value={precision != null ? precision * 100 : 0} label="Context Precision" icon={Gauge} color="hsl(var(--chart-4))" />
-                <Separator />
-                <MetricBar value={retrySuccess != null ? (1 - retrySuccess) * 100 : 0} label="Retry Rate" icon={RefreshCw} color="hsl(var(--warning))" />
-              </CardContent>
-            </Card>
-
-            <Tabs defaultValue="comparison" className="mt-2">
-              <TabsList>
-                <TabsTrigger value="comparison" disabled={!c}>
-                  <TrendingUp className="mr-2 h-4 w-4" />
-                  vs Baseline
-                </TabsTrigger>
-                <TabsTrigger value="history" disabled={historyLoading}>
-                  <History className="mr-2 h-4 w-4" />
-                  History
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="comparison" className="mt-6">
-                {c ? (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <TrendingUp className="h-4 w-4 text-primary" />
-                        Comparison vs Baseline
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {Object.entries(c).map(([key, val]) => {
-                          const v = val as { baseline?: number; sentinel?: number; absolute_change?: number; relative_change_pct?: number; improved?: boolean };
-                          const label = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-                          return (
-                            <div key={key} className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-secondary/30 transition-colors">
-                              <span className="text-sm font-medium">{label}</span>
-                              <div className="flex items-center gap-3">
-                                <span className="text-xs text-muted-foreground">Baseline: {v.baseline != null ? `${(v.baseline * 100).toFixed(1)}%` : "--"}</span>
-                                <Badge variant={v.improved ? "success" : "destructive"} className="text-[10px] px-1.5 py-0">
-                                  {v.improved ? "▲" : "▼"} {v.absolute_change != null ? `${(Math.abs(v.absolute_change) * 100).toFixed(1)}%` : "--"}
-                                </Badge>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <EmptyState icon={TrendingUp} title="No Comparison Data" description="Run an evaluation with a baseline to see comparisons." />
-                )}
-              </TabsContent>
-
-              <TabsContent value="history" className="mt-6">
-                {historyLoading ? (
-                  <LoadingSkeleton type="table" count={3} />
-                ) : history && history.length > 0 ? (
-                  <div className="space-y-2">
-                    {history.map((item, i) => (
-                      <div key={item.evaluation_id ?? i} className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-secondary/30">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-                            <BarChart3 className="h-4 w-4 text-primary" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium">Evaluation Run #{i + 1}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {item.timestamp ? new Date(item.timestamp).toLocaleString() : "Unknown date"}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1 rounded-md border border-border/60 px-1.5 py-0.5 text-[10px] font-system-mono tabular-nums text-muted-foreground">{item.total_questions ?? "?"} questions</span>
-                          <Badge variant="outline" className="text-[10px]">{item.dataset ?? "benchmark"}</Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyState icon={History} title="No Evaluation History" description="Run an evaluation to see history here." />
-                )}
-              </TabsContent>
-            </Tabs>
+            {history && history.length > 1 && (
+              <section aria-labelledby="history-heading" className="space-y-3">
+                <h2 id="history-heading" className="text-base font-semibold">Earlier runs</h2>
+                <ul className="space-y-2">
+                  {history.map((item, i) => (
+                    <li key={item.evaluation_id ?? i} className="flex items-center justify-between rounded-lg border p-3 text-sm">
+                      <span>{item.timestamp ? new Date(item.timestamp).toLocaleString() : "Unknown date"}</span>
+                      <span className="text-xs text-muted-foreground">{item.total_questions ?? "?"} questions</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
           </>
         ) : (
           <EmptyState
