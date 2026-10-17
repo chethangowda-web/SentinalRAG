@@ -64,7 +64,7 @@ export function useRunEvaluation() {
   }, [queryClient]);
 
   const mutation = useMutation({
-    mutationFn: runEvaluation,
+    mutationFn: (full: boolean = false) => runEvaluation(full),
     onSuccess: (data) => {
       setStatus({ evaluation_id: data.evaluation_id, status: "running", progress: 0, total: data.total_questions, error: null });
       queryClient.invalidateQueries({ queryKey: ["evaluation-latest"] });

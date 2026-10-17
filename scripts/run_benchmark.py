@@ -59,7 +59,7 @@ def upload_corpus(client: httpx.Client) -> None:
 
 
 def run_evaluation(client: httpx.Client, timeout_s: int) -> dict:
-    started = client.post("/api/v1/evaluate")
+    started = client.post("/api/v1/evaluate", params={"full": "true"})  # all 18 questions; the app defaults to a quick 9
     started.raise_for_status()
     eval_id = started.json()["evaluation_id"]
     log(f"evaluation {eval_id} started ({started.json()['total_questions']} questions)")

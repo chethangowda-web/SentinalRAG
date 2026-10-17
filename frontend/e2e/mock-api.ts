@@ -157,3 +157,19 @@ export async function withEvaluationReport(page: Page, theme: "light" | "dark" =
   );
   await page.route("**/api/v1/evaluation/history", (route) => json(route, [{ evaluation_id: "run-1", timestamp: "2026-10-17T10:00:00Z", total_questions: 3, dataset: "benchmark" }]));
 }
+
+/** Signed in, with an evaluation in flight: some questions done, some running, some waiting. */
+export async function withRunningEvaluation(page: Page, theme: "light" | "dark" = "light") {
+  await signedIn(page, theme);
+  const lane = (s: string) => s;
+  const steps = [
+    { id: "1", question: "What is the minimum uptime requirement for network services?", category: "easy", state: "done", baseline: lane("done"), sentinel: lane("done") },
+    { id: "6", question: "Which items cannot be refunded?", category: "medium", state: "running", baseline: lane("done"), sentinel: lane("running") },
+    { id: "12", question: "One document states the uptime guarantee is 99.9% while another says 99.99%. Which is right?", category: "contradictory", state: "running", baseline: lane("running"), sentinel: lane("running") },
+    { id: "14", question: "What is the policy on 5G standalone roaming in Europe?", category: "missing_context", state: "waiting", baseline: lane("waiting"), sentinel: lane("waiting") },
+    { id: "17", question: "Tell me about the network", category: "ambiguous", state: "waiting", baseline: lane("waiting"), sentinel: lane("waiting") },
+  ];
+  await page.route("**/api/v1/evaluation/latest", (route) =>
+    json(route, { report: null, run: { evaluation_id: "run-2", status: "running", progress: 1, total: 5, error: null, stage: "questions", steps }, benchmark: { ready: true, loading: false, documents: [] } })
+  );
+}

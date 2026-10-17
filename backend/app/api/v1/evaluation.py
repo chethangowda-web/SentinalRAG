@@ -116,16 +116,25 @@ async def _store_result(eval_id: str, result: dict[str, Any]) -> None:
         logger.exception("Could not store the result of evaluation %s", eval_id)
 
 
-async def _run_evaluation_background(eval_id: str, dataset_path: str, total: int, user_id: str | None = None) -> None:
+async def _run_evaluation_background(
+    eval_id: str,
+    dataset_path: str,
+    total: int,
+    user_id: str | None = None,
+    questions: list[dict[str, Any]] | None = None,
+) -> None:
     tasks = _load_tasks()
-    tasks[eval_id] = {"status": "running", "progress": 0, "total": total, "error": None}
+    tasks[eval_id] = {"status": "running", "progress": 0, "total": total, "error": None, "stage": "questions"}
     _save_tasks(tasks)
 
     session_maker = get_session_maker()
     try:
         async with session_maker() as db:
-            result = await _runner.run(db=db, dataset_path=dataset_path, eval_id=eval_id, user_id=user_id)
+            result = await _runner.run(db=db, dataset_path=dataset_path, eval_id=eval_id, user_id=user_id, questions=questions)
 
+        tasks = _load_tasks()
+        tasks[eval_id] = {**tasks.get(eval_id, {}), "stage": "report"}
+        _save_tasks(tasks)
         report_files = _report_gen.generate_all(result)
         result["reports"] = report_files
 
@@ -157,6 +166,7 @@ async def _run_evaluation_background(eval_id: str, dataset_path: str, total: int
 
 @router.post("/evaluate")
 async def run_evaluation(
+    full: bool = False,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -184,13 +194,17 @@ async def run_evaluation(
 
     eval_id = str(uuid.uuid4())
     dataset_path = str(Path(__file__).resolve().parent.parent.parent.parent / "evaluation" / "datasets" / "benchmark.json")
-    total_questions = _count_questions(dataset_path)
+    # The quick set (one or two questions per kind) finishes in about a minute; `full` runs all of them
+    questions = load_dataset(dataset_path)
+    if not full:
+        questions = [q for q in questions if "quick" in q.get("tags", [])] or questions
+    total_questions = len(questions)
 
     run = EvaluationRun(evaluation_id=eval_id, user_id=current_user.id, status="running")
     db.add(run)
     await db.commit()
 
-    task = asyncio.create_task(_run_evaluation_background(eval_id, dataset_path, total_questions, current_user.id))
+    task = asyncio.create_task(_run_evaluation_background(eval_id, dataset_path, total_questions, current_user.id, questions))
     _eval_tasks.add(task)
     task.add_done_callback(_eval_tasks.discard)
 
@@ -224,6 +238,8 @@ async def get_latest_evaluation_state(
             "progress": task.get("progress", 0) if running else task.get("total", 0),
             "total": task.get("total", 18),
             "error": task.get("error"),
+            "stage": task.get("stage") if running else None,
+            "steps": task.get("steps") if running else None,
         }
 
     return {

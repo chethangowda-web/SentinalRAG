@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { USER, chatResult, signedIn, sse, withEvaluationReport } from "./mock-api";
+import { USER, chatResult, signedIn, sse, withEvaluationReport, withRunningEvaluation } from "./mock-api";
 
 async function expectNoA11yViolations(page: Page) {
   const { violations } = await new AxeBuilder({ page }).analyze();
@@ -133,6 +133,19 @@ for (const theme of ["light", "dark"] as const) {
     await expect(page.getByRole("row", { name: /Faithfulness/ })).toContainText("81.0%");
     await page.getByRole("button", { name: /What is the deadline\?/ }).click();
     await expect(page.getByText("Which deadline do you mean?")).toBeVisible();
+    await expectNoA11yViolations(page);
+  });
+}
+
+for (const theme of ["light", "dark"] as const) {
+  test(`a running evaluation is shown as a workflow with a lane per pipeline (${theme})`, async ({ page }) => {
+    await withRunningEvaluation(page, theme);
+    await page.goto("/dashboard/evaluation/");
+    await expect(page.getByRole("heading", { name: "Evaluation in progress" })).toBeVisible();
+    await expect(page.getByText("1 of 5 answered by both pipelines")).toBeVisible();
+    await expect(page.getByText("Score the answers")).toBeVisible();
+    await expect(page.getByText("Which items cannot be refunded?")).toBeVisible();
+    await expect(page.getByText("SentinelRAG: working").first()).toBeAttached();
     await expectNoA11yViolations(page);
   });
 }

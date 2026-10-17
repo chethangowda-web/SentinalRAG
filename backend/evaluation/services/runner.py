@@ -27,7 +27,20 @@ REPORTS_DIR = EVALUATION_DIR / "reports"
 _STATUS_FILE = Path("/tmp/eval_tasks.json")
 
 
-def _update_status(eval_id: str, progress: int, total: int, status: str = "running", error: str | None = None) -> None:
+# Questions answered at the same time. Each runs both pipelines side by side, and the LLM client
+# still caps simultaneous model calls (LLM_MAX_CONCURRENCY), so this only fills the idle gaps.
+QUESTION_CONCURRENCY = 3
+
+
+def _update_status(
+    eval_id: str,
+    progress: int,
+    total: int,
+    status: str = "running",
+    error: str | None = None,
+    steps: list[dict[str, Any]] | None = None,
+    stage: str | None = None,
+) -> None:
     tasks = {}
     if _STATUS_FILE.exists():
         try:
@@ -35,6 +48,10 @@ def _update_status(eval_id: str, progress: int, total: int, status: str = "runni
         except Exception:
             tasks = {}
     tasks[eval_id] = {"status": status, "progress": progress, "total": total, "error": error}
+    if steps is not None:
+        tasks[eval_id]["steps"] = steps
+    if stage is not None:
+        tasks[eval_id]["stage"] = stage
     _STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
     _STATUS_FILE.write_text(json.dumps(tasks, indent=2))
 
@@ -81,25 +98,53 @@ class EvaluationRunner:
                 dataset_path = str(DATASETS_DIR / "benchmark.json")
             questions = self._load_dataset(dataset_path)
             logger.info("Evaluation %s: loaded %d questions from %s", eval_id, len(questions), dataset_path)
-        _update_status(eval_id, 0, len(questions))
-
         from app.core.database import get_session_maker
         total = len(questions)
 
+        # What the evaluation page draws as a live workflow: one step per question, two lanes each
+        steps = [
+            {"id": q["id"], "question": q["question"], "category": q["category"],
+             "state": "waiting", "baseline": "waiting", "sentinel": "waiting"}
+            for q in questions
+        ]
+
+        def publish(stage: str = "questions") -> None:
+            _update_status(eval_id, sum(1 for s in steps if s["state"] == "done"), total, steps=steps, stage=stage)
+
+        publish()
+        gate = asyncio.Semaphore(QUESTION_CONCURRENCY)
+
         async def process_one(idx: int, q: dict[str, Any]) -> dict[str, Any] | None:
             bsm = get_session_maker()
-            async with bsm() as session:
+            async with gate, bsm() as baseline_session, bsm() as sentinel_session:
                 try:
                     qid = q["id"]
                     logger.info("Processing question %s/%s: %s", qid, total, q["question"][:60])
+                    steps[idx].update(state="running", baseline="running", sentinel="running")
+                    publish()
 
-                    b_result = await self.baseline.answer(q["question"], session, user_id=user_id)
-                    s_result = await self.sentinel.answer(q["question"], session, user_id=user_id)
+                    async def lane(name: str, pipeline: Any, session: AsyncSession) -> dict[str, Any]:
+                        try:
+                            result = await pipeline.answer(q["question"], session, user_id=user_id)
+                            steps[idx][name] = "done"
+                            return result
+                        except Exception:
+                            steps[idx][name] = "failed"
+                            raise
+                        finally:
+                            publish()
+
+                    # Both pipelines answer at once: they only read, so there is no reason to queue them
+                    b_result, s_result = await asyncio.gather(
+                        lane("baseline", self.baseline, baseline_session),
+                        lane("sentinel", self.sentinel, sentinel_session),
+                    )
 
                     b_result["question_id"] = qid
                     s_result["question_id"] = qid
 
-                    _update_status(eval_id, idx + 1, total)
+                    steps[idx]["state"] = "done"
+                    publish()
 
                     return {
                         "id": qid,
@@ -140,9 +185,11 @@ class EvaluationRunner:
                     }
                 except Exception as exc:
                     logger.error("Question %s failed: %s", q.get("id", "?"), exc)
+                    steps[idx]["state"] = "failed"
+                    publish()
                     return None
 
-        results = [await process_one(i, q) for i, q in enumerate(questions)]
+        results = list(await asyncio.gather(*[process_one(i, q) for i, q in enumerate(questions)]))
         per_question = [r for r in results if r is not None]
         # Drop failed questions from the question list too, so answers stay paired with their ground truth.
         questions = [q for q, r in zip(questions, results) if r is not None]
@@ -154,6 +201,7 @@ class EvaluationRunner:
         log_memory_usage("evaluation_metrics_start")
 
         logger.info("Computing metrics for %d questions...", len(questions))
+        publish("scoring")
 
         baseline_metrics = self._compute_metrics(questions, baseline_results)
         sentinel_metrics = self._compute_metrics(questions, sentinel_results)

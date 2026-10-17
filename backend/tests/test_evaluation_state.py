@@ -39,7 +39,7 @@ async def test_latest_reports_a_run_in_flight_so_a_reload_can_resume(async_clien
     await db_session.commit()
     with patch.object(eval_module, "_load_tasks", return_value={"run-1": {"progress": 7, "total": 18, "error": None}}):
         body = (await async_client.get("/api/v1/evaluation/latest")).json()
-    assert body["run"] == {"evaluation_id": "run-1", "status": "running", "progress": 7, "total": 18, "error": None}
+    assert body["run"] == {"evaluation_id": "run-1", "status": "running", "progress": 7, "total": 18, "error": None, "stage": None, "steps": None}
 
 
 @pytest.mark.asyncio
