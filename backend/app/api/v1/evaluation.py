@@ -89,7 +89,7 @@ async def _latest_report_for(db: AsyncSession, user_id: str) -> dict[str, Any] |
     )
     for evaluation_id, result_json in runs.all():
         result = _parse_result(result_json) or _report_gen.load_result(evaluation_id)
-        if result is not None:
+        if result is not None and result.get("per_question"):  # a run that answered nothing is not a report
             result["behaviour"] = behaviour_checks(result)
             return result
     return None

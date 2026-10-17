@@ -1,4 +1,5 @@
 import logging
+import threading
 import time
 
 logger = logging.getLogger(__name__)
@@ -6,9 +7,18 @@ logger = logging.getLogger(__name__)
 _model = None
 _model_name = None
 _RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+# One thread loads the model, the rest wait (concurrent loads corrupt each other)
+_load_lock = threading.Lock()
 
 
 def _load_reranker():
+    if _model is None or _model_name != _RERANKER_MODEL:
+        with _load_lock:
+            _load_reranker_locked()
+    return _model
+
+
+def _load_reranker_locked():
     global _model, _model_name
     if _model is None or _model_name != _RERANKER_MODEL:
         import torch

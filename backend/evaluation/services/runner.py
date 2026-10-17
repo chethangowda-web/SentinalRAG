@@ -191,6 +191,9 @@ class EvaluationRunner:
 
         results = list(await asyncio.gather(*[process_one(i, q) for i, q in enumerate(questions)]))
         per_question = [r for r in results if r is not None]
+        if not per_question:
+            # Scoring nothing would publish an empty "report" that looks like a result
+            raise RuntimeError("No question could be answered: the search models or the AI service were unavailable. Try again in a minute.")
         # Drop failed questions from the question list too, so answers stay paired with their ground truth.
         questions = [q for q, r in zip(questions, results) if r is not None]
 
