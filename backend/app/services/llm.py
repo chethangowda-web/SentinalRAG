@@ -186,7 +186,7 @@ def build_llm(max_tokens: int, timeout: int, temperature: float | None = None):
             # "retry in Ns" hint; the client's own immediate retry would only burn quota.
             "max_retries": 0,
         }
-        effort = "" if second else settings.reasoning_effort_for(model)
+        effort = settings.FALLBACK_LLM_REASONING if second else settings.reasoning_effort_for(model)
         if effort:
             kwargs["reasoning_effort"] = effort
         clients[model] = ChatOpenAI(**kwargs)
