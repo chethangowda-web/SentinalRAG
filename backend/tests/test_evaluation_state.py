@@ -46,7 +46,7 @@ async def test_latest_reports_a_run_in_flight_so_a_reload_can_resume(async_clien
 async def test_latest_serves_the_users_last_finished_report(async_client, db_session, test_user):
     db_session.add(_run("done-1", test_user.id, "completed"))
     await db_session.commit()
-    with patch.object(eval_module._report_gen, "load_result", return_value={"evaluation_id": "done-1", "summary": {}}):
+    with patch.object(eval_module._report_gen, "load_result", return_value={"evaluation_id": "done-1", "summary": {}, "per_question": [{"id": "1"}]}):
         body = (await async_client.get("/api/v1/evaluation/latest")).json()
     assert body["report"]["evaluation_id"] == "done-1"
 
