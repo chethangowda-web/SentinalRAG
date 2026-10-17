@@ -54,8 +54,13 @@ def get_engine():
         url = _normalize_db_url(settings.DATABASE_URL)
         kwargs = {"echo": False}
         if url.startswith("postgresql"):
-            kwargs["pool_size"] = 5
-            kwargs["max_overflow"] = 10
+            # A chat answer holds its connection while the model writes (several seconds), so the pool must be
+            # larger than the number of questions in flight. Postgres allows ~100 connections.
+            kwargs["pool_size"] = 10
+            kwargs["max_overflow"] = 20
+            kwargs["pool_timeout"] = 20
+            kwargs["pool_pre_ping"] = True  # a connection dropped while idle is replaced instead of failing a request
+            kwargs["pool_recycle"] = 1800
             ssl_mode = settings.DATABASE_SSL
             if ssl_mode and ssl_mode.lower() not in ("disable", ""):
                 connect_args = kwargs.get("connect_args", {})

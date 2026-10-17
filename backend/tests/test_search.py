@@ -40,8 +40,8 @@ class TestQueryPreprocessor:
 
 class TestVectorSearch:
     def test_search_returns_results(self):
-        with patch("app.services.vector_search_service.generate_embeddings") as mock_embed:
-            mock_embed.return_value = [[0.1] * 384]
+        with patch("app.services.vector_search_service.embed_query") as mock_embed:
+            mock_embed.return_value = [0.1] * 384
             with patch("app.services.vector_search_service.get_qdrant_client") as mock_qdrant:
                 mock_client = MagicMock()
                 mock_result = MagicMock()
@@ -65,14 +65,14 @@ class TestVectorSearch:
                 assert results[0].page_number == 3
 
     def test_search_empty_embedding(self):
-        with patch("app.services.vector_search_service.generate_embeddings") as mock_embed:
+        with patch("app.services.vector_search_service.embed_query") as mock_embed:
             mock_embed.return_value = []
             results = search_vector("test")
             assert results == []
 
     def test_search_qdrant_error(self):
-        with patch("app.services.vector_search_service.generate_embeddings") as mock_embed:
-            mock_embed.return_value = [[0.1] * 384]
+        with patch("app.services.vector_search_service.embed_query") as mock_embed:
+            mock_embed.return_value = [0.1] * 384
             with patch("app.services.vector_search_service.get_qdrant_client") as mock_qdrant:
                 from qdrant_client.http.exceptions import UnexpectedResponse
                 mock_client = MagicMock()
@@ -82,8 +82,8 @@ class TestVectorSearch:
                 assert results == []
 
     def test_search_returns_multiple(self):
-        with patch("app.services.vector_search_service.generate_embeddings") as mock_embed:
-            mock_embed.return_value = [[0.1] * 384]
+        with patch("app.services.vector_search_service.embed_query") as mock_embed:
+            mock_embed.return_value = [0.1] * 384
             with patch("app.services.vector_search_service.get_qdrant_client") as mock_qdrant:
                 mock_client = MagicMock()
                 mock_client.query_points.return_value.points = [

@@ -4,7 +4,10 @@ import uuid
 
 from fastapi import FastAPI, Request
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import JSONResponse, Response
+
+from app.core.config import settings
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
@@ -60,17 +63,34 @@ class SecureHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+def _rate_limit_key(request: Request) -> tuple[str, bool]:
+    """Who a request counts against: the signed-in user, else the client IP. Returns (key, is_user).
+
+    People behind one address (a school, an office) must not use up each other's allowance.
+    """
+    auth = request.headers.get("authorization", "")
+    if auth.lower().startswith("bearer "):
+        from app.core.auth import decode_access_token
+
+        user_id = decode_access_token(auth[7:].strip())
+        if user_id:
+            return f"user:{user_id}", True
+    return f"ip:{request.client.host if request.client else 'unknown'}", False
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, max_requests: int = 100, window_seconds: int = 60):
+    def __init__(self, app, max_requests: int = 240, window_seconds: int = 60, anonymous_max_requests: int = 120):
         super().__init__(app)
         self.max_requests = max_requests
+        self.anonymous_max_requests = anonymous_max_requests
         self.window_seconds = window_seconds
         self.requests: dict[str, list[float]] = {}
         self._requests_seen = 0
 
     async def dispatch(self, request: Request, call_next):
         if request.url.path.startswith("/api/"):
-            client_ip = request.client.host if request.client else "unknown"
+            client_ip, is_user = _rate_limit_key(request)
+            limit = self.max_requests if is_user else self.anonymous_max_requests
             now = time.time()
             window_start = now - self.window_seconds
 
@@ -86,7 +106,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     ip: ts for ip, ts in self.requests.items() if ts and ts[-1] > window_start
                 }
 
-            if len(self.requests.get(client_ip, [])) >= self.max_requests:
+            if len(self.requests.get(client_ip, [])) >= limit:
                 logging.getLogger("sentinelrag.security").warning(
                     "Rate limit exceeded for %s", client_ip,
                     extra={"request_id": getattr(request.state, "request_id", "rate-limited")},
@@ -102,11 +122,31 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+class UIGZipMiddleware:
+    """gzip for the web UI's files only.
+
+    Starlette's GZipMiddleware would also compress the /api/ responses, including the chat's server-sent
+    events, which it buffers until they finish: answers would stop streaming.
+    """
+
+    def __init__(self, app, minimum_size: int = 800):
+        self.app = app
+        self.gzip = GZipMiddleware(app, minimum_size=minimum_size)
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and not scope["path"].startswith("/api/"):
+            await self.gzip(scope, receive, send)
+        else:
+            await self.app(scope, receive, send)
+
+
 def setup_middleware(app: FastAPI) -> None:
+    app.add_middleware(UIGZipMiddleware)
     app.add_middleware(SecureHeadersMiddleware)
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(
         RateLimitMiddleware,
-        max_requests=100,
-        window_seconds=60,
+        max_requests=settings.RATE_LIMIT_MAX_REQUESTS,
+        window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+        anonymous_max_requests=settings.RATE_LIMIT_ANONYMOUS_MAX_REQUESTS,
     )

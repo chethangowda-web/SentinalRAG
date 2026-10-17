@@ -125,8 +125,18 @@ class Settings(BaseSettings):
         return self.JWT_SECRET or self.SECRET_KEY
 
     # Rate limiting
-    RATE_LIMIT_MAX_REQUESTS: int = 100
+    # Per signed-in user (or per client IP when anonymous) per window. Polling and page loads count too.
+    RATE_LIMIT_MAX_REQUESTS: int = 240
     RATE_LIMIT_WINDOW_SECONDS: int = 60
+    # Anonymous callers share an IP (a classroom, an office), so they get a looser limit than one person
+    RATE_LIMIT_ANONYMOUS_MAX_REQUESTS: int = 120
+
+    # Searches (embedding + rerank, the CPU-heavy part of every question) running at once. The server
+    # has ~2 vCPUs: more in parallel only makes each one slower. The rest wait, then get a "busy" reply.
+    RETRIEVAL_CONCURRENCY: int = 2
+    RETRIEVAL_QUEUE_TIMEOUT_SECONDS: float = 30.0
+    # Longest passage (in tokens) the reranker reads; cost grows with length and the head of a chunk decides relevance
+    RERANK_MAX_TOKENS: int = 256
 
     @property
     def llm_provider(self) -> str:

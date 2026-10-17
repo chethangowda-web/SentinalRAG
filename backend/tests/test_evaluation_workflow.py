@@ -123,7 +123,7 @@ def test_models_loaded_by_several_threads_at_once_are_loaded_only_once(monkeypat
     loads = []
 
     class FakeCrossEncoder:
-        def __init__(self, name, device="cpu"):
+        def __init__(self, name, device="cpu", **kwargs):
             loads.append(name)
             time.sleep(0.1)  # a slow load is what lets a second thread start its own
 
