@@ -5,7 +5,7 @@
 It signs up (or logs in) a throwaway benchmark user, uploads and embeds the corpus in
 backend/evaluation/corpus/, triggers POST /api/v1/evaluate (baseline RAG vs the self-correcting
 pipeline over the 18 questions in backend/evaluation/datasets/benchmark.json), waits for it, and
-saves BENCHMARK.md. Needs `httpx` (already a backend dependency).
+saves docs/BENCHMARK.md. Needs `httpx` (already a backend dependency).
 """
 import argparse
 import sys
@@ -183,7 +183,7 @@ def main() -> None:
     parser.add_argument("--base-url", required=True)
     parser.add_argument("--email", default=None, help="benchmark user (default: a stable throwaway address)")
     parser.add_argument("--password", default=None)
-    parser.add_argument("--output", default=str(ROOT / "BENCHMARK.md"))
+    parser.add_argument("--output", default=str(ROOT / "docs" / "BENCHMARK.md"))
     parser.add_argument("--timeout", type=int, default=2400, help="seconds to wait for the evaluation")
     args = parser.parse_args()
 

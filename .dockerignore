@@ -15,5 +15,4 @@ backend/load_tests
 backend/performance
 backend/evaluation/results
 scripts
-test_data
 *.md

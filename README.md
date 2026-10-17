@@ -11,7 +11,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/chethangowda-web/SentinalRAG/actions/workflows/ci.yml/badge.svg)](https://github.com/chethangowda-web/SentinalRAG/actions)
 
-**Running it for other people?** Read [OPERATIONS.md](./OPERATIONS.md): capacity, settings to check, backups, and what to do when something breaks.
+**Running it for other people?** Read [OPERATIONS.md](./docs/OPERATIONS.md): capacity, settings to check, backups, and what to do when something breaks.
 
 ---
 
@@ -177,154 +177,35 @@ User Query
 ## Folder Structure
 
 ```
-sentinelrag/
-│
-├── backend/                          # Python FastAPI backend
+SentinalRAG/
+├── backend/                  # FastAPI service (Python)
 │   ├── app/
-│   │   ├── api/v1/                   # API routes
-│   │   │   ├── router.py             # Route aggregation
-│   │   │   ├── health.py             # /health, /ready, /metrics
-│   │   │   ├── chat.py               # POST /chat (self-correcting Q&A)
-│   │   │   ├── search.py             # POST /search (hybrid search)
-│   │   │   ├── ingest.py             # POST /ingest (document upload)
-│   │   │   ├── embed.py              # POST /embed, GET /chunks
-│   │   │   ├── metrics.py            # GET /metrics/performance|system|errors
-│   │   │   ├── evaluation.py         # POST /evaluate, GET /report|history|dataset
-│   │   │   └── traces.py             # GET /traces, GET /export, POST /traces
-│   │   ├── core/                     # Core framework
-│   │   │   ├── config.py             # Pydantic Settings (all configuration)
-│   │   │   ├── database.py           # Async SQLAlchemy engine & sessions
-│   │   │   ├── logging.py            # Structured JSON logging
-│   │   │   ├── middleware.py         # RequestID, Security headers, Rate limiting
-│   │   │   ├── exceptions.py         # Custom exception hierarchy (8 types)
-│   │   │   ├── cors.py               # CORS configuration
-│   │   │   ├── metrics.py            # In-memory metrics collector (p50/p95/p99)
-│   │   │   ├── resource_tracker.py   # CPU/memory/disk sampling (psutil)
-│   │   │   └── qdrant.py             # Qdrant client singleton
-│   │   ├── graph/                    # LangGraph self-correction pipeline
-│   │   │   ├── state.py              # GraphState TypedDict
-│   │   │   ├── graph_builder.py      # 10-node graph construction
-│   │   │   └── nodes/                # Individual graph nodes
-│   │   │       ├── retrieve_node.py
-│   │   │       ├── ambiguity_node.py
-│   │   │       ├── confidence_node.py
-│   │   │       ├── rewrite_node.py
-│   │   │       ├── retry_node.py
-│   │   │       ├── contradiction_node.py
-│   │   │       ├── clarification_node.py
-│   │   │       ├── generation_node.py
-│   │   │       └── fallback_node.py
-│   │   ├── models/                   # SQLAlchemy ORM models
-│   │   │   ├── document.py
-│   │   │   └── chunk.py
-│   │   ├── schemas/                  # Pydantic request/response schemas
-│   │   │   ├── health.py
-│   │   │   ├── chat.py
-│   │   │   ├── search.py
-│   │   │   ├── document.py
-│   │   │   ├── chunk.py
-│   │   │   └── metrics.py
-│   │   ├── services/                 # Business logic (20+ modules)
-│   │   │   ├── file_service.py       # File validation & save
-│   │   │   ├── document_service.py   # Ingest pipeline
-│   │   │   ├── ocr_service.py        # Tesseract OCR
-│   │   │   ├── text_cleaning.py      # Unicode normalization, cleanup
-│   │   │   ├── chunking_service.py   # Semantic chunking (~500 words)
-│   │   │   ├── embedding_service.py  # SentenceTransformer embeddings
-│   │   │   ├── indexing_service.py   # Qdrant upsert orchestration
-│   │   │   ├── qdrant_service.py     # Collection management
-│   │   │   ├── query_preprocessor.py # Query normalization
-│   │   │   ├── retrieval_service.py  # Full retrieval pipeline
-│   │   │   ├── vector_search_service.py
-│   │   │   ├── bm25_service.py       # PostgreSQL full-text search
-│   │   │   ├── hybrid_search_service.py # RRF fusion
-│   │   │   ├── reranker_service.py   # Cross-encoder reranking
-│   │   │   ├── confidence_service.py # Composite confidence scoring
-│   │   │   ├── query_rewriter.py     # LLM query rewriting
-│   │   │   ├── contradiction_service.py # Conflict detection
-│   │   │   ├── clarification_service.py # Ambiguity detection
-│   │   │   ├── answer_generator.py   # LLM answer generation
-│   │   │   ├── trace_service.py      # Decision trace CRUD + export
-│   │   │   ├── token_counter.py      # tiktoken-based token counting
-│   │   │   └── health_check.py       # Startup dependency waiter
-│   │   ├── models/
-│   │   │   ├── document.py
-│   │   │   ├── chunk.py
-│   │   │   └── trace.py              # Trace ORM model
-│   │   └── utils/
-│   │       └── file_utils.py         # UUID generation, path helpers
-│   ├── migrations/                   # Alembic database migrations
-│   │   ├── env.py                    # Async Alembic environment
-│   │   ├── script.py.mako            # Migration template
-│   │   └── versions/                 # Revision scripts
-│   │       ├── 001_initial.py        # documents, chunks, traces
-│   │       ├── 002_add_document_features.py
-│   │       ├── 003_add_users_and_ownership.py
-│   │       ├── 902bc76d113c_add_document_evaluations_table.py
-│   │       └── 004_sync_schema_with_models.py
-│   ├── evaluation/                   # Benchmark evaluation framework
-│   │   ├── dataset.py                # Dataset loader
-│   │   ├── datasets/benchmark.json   # 18-question benchmark
-│   │   ├── services/
-│   │   │   ├── baseline_rag.py       # Simple 2-step RAG baseline
-│   │   │   ├── sentinel_rag.py       # Full LangGraph pipeline
-│   │   │   └── runner.py             # Evaluation orchestrator
-│   │   ├── metrics/
-│   │   │   ├── base.py               # Base metric class
-│   │   │   ├── ragas_metrics.py      # Faithfulness, relevancy, precision, recall
-│   │   │   ├── deepeval_metrics.py   # Hallucination, bias, toxicity, correctness
-│   │   │   ├── custom_metrics.py     # Confidence calibration, citation accuracy, etc.
-│   │   │   └── collector.py          # Metrics aggregation
-│   │   └── reports/
-│   │       ├── report_generator.py   # JSON / CSV / Markdown reports
-│   │       └── visualizer.py         # matplotlib charts & radar plots
-│   ├── tests/                        # Comprehensive test suite
-│   │   ├── test_health.py            # Integration health check
-│   │   ├── test_search.py            # 409 lines: hybrid search tests
-│   │   ├── test_ingest.py            # Upload validation tests
-│   │   ├── test_indexing.py          # Embed/chunk endpoint tests
-│   │   ├── test_graph.py             # 440 lines: full graph pipeline tests
-│   │   ├── test_evaluation.py        # 841 lines: evaluation framework tests
-│   │   ├── test_chunking.py          # Semantic chunking tests
-│   │   ├── test_embedding.py         # Embedding normalization tests
-│   │   ├── test_text_cleaning.py     # Text cleaning tests
-│   │   ├── test_file_utils.py        # UUID/path tests
-│   │   ├── stresstest/test_stress.py # Stress tests (time-bounded)
-│   │   ├── failuretest/test_failure.py # Failure mode tests (18 scenarios)
-│   │   └── performance/test_performance.py # Benchmarked performance tests
-│   ├── load_tests/locustfile.py      # Locust load testing script
-│   └── performance/                  # Performance benchmarks
-│       ├── benchmark_runner.py       # Standalone benchmark runner
-│       └── performance_report.md     # Comprehensive results
-│
-├── frontend/                         # Next.js 15 TypeScript frontend
-│   ├── app/                          # App Router pages
-│   │   ├── page.tsx                  # Landing (Hero, Features, Architecture)
-│   │   ├── layout.tsx                # Root layout (dark mode)
-│   │   └── dashboard/
-│   │       ├── page.tsx              # Dashboard (stats, components, activity)
-│   │       ├── chat/page.tsx         # Chat interface + explainability
-│   │       ├── upload/page.tsx       # Upload with processing pipeline viz
-│   │       ├── documents/page.tsx    # Document list + detail dialog
-│   │       ├── evaluation/page.tsx   # Evaluation dash (charts, history)
-│   │       └── settings/page.tsx     # Read-only system config display
-│   ├── components/
-│   │   ├── layout/                   # AppLayout, Sidebar, TopNavbar, Providers
-│   │   ├── shared/                   # MetricCard, StatusBadge, UploadDropzone, etc.
-│   │   ├── ui/                       # shadcn/ui primitives (10 components)
-│   │   └── ExplainabilityPanel.tsx   # Sliding confidence/reasoning panel
-│   ├── hooks/                        # React Query hooks (7 hooks)
-│   ├── services/                     # Axios API client (8 modules)
-│   ├── types/                        # TypeScript interfaces (167 lines)
-│   └── lib/                          # cn() utility
-│
-├── nginx/nginx.conf                  # NGINX reverse proxy configuration
-├── .github/workflows/ci.yml          # GitHub Actions CI pipeline
-├── docker-compose.yml                # Multi-service orchestration (6 services)
-├── Makefile                          # Common development commands
-├── .env.example                      # Template environment file
-└── .gitignore                        # Comprehensive ignores
+│   │   ├── api/v1/           # HTTP routes: auth, chat (SSE), documents, search, evaluation, health...
+│   │   ├── core/             # settings, database, auth, middleware, rate limits
+│   │   ├── graph/            # LangGraph pipeline and its nodes
+│   │   ├── models/           # SQLAlchemy models
+│   │   ├── schemas/          # Pydantic request/response models
+│   │   └── services/         # retrieval, embeddings, reranker, LLM client, indexing, email...
+│   ├── evaluation/           # benchmark dataset, runner, metrics and reports
+│   ├── migrations/           # Alembic migrations (applied at startup)
+│   ├── tests/                # pytest suite
+│   └── performance/, load_tests/, observability/   # profiling and load-test tooling
+├── frontend/                 # Next.js app (exported to static files and served by the backend)
+│   ├── app/                  # pages: landing, login, dashboard (chat, documents, evaluation...)
+│   ├── components/           # UI components
+│   ├── e2e/                  # Playwright browser tests with an accessibility scan
+│   └── services/, hooks/, lib/, types/
+├── docs/                     # architecture, API, deployment, operations, benchmark, security reports
+├── deploy/nginx/             # reverse-proxy config used by docker-compose
+├── scripts/                  # benchmark, load test, smoke tests, setup and sample data
+├── .github/workflows/        # CI (lint, tests, build, e2e), daily database backup
+├── Dockerfile                # single-container build: API + web UI (what Railway deploys)
+├── docker-compose.yml        # local multi-service setup
+├── railway.json, Makefile
+└── README.md, CONTRIBUTING.md, SECURITY.md, LICENSE
 ```
+
+See [docs/](./docs/README.md) for the detailed documents.
 
 ---
 
@@ -462,7 +343,7 @@ Full interactive API documentation is available at `/docs` (Swagger UI) when the
 
 SentinelRAG ships a benchmark that runs a baseline RAG (one hybrid retrieval + one answer) and the full self-correcting pipeline over the same 18 questions (`backend/evaluation/datasets/benchmark.json`) against a six-document corpus (`backend/evaluation/corpus/`: easy, medium, multi-step, contradictory, missing-context and ambiguous questions).
 
-Latest run on the live deployment with `gemini-3.1-flash-lite` (full report and per-question answers: [BENCHMARK.md](./BENCHMARK.md)):
+Latest run on the live deployment with `gemini-3.1-flash-lite` (full report and per-question answers: [BENCHMARK.md](./docs/BENCHMARK.md)):
 
 | What the question should produce | Baseline | SentinelRAG |
 |---|---|---|
@@ -494,7 +375,7 @@ Reproduce it against any deployment: `python scripts/run_benchmark.py --base-url
 | Component Benchmarks (all CPU ops) | <15ms P99 |
 | Failure Mode Tests Passed | 18/18 (100%) |
 
-See [PERFORMANCE.md](./PERFORMANCE.md) for detailed benchmarks, load test results, and observability reports.
+See [PERFORMANCE.md](./docs/PERFORMANCE.md) for detailed benchmarks, load test results, and observability reports.
 
 ---
 

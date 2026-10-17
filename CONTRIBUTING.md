@@ -99,7 +99,7 @@ test: add tests for query rewrite node
 6. Add the frontend hook in `frontend/hooks/`
 7. Add the service function in `frontend/services/`
 8. Add the UI component or page as needed
-9. Update `API.md` with the new endpoint
+9. Update `docs/API.md` with the new endpoint
 
 ## Adding a LangGraph Node
 
