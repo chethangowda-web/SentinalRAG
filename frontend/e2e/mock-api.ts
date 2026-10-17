@@ -105,3 +105,55 @@ export async function signedIn(page: Page, theme: "light" | "dark" = "light") {
     return json(route, {});
   });
 }
+
+function pipeline(answer: string | null, extra: Record<string, unknown> = {}) {
+  return {
+    answer, confidence_score: 70, confidence_level: "HIGH", latencies: {}, citations: [], reasoning_path: ["retrieve", "generate_answer"],
+    contradiction_detected: false, contradiction_reason: null, clarification_needed: false, clarification_question: null, retry_count: 0,
+    ...extra,
+  };
+}
+
+const metric = (baseline: number, sentinel: number) => [{ value: baseline, success: true, error: null, details: {} }, { value: sentinel, success: true, error: null, details: {} }];
+
+export const EVALUATION_REPORT = (() => {
+  const keys: [string, number, number][] = [
+    ["avg_faithfulness", 0.81, 0.78], ["avg_hallucination", 0.19, 0.22], ["avg_answer_relevancy", 0.26, 0.22],
+    ["avg_context_precision", 0.75, 0.76], ["avg_context_recall", 0.7, 0.7], ["avg_correctness", 0.615, 0.624],
+    ["avg_unsupported_answer_rate", 0.19, 0.22], ["latency", 6900, 9800],
+  ];
+  const baseline: Record<string, unknown> = {};
+  const sentinel: Record<string, unknown> = {};
+  for (const [k, b, s] of keys) {
+    const [mb, ms] = metric(b, s);
+    baseline[k] = mb;
+    sentinel[k] = ms;
+  }
+  return {
+    evaluation_id: "run-1", timestamp: "2026-10-17T10:00:00Z", dataset: "benchmark", total_questions: 3,
+    summary: { baseline, sentinel, comparison: {} },
+    behaviour: [
+      { label: "Specific questions answered", description: "Easy, medium and hard questions get a real answer", total: 1, baseline: 1, sentinel: 1 },
+      { label: "Unanswerable questions refused", description: "Questions the documents cannot answer are declined, not invented", total: 1, baseline: 0, sentinel: 1 },
+      { label: "Vague questions clarified", description: "Ambiguous questions get a clarifying question", total: 1, baseline: 0, sentinel: 1 },
+    ],
+    per_question: [
+      { id: "1", question: "When does scheduled maintenance take place?", ground_truth: "Every Sunday 02:00-04:00 UTC.", category: "easy", has_contradiction: false, needs_clarification: false, has_context: true,
+        baseline: pipeline("Every Sunday between 02:00 and 04:00 UTC [Source 1]."), sentinel: pipeline("Every Sunday between 02:00 and 04:00 UTC [Source 1].", { retry_count: 1 }) },
+      { id: "2", question: "What is the 5G standalone roaming charge?", ground_truth: "I don't have enough information to answer this question.", category: "missing_context", has_contradiction: false, needs_clarification: false, has_context: false,
+        baseline: pipeline("Based on the retrieved documents (source: d1):\n\nraw text"), sentinel: pipeline("I don't have enough information to answer this question.") },
+      { id: "3", question: "What is the deadline?", ground_truth: "Needs clarification.", category: "ambiguous", has_contradiction: false, needs_clarification: true, has_context: true,
+        baseline: pipeline("It depends."), sentinel: pipeline(null, { clarification_needed: true, clarification_question: "Which deadline do you mean?" }) },
+    ],
+    failure_modes: {},
+  };
+})();
+
+/** Signed in, with a finished evaluation report available. */
+export async function withEvaluationReport(page: Page, theme: "light" | "dark" = "light") {
+  await signedIn(page, theme);
+  await page.route("**/api/v1/evaluation/latest", (route) =>
+    json(route, { report: EVALUATION_REPORT, run: { evaluation_id: "run-1", status: "completed", progress: 3, total: 3, error: null }, benchmark: { ready: true, loading: false, documents: [] } })
+  );
+  await page.route("**/api/v1/evaluation/history", (route) => json(route, [{ evaluation_id: "run-1", timestamp: "2026-10-17T10:00:00Z", total_questions: 3, dataset: "benchmark" }]));
+}
