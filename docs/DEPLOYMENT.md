@@ -184,7 +184,7 @@ The repo-root `Dockerfile` builds the Next.js app as a static export and bakes i
 |---|---|
 | Image | `nginx:1.27-alpine` |
 | Port | 80 (host-facing) |
-| Config | `./nginx/nginx.conf` (mounted read-only) |
+| Config | `./deploy/nginx/nginx.conf` (mounted read-only) |
 | Max Body Size | 50MB |
 | Keepalive | 64 connections per upstream |
 | Health Check | `nginx -t` (30s interval) |
@@ -271,9 +271,9 @@ For development with SQLite, a warning is shown instead of a fatal error, but a 
 
 The NGINX configuration expects to terminate SSL. To enable HTTPS:
 
-1. Place certificates at `./nginx/certs/`:
+1. Place certificates at `./deploy/nginx/certs/`:
    ```
-   nginx/
+   deploy/nginx/
    ├── nginx.conf
    └── certs/
        ├── fullchain.pem
@@ -284,14 +284,14 @@ The NGINX configuration expects to terminate SSL. To enable HTTPS:
    ```yaml
    nginx:
      volumes:
-       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-       - ./nginx/certs:/etc/nginx/certs:ro
+       - ./deploy/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+       - ./deploy/nginx/certs:/etc/nginx/certs:ro
      ports:
        - "443:443"
        - "80:80"
    ```
 
-3. Update `nginx/nginx.conf` to add SSL listener (port 443) with redirect from HTTP.
+3. Update `deploy/nginx/nginx.conf` to add SSL listener (port 443) with redirect from HTTP.
 
 ### Resource Limits
 

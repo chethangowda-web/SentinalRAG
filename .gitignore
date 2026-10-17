@@ -12,6 +12,7 @@ htmlcov/
 .coverage.*
 coverage.xml
 *.db
+*.whl
 
 # ─── Node ─────────────────────────────────────────────
 node_modules/

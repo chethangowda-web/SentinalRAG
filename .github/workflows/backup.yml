@@ -1,7 +1,7 @@
 name: Database backup
 
 # Daily encrypted dump of the production Postgres, kept as a workflow artifact for 14 days.
-# Does nothing until the two secrets below exist (see OPERATIONS.md, "Backups").
+# Does nothing until the two secrets below exist (see docs/OPERATIONS.md, "Backups").
 #   BACKUP_DATABASE_URL   postgresql://user:password@host:port/dbname  (Railway: the Postgres service's public/TCP URL)
 #   BACKUP_PASSPHRASE     any long random string; needed to decrypt the dump
 # The repository is public, so artifacts are downloadable by anyone with access to it: the dump is encrypted before upload.
